@@ -1,3 +1,4 @@
+extern crate cgmath;
 extern crate glutin_window;
 extern crate graphics;
 extern crate image;
@@ -14,11 +15,13 @@ use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
+use cgmath::Vector3;
 
+mod camera;
 mod renderer;
 
-const IMAGE_WIDTH: u32 = 640;
-const IMAGE_HEIGHT: u32 = 480;
+const IMAGE_WIDTH: u32 = 200;
+const IMAGE_HEIGHT: u32 = 200;
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -41,26 +44,23 @@ fn main() {
     // setup separate thread for rendering
 
     //let mut image_buffer: image::RgbaImage = image::ImageBuffer::new(IMAGE_WIDTH, IMAGE_HEIGHT);
-    let mut texture: Texture = Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
+    let mut texture: Texture =
+        Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
+
+    let camera = camera::Camera::new(Vector3::new(1.0,0.0,0.0), Vector3::new(0.0,5.0,0.0), 45.0);
+
+    renderer::render(camera);
 
     let mut events = Events::new(EventSettings::new());
-
-    renderer::render();
-
-   
     while let Some(e) = events.next(&mut window) {
         // draw current render state
         if let Some(args) = e.render_args() {
-
             texture.update(&IMAGE_BUFFER.read().unwrap());
 
-          
             gl.draw(args.viewport(), |c, gl| {
                 clear([0.0, 1.0, 0.0, 1.0], gl);
                 image(&texture, c.transform, gl);
             });
-
-           
         }
     }
 }
