@@ -20,8 +20,8 @@ use cgmath::Vector3;
 mod camera;
 mod renderer;
 
-const IMAGE_WIDTH: u32 = 200;
-const IMAGE_HEIGHT: u32 = 200;
+const IMAGE_WIDTH: u32 = 1500;
+const IMAGE_HEIGHT: u32 = 800;
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -30,8 +30,6 @@ lazy_static! {
 }
 
 fn main() {
-    println!("Hello, world!");
-
     let opengl = OpenGL::V3_2;
     let mut window: Window = WindowSettings::new("Rust Raytracer", [IMAGE_WIDTH, IMAGE_HEIGHT])
         .opengl(opengl)

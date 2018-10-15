@@ -1,13 +1,10 @@
-use image;
-use std::thread;
-use std::time::Duration;
-use std::cmp;
-use IMAGE_BUFFER;
 use camera::Camera;
+use image;
+use std::cmp;
+use std::thread;
+use IMAGE_BUFFER;
 
-
-const THREAD_COUNT: u32 = 16;
-
+const THREAD_COUNT: u32 = 8;
 
 pub fn render(camera: Camera) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
@@ -25,22 +22,19 @@ pub fn render(camera: Camera) {
             let work_start = thread_id * work_per_thread;
             // prevent rounding error, cap at max work
             let work_end = cmp::min(work_start + work_per_thread, work);
-         
-            loop {
-                for pos in work_start..work_end {
-                    IMAGE_BUFFER.write().unwrap().put_pixel(
-                        pos % image_width,
-                        (pos / image_width) % image_height,
-                        image::Rgba([
-                            (20 * thread_id) as u8 % 255,
-                            (20 * thread_id) as u8 % 255,
-                            100,
-                            255,
-                        ]),
-                    );
 
-                    thread::sleep(Duration::from_millis( 1));
-                }
+            for pos in work_start..work_end {
+                IMAGE_BUFFER.write().unwrap().put_pixel(
+                    pos % image_width,
+                    (pos / image_width) % image_height,
+                    image::Rgba([
+                        (20 * thread_id) as u8 % 255,
+                        (20 * thread_id) as u8 % 255,
+                        100,
+                        255,
+                    ]),
+                );
+
             }
         });
     }
