@@ -4,6 +4,7 @@ extern crate graphics;
 extern crate image;
 extern crate opengl_graphics;
 extern crate piston;
+extern crate rand;
 
 #[macro_use]
 extern crate lazy_static;
@@ -79,6 +80,15 @@ fn main() {
         ambient: 0.1,
     };
 
+     let sphere_3 = scene::Sphere {
+        position: Vector3::new(0.0, 4.0, 2.0),
+        radius: 1.0,
+        color: Vector3::new(0.1, 0.1, 0.8), // blue
+        lambert: 0.2,
+        specular: 0.7,
+        ambient: 0.1,
+    };
+
     let light = scene::Light {
         position: Vector3::new(0.0, 0.0, -2000.0),
         intensity: 1.0,
@@ -93,7 +103,7 @@ fn main() {
 
     let scene = scene::Scene {
         bg_color: Vector3::new(1.0, 0.0, 0.0), // red
-        spheres: vec![sphere, sphere_1, sphere_2],
+        spheres: vec![sphere, sphere_1, sphere_2, sphere_3],
         lights: vec![light, light_1],
     };
 

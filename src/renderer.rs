@@ -1,20 +1,57 @@
 use camera::Camera;
 use cgmath::*;
 use image;
+use rand::*;
 use scene::{Light, Scene, Sphere};
 use std::cmp;
+use std::sync::Mutex;
 use std::thread;
 use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 8;
-const BUCKETS: u32 = 64;
-const MAX_DEPTH: u32 = 4;
+const BUCKETS: u32 = 800;
+const MAX_DEPTH: u32 = 8;
+const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
+
+#[derive(Copy, Clone, Debug)]
+struct Work {
+    start: u32,
+    end: u32,
+}
+
+lazy_static! {
+    static ref WORK_QUEUE: Mutex<Vec<Work>> = {
+        let mut vec: Vec<Work> = Vec::new();
+        let per_bucket = WORK / BUCKETS;
+
+        for x in 0..BUCKETS {
+            vec.push(Work {
+                start: x * per_bucket,
+                end: x * per_bucket + per_bucket,
+            });
+        }
+
+        Mutex::new(vec)
+    };
+}
+
+fn get_work() -> Option<Work> {
+    let mut rng = thread_rng();
+    let mut queue = WORK_QUEUE.lock().unwrap();
+    let len = queue.len();
+
+    if len == 0 {
+        return None;
+    }
+
+    Some(queue.remove(rng.gen_range(0, len)))
+}
 
 pub fn render(camera: Camera, scene: &Scene) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
-    let work = image_width * image_height;
-    let work_per_thread = work / THREAD_COUNT;
+    //let work = image_width * image_height;
+    //let work_per_thread = work / THREAD_COUNT;
 
     println!("Start render, w{}, h{}", image_width, image_height);
     println!("Camera {:?}", camera);
@@ -24,37 +61,47 @@ pub fn render(camera: Camera, scene: &Scene) {
         let thread_scene = scene.clone();
         let _thread = thread::spawn(move || {
             let thread_id = id.clone();
-            let work_start = thread_id * work_per_thread;
-            // prevent rounding error, cap at max work
-            let work_end = cmp::min(work_start + work_per_thread, work);
 
-            for pos in work_start..work_end {
-                let rays = get_rays_at(camera, image_width, image_height, pos, 5, 5).unwrap();
-                let rays_len = rays.len();
+            loop {
+                let work_wrapped = get_work();
 
-                let mut pixel_color = Vector3::new(0.0,0.0,0.0);
-
-               // println!("{:?}", rays);
-                for ray in rays {
-                    pixel_color += trace(ray, &thread_scene.clone(), 1).unwrap();
+                if let None = work_wrapped {
+                    break;
                 }
 
-                pixel_color /= rays_len as f64;
+                let work = work_wrapped.unwrap();
 
-                //println!("Thread id {}, pos {}, Ray {:?}", thread_id, pos, ray);
+                // prevent rounding error, cap at max work
+                let work_end = cmp::min(WORK, work.end);
 
-                let pixel_color_rgba = image::Rgba([
-                    (pixel_color.x * 255.0) as u8,
-                    (pixel_color.y * 255.0) as u8,
-                    (pixel_color.z * 255.0) as u8,
-                    255,
-                ]);
+                for pos in work.start..work_end {
+                    let rays = get_rays_at(camera, image_width, image_height, pos, 5, 5).unwrap();
+                    let rays_len = rays.len();
 
-                IMAGE_BUFFER.write().unwrap().put_pixel(
-                    pos % image_width,
-                    (pos / image_width) % image_height,
-                    pixel_color_rgba,
-                );
+                    let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
+
+                    // println!("{:?}", rays);
+                    for ray in rays {
+                        pixel_color += trace(ray, &thread_scene.clone(), 1).unwrap();
+                    }
+
+                    pixel_color /= rays_len as f64;
+
+                    //println!("Thread id {}, pos {}, Ray {:?}", thread_id, pos, ray);
+
+                    let pixel_color_rgba = image::Rgba([
+                        (pixel_color.x * 255.0) as u8,
+                        (pixel_color.y * 255.0) as u8,
+                        (pixel_color.z * 255.0) as u8,
+                        255,
+                    ]);
+
+                    IMAGE_BUFFER.write().unwrap().put_pixel(
+                        pos % image_width,
+                        (pos / image_width) % image_height,
+                        pixel_color_rgba,
+                    );
+                }
             }
         });
     }
@@ -99,11 +146,12 @@ fn get_rays_at(
     let sub_pixel_width = pixel_width / amount_w as f64;
     let sub_pixel_height = pixel_height / amount_h as f64;
 
-    let mut rays  = Vec::new();
+    let mut rays = Vec::new();
 
     for w in 0..amount_w {
         for h in 0..amount_h {
-            let sub_pixel_horizontal_offset = (w as f64 - (amount_w as f64 / 2.0)) * sub_pixel_width;
+            let sub_pixel_horizontal_offset =
+                (w as f64 - (amount_w as f64 / 2.0)) * sub_pixel_width;
             let sub_pixel_vertical_offset = (h as f64 - (amount_h as f64 / 2.0)) * sub_pixel_height;
 
             let horizontal_offset = camera.right
