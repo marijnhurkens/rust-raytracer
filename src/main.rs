@@ -21,8 +21,8 @@ mod camera;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 1000;
-const IMAGE_HEIGHT: u32 = 600;
+const IMAGE_WIDTH: u32 = 1400;
+const IMAGE_HEIGHT: u32 = 800;
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -53,25 +53,31 @@ fn main() {
     );
 
     let sphere = scene::Sphere {
-        position: Vector3::new(0.0, 4.0, 0.0),
-        radius: 1.0,
-        color: Vector3::new(0.0, 1.0, 0.0), // green
-        lambert: 0.7,
+        position: Vector3::new(-1.0, 0.8, 0.0),
+        radius: 0.8,
+        color: Vector3::new(0.0, 0.4, 0.1), // green
+        lambert: 0.05,
         specular: 0.2,
-        ambient: 0.1,
+        ambient: 0.05,
     };
 
     let sphere_1 = scene::Sphere {
-        position: Vector3::new(2.0, 7.0, 0.0),
+        position: Vector3::new(1.0, 2.0, 0.0),
         radius: 1.0,
-        color: Vector3::new(0.0, 1.0, 0.0), // green
-        lambert: 0.7,
+        color: Vector3::new(0.9, 0.1, 0.3), // pink
+        lambert: 0.05,
         specular: 0.2,
-        ambient: 0.1,
+        ambient: 0.05,
     };
 
     let light = scene::Light {
-        position: Vector3::new(0.0, 0.0, 2.0),
+        position: Vector3::new(0.0, 0.0, -2000.0),
+        intensity: 1.0,
+        color: Vector3::new(1.0, 1.0, 1.0), // white
+    };
+
+    let light_1 = scene::Light {
+        position: Vector3::new(-3.0, 4.0, 2.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
@@ -79,7 +85,7 @@ fn main() {
     let scene = scene::Scene {
         bg_color: Vector3::new(1.0, 0.0, 0.0), // red
         spheres: vec![sphere, sphere_1],
-        lights: vec![light],
+        lights: vec![light, light_1],
     };
 
     renderer::render(camera, &scene);

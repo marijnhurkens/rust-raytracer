@@ -7,6 +7,7 @@ use std::thread;
 use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 8;
+const MAX_DEPTH: u32 = 5;
 
 pub fn render(camera: Camera, scene: &Scene) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
@@ -31,9 +32,14 @@ pub fn render(camera: Camera, scene: &Scene) {
 
                 //println!("Thread id {}, pos {}, Ray {:?}", thread_id, pos, ray);
 
-                let pixel_color = trace(ray.unwrap(), thread_scene.clone(), 1).unwrap();
+                let pixel_color = trace(ray.unwrap(), &thread_scene.clone(), 1).unwrap();
 
-                let pixel_color_rgba = image::Rgba([(pixel_color.x * 255.0) as u8, (pixel_color.y * 255.0) as u8, (pixel_color.z * 255.0) as u8, 255]);
+                let pixel_color_rgba = image::Rgba([
+                    (pixel_color.x * 255.0) as u8,
+                    (pixel_color.y * 255.0) as u8,
+                    (pixel_color.z * 255.0) as u8,
+                    255,
+                ]);
 
                 IMAGE_BUFFER.write().unwrap().put_pixel(
                     pos % image_width,
@@ -87,22 +93,31 @@ fn get_ray_at(camera: Camera, width: u32, height: u32, pos: u32) -> Result<Ray, 
     Ok(ray)
 }
 
-fn trace(ray: Ray, scene: Scene, depth: u32) -> Option<Vector3<f64>> {
-    if depth > 3 {
+fn trace(ray: Ray, scene: &Scene, depth: u32) -> Option<Vector3<f64>> {
+    
+    if depth > MAX_DEPTH {
+       
         return None;
     }
 
     // for now we just check for intersection with the spheres
-    let intersect = check_intersect_scene(ray, &scene);
+    let intersect = check_intersect_scene(ray, scene);
 
     match intersect {
         None => {
             return Some(scene.bg_color);
-            },
+        }
         Some((dist, sphere)) => {
             let point_of_intersection = ray.point + (ray.direction * dist);
 
-            return Some(surface_calculate_color(ray, &scene, sphere, point_of_intersection, sphere_normal(sphere, point_of_intersection), depth));
+            return Some(surface_calculate_color(
+                ray,
+                scene,
+                sphere,
+                point_of_intersection,
+                sphere_normal(sphere, point_of_intersection),
+                depth,
+            ));
         }
     }
 }
@@ -162,6 +177,12 @@ fn sphere_normal(sphere: Sphere, position: Vector3<f64>) -> Vector3<f64> {
     (position - sphere.position).normalize()
 }
 
+fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
+    2.0 * vec.dot(normal) * normal - vec
+}
+
+
+
 fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
     let ray = Ray {
         point: position,
@@ -169,17 +190,28 @@ fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> b
     };
 
     if let Some((dist, sphere)) = check_intersect_scene(ray, scene) {
-        return false;
+        if dist < -0.005 {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     true
 }
 
-
 /// Calculate the lambert, specular and ambient color.
-fn surface_calculate_color(ray: Ray, scene: &Scene, sphere: Sphere, point_of_intersection: Vector3<f64>, normal: Vector3<f64>, depth: u32) -> Vector3<f64> {
+fn surface_calculate_color(
+    ray: Ray,
+    scene: &Scene,
+    sphere: Sphere,
+    point_of_intersection: Vector3<f64>,
+    normal: Vector3<f64>,
+    depth_immutable: u32,
+) -> Vector3<f64> {
+    let mut depth = depth_immutable;
     let sphere_color = sphere.color;
-    let c = image::Rgb([0,0,0]);
+    let mut c = Vector3::new(0.0,0.0,0.0);
     let mut lambert_amount = 0.0;
 
     if sphere.lambert > 0.0 {
@@ -191,9 +223,7 @@ fn surface_calculate_color(ray: Ray, scene: &Scene, sphere: Sphere, point_of_int
                 continue;
             }
 
-            println!("test");
-
-            let contribution = (light.position - point_of_intersection).dot(normal);
+            let contribution = (light.position - point_of_intersection).normalize().dot(normal);
             if contribution > 0.0 {
                 lambert_amount += contribution;
             }
@@ -205,9 +235,19 @@ fn surface_calculate_color(ray: Ray, scene: &Scene, sphere: Sphere, point_of_int
         }
     }
 
-    // specular here
+    if sphere.specular > 0.0 {
+        let reflect_ray = Ray {
+            point: point_of_intersection,
+            direction: vector_reflect(ray.direction, normal)
+        };
 
-    return (sphere_color * (lambert_amount * sphere.lambert)) + (sphere_color * sphere.ambient)
+        depth += 1;
 
+        
+        if let Some(reflect_surface_color) = trace(reflect_ray, scene, depth) {
+            c += reflect_surface_color * sphere.specular;
+        }
+    }
 
+    return c + (sphere_color * (lambert_amount * sphere.lambert)) + (sphere_color * sphere.ambient);
 }
