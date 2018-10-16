@@ -21,8 +21,8 @@ mod camera;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 600;
-const IMAGE_HEIGHT: u32 = 400;
+const IMAGE_WIDTH: u32 = 1000;
+const IMAGE_HEIGHT: u32 = 800;
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(

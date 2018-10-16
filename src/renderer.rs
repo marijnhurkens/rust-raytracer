@@ -6,7 +6,7 @@ use std::cmp;
 use std::thread;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 4;
+const THREAD_COUNT: u32 = 8;
 const BUCKETS: u32 = 64;
 const MAX_DEPTH: u32 = 4;
 
@@ -29,11 +29,12 @@ pub fn render(camera: Camera, scene: &Scene) {
             let work_end = cmp::min(work_start + work_per_thread, work);
 
             for pos in work_start..work_end {
-                let rays = get_rays_at(camera, image_width, image_height, pos, 10, 10).unwrap();
+                let rays = get_rays_at(camera, image_width, image_height, pos, 5, 5).unwrap();
                 let rays_len = rays.len();
 
                 let mut pixel_color = Vector3::new(0.0,0.0,0.0);
 
+               // println!("{:?}", rays);
                 for ray in rays {
                     pixel_color += trace(ray, &thread_scene.clone(), 1).unwrap();
                 }
@@ -102,9 +103,8 @@ fn get_rays_at(
 
     for w in 0..amount_w {
         for h in 0..amount_h {
-            let sub_pixel_horizontal_offset =
-                (w as f64 - (amount_w as f64 / 2.0)) * sub_pixel_width;
-            let sub_pixel_vertical_offset = (w as f64 - (amount_h as f64 / 2.0)) * sub_pixel_height;
+            let sub_pixel_horizontal_offset = (w as f64 - (amount_w as f64 / 2.0)) * sub_pixel_width;
+            let sub_pixel_vertical_offset = (h as f64 - (amount_h as f64 / 2.0)) * sub_pixel_height;
 
             let horizontal_offset = camera.right
                 * ((pos_x as f64 * pixel_width) + sub_pixel_horizontal_offset - half_width);
