@@ -18,13 +18,13 @@ impl Camera {
 
         // To find the forward vector we subtract the position from the target
         // and find the unit vector
-        let forward = vec_get_unit(target - position);
+        let forward = (target - position).normalize();
 
         // The right vector is the dot product of forward and the z axis
-        let right = vec_get_unit(Vector3::cross(forward, Vector3::unit_z()));
+        let right = Vector3::cross(forward, Vector3::unit_z()).normalize();
 
         // The up vector is the dot product of the right vector and the forward vector
-        let up = vec_get_unit(Vector3::cross(right, forward));
+        let up = Vector3::cross(right, forward).normalize();
 
         Camera {
             position: position,
@@ -35,10 +35,4 @@ impl Camera {
             fov: fov,
         }
     }
-}
-
-pub fn vec_get_unit(vec: Vector3<f64>) -> Vector3<f64> {
-    let magnitude = (vec.x.powf(2.0) + vec.y.powf(2.0) + vec.z.powf(2.0)).sqrt();
-
-    vec / magnitude
 }

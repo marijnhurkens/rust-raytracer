@@ -1,8 +1,7 @@
-use camera;
 use camera::Camera;
 use cgmath::*;
 use image;
-use scene::{Scene, Sphere};
+use scene::{Light, Scene, Sphere};
 use std::cmp;
 use std::thread;
 use IMAGE_BUFFER;
@@ -32,12 +31,14 @@ pub fn render(camera: Camera, scene: &Scene) {
 
                 //println!("Thread id {}, pos {}, Ray {:?}", thread_id, pos, ray);
 
-                let pixel_color = trace(ray.unwrap(), thread_scene.clone(), 1);
+                let pixel_color = trace(ray.unwrap(), thread_scene.clone(), 1).unwrap();
+
+                let pixel_color_rgba = image::Rgba([(pixel_color.x * 255.0) as u8, (pixel_color.y * 255.0) as u8, (pixel_color.z * 255.0) as u8, 255]);
 
                 IMAGE_BUFFER.write().unwrap().put_pixel(
                     pos % image_width,
                     (pos / image_width) % image_height,
-                    pixel_color.unwrap(),
+                    pixel_color_rgba,
                 );
             }
         });
@@ -76,7 +77,7 @@ fn get_ray_at(camera: Camera, width: u32, height: u32, pos: u32) -> Result<Ray, 
     let horizotal_offset = camera.right * ((pos_x as f64 * pixel_width) - half_width);
     let vertical_offset = camera.up * ((pos_y as f64 * pixel_height) - half_height);
 
-    let ray_vector = camera::vec_get_unit(camera.forward + horizotal_offset + vertical_offset);
+    let ray_vector = (camera.forward + horizotal_offset + vertical_offset).normalize();
 
     let ray = Ray {
         point: camera.position,
@@ -86,19 +87,46 @@ fn get_ray_at(camera: Camera, width: u32, height: u32, pos: u32) -> Result<Ray, 
     Ok(ray)
 }
 
-fn trace(ray: Ray, scene: Scene, depth: u32) -> Option<image::Rgba<u8>> {
+fn trace(ray: Ray, scene: Scene, depth: u32) -> Option<Vector3<f64>> {
     if depth > 3 {
         return None;
     }
 
     // for now we just check for intersection with the spheres
-    for sphere in scene.spheres {
-        if let Some(dist) = check_intersect_sphere(ray, sphere) {
-            return Some(image::Rgba([0, 255, 0, 255]));
+    let intersect = check_intersect_scene(ray, &scene);
+
+    match intersect {
+        None => {
+            return Some(scene.bg_color);
+            },
+        Some((dist, sphere)) => {
+            let point_of_intersection = ray.point + (ray.direction * dist);
+
+            return Some(surface_calculate_color(ray, &scene, sphere, point_of_intersection, sphere_normal(sphere, point_of_intersection), depth));
+        }
+    }
+}
+
+fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, Sphere)> {
+    let mut closest: Option<(f64, Sphere)> = None;
+
+    for sphere in &scene.spheres {
+        if let Some(dist) = check_intersect_sphere(ray, *sphere) {
+            // If we found an intersection we check if the current
+            // closest intersection is farther than the intersection
+            // we found.
+            match closest {
+                None => closest = Some((dist, *sphere)),
+                Some((closest_dist, _)) => {
+                    if dist < closest_dist {
+                        closest = Some((dist, *sphere));
+                    }
+                }
+            }
         }
     }
 
-    Some(scene.bg_color)
+    closest
 }
 
 /// Checks if the ray intersects with the sphere and if so
@@ -106,8 +134,8 @@ fn trace(ray: Ray, scene: Scene, depth: u32) -> Option<image::Rgba<u8>> {
 fn check_intersect_sphere(ray: Ray, sphere: Sphere) -> Option<f64> {
     let camera_to_sphere_center = sphere.position - ray.point;
     let v = camera_to_sphere_center.dot(ray.direction);
-    let eoDot = camera_to_sphere_center.dot(camera_to_sphere_center); // camera_to_sphere length squared
-    let discriminant = sphere.radius.powf(2.0) - eoDot + v.powf(2.0); // radius - camera_to_sphere_center length + v all squared
+    let eo_dot = camera_to_sphere_center.dot(camera_to_sphere_center); // camera_to_sphere length squared
+    let discriminant = sphere.radius.powf(2.0) - eo_dot + v.powf(2.0); // radius - camera_to_sphere_center length + v all squared
 
     // Example:
     //
@@ -128,4 +156,58 @@ fn check_intersect_sphere(ray: Ray, sphere: Sphere) -> Option<f64> {
     }
 
     Some(v - discriminant.sqrt())
+}
+
+fn sphere_normal(sphere: Sphere, position: Vector3<f64>) -> Vector3<f64> {
+    (position - sphere.position).normalize()
+}
+
+fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
+    let ray = Ray {
+        point: position,
+        direction: light.position - position,
+    };
+
+    if let Some((dist, sphere)) = check_intersect_scene(ray, scene) {
+        return false;
+    }
+
+    true
+}
+
+
+/// Calculate the lambert, specular and ambient color.
+fn surface_calculate_color(ray: Ray, scene: &Scene, sphere: Sphere, point_of_intersection: Vector3<f64>, normal: Vector3<f64>, depth: u32) -> Vector3<f64> {
+    let sphere_color = sphere.color;
+    let c = image::Rgb([0,0,0]);
+    let mut lambert_amount = 0.0;
+
+    if sphere.lambert > 0.0 {
+        // Check all the lights for visibility if visible use
+        // the cross product of the normal and the vector to the light
+        // to calculate the lambert contribution.
+        for light in scene.lights.clone() {
+            if !check_light_visible(point_of_intersection, &scene, light) {
+                continue;
+            }
+
+            println!("test");
+
+            let contribution = (light.position - point_of_intersection).dot(normal);
+            if contribution > 0.0 {
+                lambert_amount += contribution;
+            }
+        }
+
+        // cap the lambert amount to 1
+        if lambert_amount > 1.0 {
+            lambert_amount = 1.0;
+        }
+    }
+
+    // specular here
+
+    return (sphere_color * (lambert_amount * sphere.lambert)) + (sphere_color * sphere.ambient)
+
+
 }

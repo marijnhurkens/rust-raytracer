@@ -8,6 +8,7 @@ extern crate piston;
 #[macro_use]
 extern crate lazy_static;
 
+use cgmath::Vector3;
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
 use opengl_graphics::{GlGraphics, OpenGL, Texture, TextureSettings};
@@ -15,7 +16,6 @@ use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
-use cgmath::Vector3;
 
 mod camera;
 mod renderer;
@@ -46,21 +46,40 @@ fn main() {
     let mut texture: Texture =
         Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
 
-    let camera = camera::Camera::new(Vector3::new(0.0,0.0,0.0), Vector3::new(0.0,4.0,0.0), 60.0);
+    let camera = camera::Camera::new(
+        Vector3::new(0.0, 0.0, 0.0),
+        Vector3::new(0.0, 4.0, 0.0),
+        60.0,
+    );
 
-    let sphere = scene::Sphere{
-        position: Vector3::new(0.0,4.0,0.0),
+    let sphere = scene::Sphere {
+        position: Vector3::new(0.0, 4.0, 0.0),
         radius: 1.0,
+        color: Vector3::new(0.0, 1.0, 0.0), // green
+        lambert: 0.7,
+        specular: 0.2,
+        ambient: 0.1,
     };
 
-      let sphere_1 = scene::Sphere{
-        position: Vector3::new(2.0,7.0,0.0),
+    let sphere_1 = scene::Sphere {
+        position: Vector3::new(2.0, 7.0, 0.0),
         radius: 1.0,
+        color: Vector3::new(0.0, 1.0, 0.0), // green
+        lambert: 0.7,
+        specular: 0.2,
+        ambient: 0.1,
+    };
+
+    let light = scene::Light {
+        position: Vector3::new(0.0, 0.0, 2.0),
+        intensity: 1.0,
+        color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let scene = scene::Scene {
-        bg_color: image::Rgba([255, 0, 0, 255]),
+        bg_color: Vector3::new(1.0, 0.0, 0.0), // red
         spheres: vec![sphere, sphere_1],
+        lights: vec![light],
     };
 
     renderer::render(camera, &scene);
