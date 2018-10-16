@@ -1,13 +1,13 @@
 use cgmath::*;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Camera {
-    position: Vector3<f64>,
-    target: Vector3<f64>,
-    forward: Vector3<f64>,
-    up: Vector3<f64>,
-    right: Vector3<f64>,
-    fov: f64,
+    pub position: Vector3<f64>,
+    pub target: Vector3<f64>,
+    pub forward: Vector3<f64>,
+    pub up: Vector3<f64>,
+    pub right: Vector3<f64>,
+    pub fov: f64,
 }
 
 impl Camera {

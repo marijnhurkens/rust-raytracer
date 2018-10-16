@@ -19,9 +19,10 @@ use cgmath::Vector3;
 
 mod camera;
 mod renderer;
+mod scene;
 
-const IMAGE_WIDTH: u32 = 1500;
-const IMAGE_HEIGHT: u32 = 800;
+const IMAGE_WIDTH: u32 = 1000;
+const IMAGE_HEIGHT: u32 = 600;
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -45,9 +46,24 @@ fn main() {
     let mut texture: Texture =
         Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
 
-    let camera = camera::Camera::new(Vector3::new(1.0,0.0,0.0), Vector3::new(0.0,5.0,0.0), 45.0);
+    let camera = camera::Camera::new(Vector3::new(0.0,0.0,0.0), Vector3::new(0.0,4.0,0.0), 60.0);
 
-    renderer::render(camera);
+    let sphere = scene::Sphere{
+        position: Vector3::new(0.0,4.0,0.0),
+        radius: 1.0,
+    };
+
+      let sphere_1 = scene::Sphere{
+        position: Vector3::new(2.0,7.0,0.0),
+        radius: 1.0,
+    };
+
+    let scene = scene::Scene {
+        bg_color: image::Rgba([255, 0, 0, 255]),
+        spheres: vec![sphere, sphere_1],
+    };
+
+    renderer::render(camera, &scene);
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
@@ -56,7 +72,7 @@ fn main() {
             texture.update(&IMAGE_BUFFER.read().unwrap());
 
             gl.draw(args.viewport(), |c, gl| {
-                clear([0.0, 1.0, 0.0, 1.0], gl);
+                clear([0.0, 1.0, 1.0, 1.0], gl);
                 image(&texture, c.transform, gl);
             });
         }
