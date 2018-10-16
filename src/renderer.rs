@@ -6,8 +6,9 @@ use std::cmp;
 use std::thread;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 8;
-const MAX_DEPTH: u32 = 5;
+const THREAD_COUNT: u32 = 4;
+const BUCKETS: u32 = 64;
+const MAX_DEPTH: u32 = 4;
 
 pub fn render(camera: Camera, scene: &Scene) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
@@ -28,11 +29,18 @@ pub fn render(camera: Camera, scene: &Scene) {
             let work_end = cmp::min(work_start + work_per_thread, work);
 
             for pos in work_start..work_end {
-                let ray = get_ray_at(camera, image_width, image_height, pos);
+                let rays = get_rays_at(camera, image_width, image_height, pos, 10, 10).unwrap();
+                let rays_len = rays.len();
+
+                let mut pixel_color = Vector3::new(0.0,0.0,0.0);
+
+                for ray in rays {
+                    pixel_color += trace(ray, &thread_scene.clone(), 1).unwrap();
+                }
+
+                pixel_color /= rays_len as f64;
 
                 //println!("Thread id {}, pos {}, Ray {:?}", thread_id, pos, ray);
-
-                let pixel_color = trace(ray.unwrap(), &thread_scene.clone(), 1).unwrap();
 
                 let pixel_color_rgba = image::Rgba([
                     (pixel_color.x * 255.0) as u8,
@@ -57,7 +65,14 @@ struct Ray {
     direction: Vector3<f64>,
 }
 
-fn get_ray_at(camera: Camera, width: u32, height: u32, pos: u32) -> Result<Ray, &'static str> {
+fn get_rays_at(
+    camera: Camera,
+    width: u32,
+    height: u32,
+    pos: u32,
+    amount_w: u32,
+    amount_h: u32,
+) -> Result<Vec<Ray>, &'static str> {
     use std::f64::consts::PI;
 
     let pos_x = pos % width;
@@ -80,23 +95,43 @@ fn get_ray_at(camera: Camera, width: u32, height: u32, pos: u32) -> Result<Ray, 
     let pixel_width = plane_width / (width - 1) as f64;
     let pixel_height = plane_height / (height - 1) as f64;
 
-    let horizotal_offset = camera.right * ((pos_x as f64 * pixel_width) - half_width);
-    let vertical_offset = camera.up * ((pos_y as f64 * pixel_height) - half_height);
+    let sub_pixel_width = pixel_width / amount_w as f64;
+    let sub_pixel_height = pixel_height / amount_h as f64;
 
-    let ray_vector = (camera.forward + horizotal_offset + vertical_offset).normalize();
+    let mut rays  = Vec::new();
 
-    let ray = Ray {
-        point: camera.position,
-        direction: ray_vector,
-    };
+    for w in 0..amount_w {
+        for h in 0..amount_h {
+            let sub_pixel_horizontal_offset =
+                (w as f64 - (amount_w as f64 / 2.0)) * sub_pixel_width;
+            let sub_pixel_vertical_offset = (w as f64 - (amount_h as f64 / 2.0)) * sub_pixel_height;
 
-    Ok(ray)
+            let horizontal_offset = camera.right
+                * ((pos_x as f64 * pixel_width) + sub_pixel_horizontal_offset - half_width);
+            let vertical_offset = camera.up
+                * ((pos_y as f64 * pixel_height) + sub_pixel_vertical_offset - half_height);
+
+            let ray = Ray {
+                point: camera.position,
+                direction: (camera.forward + horizontal_offset + vertical_offset).normalize(),
+            };
+
+            rays.push(ray);
+        }
+    }
+
+    // let ray_vector = (camera.forward + horizotal_offset + vertical_offset).normalize();
+
+    // let ray = Ray {
+    //     point: camera.position,
+    //     direction: ray_vector,
+    // };
+
+    Ok(rays)
 }
 
 fn trace(ray: Ray, scene: &Scene, depth: u32) -> Option<Vector3<f64>> {
-    
     if depth > MAX_DEPTH {
-       
         return None;
     }
 
@@ -181,8 +216,6 @@ fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
     2.0 * vec.dot(normal) * normal - vec
 }
 
-
-
 fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
     let ray = Ray {
         point: position,
@@ -211,7 +244,7 @@ fn surface_calculate_color(
 ) -> Vector3<f64> {
     let mut depth = depth_immutable;
     let sphere_color = sphere.color;
-    let mut c = Vector3::new(0.0,0.0,0.0);
+    let mut c = Vector3::new(0.0, 0.0, 0.0);
     let mut lambert_amount = 0.0;
 
     if sphere.lambert > 0.0 {
@@ -223,7 +256,9 @@ fn surface_calculate_color(
                 continue;
             }
 
-            let contribution = (light.position - point_of_intersection).normalize().dot(normal);
+            let contribution = (light.position - point_of_intersection)
+                .normalize()
+                .dot(normal);
             if contribution > 0.0 {
                 lambert_amount += contribution;
             }
@@ -238,12 +273,11 @@ fn surface_calculate_color(
     if sphere.specular > 0.0 {
         let reflect_ray = Ray {
             point: point_of_intersection,
-            direction: vector_reflect(ray.direction, normal)
+            direction: vector_reflect(ray.direction, normal),
         };
 
         depth += 1;
 
-        
         if let Some(reflect_surface_color) = trace(reflect_ray, scene, depth) {
             c += reflect_surface_color * sphere.specular;
         }
