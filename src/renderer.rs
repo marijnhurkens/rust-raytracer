@@ -8,9 +8,10 @@ use std::sync::Mutex;
 use std::thread;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 8;
-const BUCKETS: u32 = 800;
-const MAX_DEPTH: u32 = 8;
+const THREAD_COUNT: u32 = 1;
+const BUCKETS: u32 = 1;
+const MAX_DEPTH: u32 = 5;
+const SAMPLES: u32 = 1; // total sampels squared
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 
 #[derive(Copy, Clone, Debug)]
@@ -50,8 +51,6 @@ fn get_work() -> Option<Work> {
 pub fn render(camera: Camera, scene: &Scene) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
-    //let work = image_width * image_height;
-    //let work_per_thread = work / THREAD_COUNT;
 
     println!("Start render, w{}, h{}", image_width, image_height);
     println!("Camera {:?}", camera);
@@ -75,13 +74,15 @@ pub fn render(camera: Camera, scene: &Scene) {
                 let work_end = cmp::min(WORK, work.end);
 
                 for pos in work.start..work_end {
-                    let rays = get_rays_at(camera, image_width, image_height, pos, 5, 5).unwrap();
+                    let rays =
+                        get_rays_at(camera, image_width, image_height, pos, SAMPLES)
+                            .unwrap();
                     let rays_len = rays.len();
 
                     let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
 
-                    // println!("{:?}", rays);
                     for ray in rays {
+                        //println!("pos: {}, ray: {:?}", pos, ray);
                         pixel_color += trace(ray, &thread_scene.clone(), 1).unwrap();
                     }
 
@@ -118,13 +119,15 @@ fn get_rays_at(
     width: u32,
     height: u32,
     pos: u32,
-    amount_w: u32,
-    amount_h: u32,
+    samples: u32,
 ) -> Result<Vec<Ray>, &'static str> {
     use std::f64::consts::PI;
+    let mut rng = thread_rng();
 
     let pos_x = pos % width;
     let pos_y = pos / width;
+
+    //println!("x {}, y {}", pos_x, pos_y);
 
     if pos_y >= height {
         return Err("Position exceeds number of pixels.");
@@ -143,29 +146,28 @@ fn get_rays_at(
     let pixel_width = plane_width / (width - 1) as f64;
     let pixel_height = plane_height / (height - 1) as f64;
 
-    let sub_pixel_width = pixel_width / amount_w as f64;
-    let sub_pixel_height = pixel_height / amount_h as f64;
+    let half_pixel_width = pixel_width / 2.0;
+    let half_pixel_height = pixel_height / 2.0;
 
     let mut rays = Vec::new();
 
-    for w in 0..amount_w {
-        for h in 0..amount_h {
-            let sub_pixel_horizontal_offset =
-                (w as f64 - (amount_w as f64 / 2.0)) * sub_pixel_width;
-            let sub_pixel_vertical_offset = (h as f64 - (amount_h as f64 / 2.0)) * sub_pixel_height;
+    for _w in 0..samples {
+        let sub_pixel_horizontal_offset = rng.gen_range(-half_pixel_width, half_pixel_width);
+        let sub_pixel_vertical_offset = rng.gen_range(-half_pixel_height, half_pixel_height);
 
-            let horizontal_offset = camera.right
-                * ((pos_x as f64 * pixel_width) + sub_pixel_horizontal_offset - half_width);
-            let vertical_offset = camera.up
-                * ((pos_y as f64 * pixel_height) + sub_pixel_vertical_offset - half_height);
+        let horizontal_offset = camera.right
+            * ((pos_x as f64 * pixel_width) + sub_pixel_horizontal_offset - half_width);
+        // pos_y needs to be negated because in the image the upper row is row 0,
+        // in the 3d world the y axis descends when going down.
+        let vertical_offset =
+            camera.up * ((-(pos_y as f64) * pixel_height) + sub_pixel_vertical_offset + half_height);
 
-            let ray = Ray {
-                point: camera.position,
-                direction: (camera.forward + horizontal_offset + vertical_offset).normalize(),
-            };
+        let ray = Ray {
+            point: camera.position,
+            direction: (camera.forward + horizontal_offset + vertical_offset).normalize(),
+        };
 
-            rays.push(ray);
-        }
+        rays.push(ray);
     }
 
     // let ray_vector = (camera.forward + horizotal_offset + vertical_offset).normalize();

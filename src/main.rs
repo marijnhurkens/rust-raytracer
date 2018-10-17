@@ -22,8 +22,8 @@ mod camera;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 1000;
-const IMAGE_HEIGHT: u32 = 800;
+const IMAGE_WIDTH: u32 = 800;
+const IMAGE_HEIGHT: u32 = 500;
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -48,44 +48,44 @@ fn main() {
         Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
 
     let camera = camera::Camera::new(
-        Vector3::new(0.0, -2.0, 0.0),
-        Vector3::new(0.0, 4.0, 0.0),
-        50.0,
+        Vector3::new(0.0, 0.0, 0.0),
+        Vector3::new(0.0, 0.0, -2.0),
+        80.0,
     );
 
     let sphere = scene::Sphere {
-        position: Vector3::new(-1.5, 2.0, 0.0),
+        position: Vector3::new(1.0, 0.0, 7.0),
         radius: 1.0,
         color: Vector3::new(0.0, 0.4, 0.1), // green
-        lambert: 0.2,
-        specular: 0.7,
+        lambert: 0.5,
+        specular: 0.4,
         ambient: 0.1,
     };
 
     let sphere_1 = scene::Sphere {
-        position: Vector3::new(1.5, 2.0, 0.0),
+        position: Vector3::new(2.0, 2.0, -4.0),
         radius: 1.0,
         color: Vector3::new(0.9, 0.1, 0.3), // pink
-        lambert: 0.2,
-        specular: 0.7,
+        lambert: 0.5,
+        specular: 0.4,
         ambient: 0.1,
     };
 
     let sphere_2 = scene::Sphere {
-        position: Vector3::new(0.0, 7.0, 0.0),
+        position: Vector3::new(-2.0, -2.0, -4.0),
         radius: 1.0,
         color: Vector3::new(0.1, 0.1, 0.8), // blue
-        lambert: 0.2,
-        specular: 0.7,
+        lambert: 0.5,
+        specular: 0.4,
         ambient: 0.1,
     };
 
-     let sphere_3 = scene::Sphere {
-        position: Vector3::new(0.0, 4.0, 2.0),
+    let sphere_3 = scene::Sphere {
+        position: Vector3::new(2.0, -1.0, -2.0),
         radius: 1.0,
         color: Vector3::new(0.1, 0.1, 0.8), // blue
-        lambert: 0.2,
-        specular: 0.7,
+        lambert: 0.5,
+        specular: 0.4,
         ambient: 0.1,
     };
 
