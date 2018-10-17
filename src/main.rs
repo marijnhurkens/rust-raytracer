@@ -49,25 +49,25 @@ fn main() {
 
     let camera = camera::Camera::new(
         Vector3::new(0.0, 0.0, 0.0),
-        Vector3::new(0.0, 0.0, -2.0),
-        80.0,
+        Vector3::new(0.0, 0.0, -200.0),
+        60.0,
     );
 
     let sphere = scene::Sphere {
-        position: Vector3::new(1.0, 0.0, 7.0),
-        radius: 1.0,
-        color: Vector3::new(0.0, 0.4, 0.1), // green
-        lambert: 0.5,
-        specular: 0.4,
+        position: Vector3::new(0.0, 0.8, -4.0),
+        radius: 0.3,
+        color: Vector3::new(0.0, 0.3, 0.0), // green
+        lambert: 0.4,
+        specular: 0.5,
         ambient: 0.1,
     };
 
     let sphere_1 = scene::Sphere {
-        position: Vector3::new(2.0, 2.0, -4.0),
-        radius: 1.0,
-        color: Vector3::new(0.9, 0.1, 0.3), // pink
-        lambert: 0.5,
-        specular: 0.4,
+        position: Vector3::new(0.0, -3.0, -6.0),
+        radius: 3.0,
+        color: Vector3::new(0.3, 0.0, 0.0), // red
+        lambert: 0.4,
+        specular: 0.5,
         ambient: 0.1,
     };
 
@@ -75,8 +75,8 @@ fn main() {
         position: Vector3::new(-2.0, -2.0, -4.0),
         radius: 1.0,
         color: Vector3::new(0.1, 0.1, 0.8), // blue
-        lambert: 0.5,
-        specular: 0.4,
+        lambert: 0.9,
+        specular: 0.0,
         ambient: 0.1,
     };
 
@@ -84,26 +84,26 @@ fn main() {
         position: Vector3::new(2.0, -1.0, -2.0),
         radius: 1.0,
         color: Vector3::new(0.1, 0.1, 0.8), // blue
-        lambert: 0.5,
-        specular: 0.4,
+        lambert: 0.9,
+        specular: 0.0,
         ambient: 0.1,
     };
 
     let light = scene::Light {
-        position: Vector3::new(0.0, 0.0, -2000.0),
+        position: Vector3::new(0.0, 5.0, -2.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let light_1 = scene::Light {
-        position: Vector3::new(-3.0, 4.0, 2.0),
+        position: Vector3::new(-1.0, 5.0, -4.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let scene = scene::Scene {
-        bg_color: Vector3::new(1.0, 0.0, 0.0), // red
-        spheres: vec![sphere, sphere_1, sphere_2, sphere_3],
+        bg_color: Vector3::new(0.0, 0.0, 0.0), // red
+        spheres: vec![sphere, sphere_1],//, sphere_2, sphere_3],
         lights: vec![light, light_1],
     };
 

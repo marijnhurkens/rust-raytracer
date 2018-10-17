@@ -8,10 +8,10 @@ use std::sync::Mutex;
 use std::thread;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 1;
-const BUCKETS: u32 = 1;
-const MAX_DEPTH: u32 = 5;
-const SAMPLES: u32 = 1; // total sampels squared
+const THREAD_COUNT: u32 = 8;
+const BUCKETS: u32 = 50;
+const MAX_DEPTH: u32 = 8;
+const SAMPLES: u32 = 6; // total sampels squared
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 
 #[derive(Copy, Clone, Debug)]
@@ -75,8 +75,7 @@ pub fn render(camera: Camera, scene: &Scene) {
 
                 for pos in work.start..work_end {
                     let rays =
-                        get_rays_at(camera, image_width, image_height, pos, SAMPLES)
-                            .unwrap();
+                        get_rays_at(camera, image_width, image_height, pos, SAMPLES).unwrap();
                     let rays_len = rays.len();
 
                     let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
@@ -159,8 +158,8 @@ fn get_rays_at(
             * ((pos_x as f64 * pixel_width) + sub_pixel_horizontal_offset - half_width);
         // pos_y needs to be negated because in the image the upper row is row 0,
         // in the 3d world the y axis descends when going down.
-        let vertical_offset =
-            camera.up * ((-(pos_y as f64) * pixel_height) + sub_pixel_vertical_offset + half_height);
+        let vertical_offset = camera.up
+            * ((-(pos_y as f64) * pixel_height) + sub_pixel_vertical_offset + half_height);
 
         let ray = Ray {
             point: camera.position,
@@ -169,13 +168,6 @@ fn get_rays_at(
 
         rays.push(ray);
     }
-
-    // let ray_vector = (camera.forward + horizotal_offset + vertical_offset).normalize();
-
-    // let ray = Ray {
-    //     point: camera.position,
-    //     direction: ray_vector,
-    // };
 
     Ok(rays)
 }
@@ -232,10 +224,15 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, Sphere)> {
 /// Checks if the ray intersects with the sphere and if so
 /// returns the distance at which this intersection occurs.
 fn check_intersect_sphere(ray: Ray, sphere: Sphere) -> Option<f64> {
-    let camera_to_sphere_center = sphere.position - ray.point;
-    let v = camera_to_sphere_center.dot(ray.direction);
-    let eo_dot = camera_to_sphere_center.dot(camera_to_sphere_center); // camera_to_sphere length squared
-    let discriminant = sphere.radius.powf(2.0) - eo_dot + v.powf(2.0); // radius - camera_to_sphere_center length + v all squared
+    let camera_to_sphere_center = ray.point - sphere.position;
+    let a = ray.direction.dot(ray.direction); // camera_to_sphere length squared
+    let b = camera_to_sphere_center.dot(ray.direction);
+    let c = camera_to_sphere_center.dot(camera_to_sphere_center) - sphere.radius * sphere.radius;
+    let discriminant = b * b - a * c;
+
+    // let v = camera_to_sphere_center.dot(ray.direction);
+    // let eo_dot = camera_to_sphere_center.dot(camera_to_sphere_center); // camera_to_sphere length squared
+    // let discriminant = sphere.radius.powf(2.0) - eo_dot + v.powf(2.0); // radius - camera_to_sphere_center length + v all squared
 
     // Example:
     //
@@ -255,7 +252,20 @@ fn check_intersect_sphere(ray: Ray, sphere: Sphere) -> Option<f64> {
         return None;
     }
 
-    Some(v - discriminant.sqrt())
+    let temp_dist = (-b - (b * b - a * c).sqrt()) / a;
+
+    //return Some(temp_dist);
+
+    if temp_dist > 0.000001 && temp_dist < 10000.0 {
+        return Some(temp_dist);
+    }
+
+    let temp_dist = (-b + (b * b - a * c).sqrt()) / a;
+
+    if temp_dist > 0.000001 && temp_dist < 10000.0 {
+        return Some(temp_dist);
+    }
+    None
 }
 
 fn sphere_normal(sphere: Sphere, position: Vector3<f64>) -> Vector3<f64> {
@@ -263,7 +273,7 @@ fn sphere_normal(sphere: Sphere, position: Vector3<f64>) -> Vector3<f64> {
 }
 
 fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
-    2.0 * vec.dot(normal) * normal - vec
+    vec - 2.0 * vec.dot(normal) * normal
 }
 
 fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
@@ -273,7 +283,7 @@ fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> b
     };
 
     if let Some((dist, sphere)) = check_intersect_scene(ray, scene) {
-        if dist < -0.005 {
+        if dist < -0.00005 {
             return true;
         } else {
             return false;
