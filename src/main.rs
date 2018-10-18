@@ -22,7 +22,7 @@ mod camera;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 800;
+const IMAGE_WIDTH: u32 = 700;
 const IMAGE_HEIGHT: u32 = 500;
 
 lazy_static! {
@@ -48,35 +48,35 @@ fn main() {
         Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
 
     let camera = camera::Camera::new(
-        Vector3::new(0.0, 0.0, 0.0),
-        Vector3::new(0.0, 0.0, -200.0),
-        60.0,
+        Vector3::new(0.0, 0.3, 0.0),
+        Vector3::new(0.0, -0.1, -3.0),
+        40.0,
     );
 
     let sphere = scene::Sphere {
-        position: Vector3::new(0.0, 0.8, -4.0),
+        position: Vector3::new(0.0, 0.0, -3.0),
         radius: 0.3,
-        color: Vector3::new(0.0, 0.3, 0.0), // green
-        lambert: 0.4,
-        specular: 0.5,
-        ambient: 0.1,
+        color: Vector3::new(0.7, 0.7, 0.0), // yellow
+        lambert: 0.5,
+        specular: 0.0,
+        ambient: 0.0,
     };
 
     let sphere_1 = scene::Sphere {
-        position: Vector3::new(0.0, -3.0, -6.0),
-        radius: 3.0,
-        color: Vector3::new(0.3, 0.0, 0.0), // red
-        lambert: 0.4,
-        specular: 0.5,
-        ambient: 0.1,
+        position: Vector3::new(0.0, -1.8, -3.0),
+        radius: 1.5,
+        color: Vector3::new(0.0, 0.0, 0.5), // blue
+        lambert: 0.5,
+        specular: 0.0,
+        ambient: 0.0,
     };
 
     let sphere_2 = scene::Sphere {
-        position: Vector3::new(-2.0, -2.0, -4.0),
+        position: Vector3::new(1.0, 1.0, -4.0),
         radius: 1.0,
-        color: Vector3::new(0.1, 0.1, 0.8), // blue
-        lambert: 0.9,
-        specular: 0.0,
+        color: Vector3::new(0.0, 0.6, 0.0), // blue
+        lambert: 0.5,
+        specular: 0.4,
         ambient: 0.1,
     };
 
@@ -90,20 +90,20 @@ fn main() {
     };
 
     let light = scene::Light {
-        position: Vector3::new(0.0, 5.0, -2.0),
-        intensity: 1.0,
+        position: Vector3::new(-0.2, 5.0, -2.2),
+        intensity: 0.3,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let light_1 = scene::Light {
-        position: Vector3::new(-1.0, 5.0, -4.0),
-        intensity: 1.0,
+        position: Vector3::new(1.0, 0.0, 0.0),
+        intensity: 0.4,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let scene = scene::Scene {
-        bg_color: Vector3::new(0.0, 0.0, 0.0), // red
-        spheres: vec![sphere, sphere_1],//, sphere_2, sphere_3],
+        bg_color: Vector3::new(0.9,0.9,0.9),//Vector3::new(0.62, 0.675, 0.855), // red
+        spheres: vec![sphere, sphere_1, sphere_2],//, sphere_3],
         lights: vec![light, light_1],
     };
 
