@@ -19,6 +19,8 @@ use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
 
 mod camera;
+mod helpers;
+mod materials;
 mod renderer;
 mod scene;
 
@@ -56,37 +58,45 @@ fn main() {
     let sphere = scene::Sphere {
         position: Vector3::new(0.0, 0.0, -3.0),
         radius: 0.3,
-        color: Vector3::new(0.7, 0.7, 0.0), // yellow
-        lambert: 0.5,
-        specular: 0.0,
-        ambient: 0.0,
+        materials: vec![
+            Box::new(materials::Lambert {
+                weight: 0.0,
+                color: Vector3::new(0.7, 0.0, 0.0),
+            }),
+            Box::new(materials::FresnelReflection {
+                weight: 0.9,
+
+                glossiness: 1.0,
+                ior: 0.8,
+            }),
+        ],
     };
 
     let sphere_1 = scene::Sphere {
         position: Vector3::new(0.0, -1.8, -3.0),
         radius: 1.5,
-        color: Vector3::new(0.0, 0.0, 0.5), // blue
-        lambert: 0.5,
-        specular: 0.0,
-        ambient: 0.0,
+        materials: vec![Box::new(materials::Lambert {
+            weight: 1.0,
+            color: Vector3::new(0.7, 0.7, 0.0),
+        })],
     };
 
     let sphere_2 = scene::Sphere {
         position: Vector3::new(1.0, 1.0, -4.0),
         radius: 1.0,
-        color: Vector3::new(0.0, 0.6, 0.0), // blue
-        lambert: 0.5,
-        specular: 0.4,
-        ambient: 0.1,
+        materials: vec![Box::new(materials::Lambert {
+            weight: 1.0,
+            color: Vector3::new(0.7, 0.7, 0.0),
+        })],
     };
 
     let sphere_3 = scene::Sphere {
         position: Vector3::new(2.0, -1.0, -2.0),
         radius: 1.0,
-        color: Vector3::new(0.1, 0.1, 0.8), // blue
-        lambert: 0.9,
-        specular: 0.0,
-        ambient: 0.1,
+        materials: vec![Box::new(materials::Lambert {
+            weight: 1.0,
+            color: Vector3::new(0.7, 0.7, 0.0),
+        })],
     };
 
     let light = scene::Light {
@@ -101,13 +111,13 @@ fn main() {
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
-    let scene = scene::Scene {
-        bg_color: Vector3::new(0.9,0.9,0.9),//Vector3::new(0.62, 0.675, 0.855), // red
-        spheres: vec![sphere, sphere_1, sphere_2],//, sphere_3],
+    let scene: Arc<scene::Scene> = Arc::new(scene::Scene {
+        bg_color: Vector3::new(0.9, 0.9, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
+        spheres: vec![sphere, sphere_1, sphere_2], //, sphere_3],
         lights: vec![light, light_1],
-    };
+    });
 
-    renderer::render(camera, &scene);
+    renderer::render(camera, scene);
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {

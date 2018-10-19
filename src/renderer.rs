@@ -4,20 +4,26 @@ use image;
 use rand::*;
 use scene::{Light, Scene, Sphere};
 use std::cmp;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 8;
 const BUCKETS: u32 = 60;
-const MAX_DEPTH: u32 = 15;
-const SAMPLES: u32 = 200;
+const MAX_DEPTH: u32 = 7;
+const SAMPLES: u32 = 10;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 
 #[derive(Copy, Clone, Debug)]
 struct Work {
     start: u32,
     end: u32,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Ray {
+    pub point: Vector3<f64>,
+    pub direction: Vector3<f64>,
 }
 
 lazy_static! {
@@ -48,7 +54,7 @@ fn get_work() -> Option<Work> {
     Some(queue.remove(rng.gen_range(0, len)))
 }
 
-pub fn render(camera: Camera, scene: &Scene) {
+pub fn render(camera: Camera, scene: Arc<Scene>) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
 
@@ -56,11 +62,11 @@ pub fn render(camera: Camera, scene: &Scene) {
     println!("Camera {:?}", camera);
 
     // thread id is used to divide the work
-    for id in 0..THREAD_COUNT {
+    for _id in 0..THREAD_COUNT {
         let thread_scene = scene.clone();
         let _thread = thread::spawn(move || {
-            let thread_id = id.clone();
-
+            //let thread_id = id.clone();
+       
             loop {
                 let work_wrapped = get_work();
 
@@ -82,7 +88,7 @@ pub fn render(camera: Camera, scene: &Scene) {
 
                     for ray in rays {
                         //println!("pos: {}, ray: {:?}", pos, ray);
-                        pixel_color += trace(ray, &thread_scene.clone(), 1).unwrap();
+                        pixel_color += trace(ray, &thread_scene, 1).unwrap();
                     }
 
                     pixel_color /= rays_len as f64;
@@ -108,11 +114,7 @@ pub fn render(camera: Camera, scene: &Scene) {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Ray {
-    point: Vector3<f64>,
-    direction: Vector3<f64>,
-}
+
 
 fn get_rays_at(
     camera: Camera,
@@ -173,7 +175,7 @@ fn get_rays_at(
     Ok(rays)
 }
 
-fn trace(ray: Ray, scene: &Scene, depth: u32) -> Option<Vector3<f64>> {
+pub fn trace(ray: Ray, scene: &Scene, depth: u32) -> Option<Vector3<f64>> {
     if depth > MAX_DEPTH {
         return None;
     }
@@ -190,29 +192,29 @@ fn trace(ray: Ray, scene: &Scene, depth: u32) -> Option<Vector3<f64>> {
 
             return Some(surface_calculate_color(
                 ray,
-                scene,
-                sphere,
+                scene.clone(),
+                &sphere,
                 point_of_intersection,
-                sphere_normal(sphere, point_of_intersection),
+                sphere_normal(&sphere, point_of_intersection),
                 depth,
             ));
         }
     }
 }
 
-fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, Sphere)> {
-    let mut closest: Option<(f64, Sphere)> = None;
+fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Sphere)> {
+    let mut closest: Option<(f64, &Sphere)> = None;
 
     for sphere in &scene.spheres {
-        if let Some(dist) = check_intersect_sphere(ray, *sphere) {
+        if let Some(dist) = check_intersect_sphere(ray, &sphere) {
             // If we found an intersection we check if the current
             // closest intersection is farther than the intersection
             // we found.
             match closest {
-                None => closest = Some((dist, *sphere)),
+                None => closest = Some((dist, sphere)),
                 Some((closest_dist, _)) => {
                     if dist < closest_dist {
-                        closest = Some((dist, *sphere));
+                        closest = Some((dist, sphere));
                     }
                 }
             }
@@ -224,7 +226,7 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, Sphere)> {
 
 /// Checks if the ray intersects with the sphere and if so
 /// returns the distance at which this intersection occurs.
-fn check_intersect_sphere(ray: Ray, sphere: Sphere) -> Option<f64> {
+fn check_intersect_sphere(ray: Ray, sphere: &Sphere) -> Option<f64> {
     use std::f64;
 
     let camera_to_sphere_center = ray.point - sphere.position;
@@ -271,15 +273,11 @@ fn check_intersect_sphere(ray: Ray, sphere: Sphere) -> Option<f64> {
     None
 }
 
-fn sphere_normal(sphere: Sphere, position: Vector3<f64>) -> Vector3<f64> {
+fn sphere_normal(sphere: &Sphere, position: Vector3<f64>) -> Vector3<f64> {
     (position - sphere.position).normalize()
 }
 
-fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
-    vec - 2.0 * vec.dot(normal) * normal
-}
-
-fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
+pub fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
     let ray = Ray {
         point: position,
         direction: light.position - position,
@@ -296,86 +294,87 @@ fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> b
     true
 }
 
-fn get_random_in_unit_sphere() -> Vector3<f64> {
-    let mut rng = thread_rng();
-
-    let mut vec: Vector3<f64>;
-
-    while {
-        vec = 2.0 * Vector3::new(rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>())
-            - Vector3::new(1.0, 1.0, 1.0);
-
-        vec.dot(vec) >= 1.0
-    } {}
-
-    vec
-}
 
 /// Calculate the lambert, specular and ambient color.
 fn surface_calculate_color(
     ray: Ray,
     scene: &Scene,
-    sphere: Sphere,
+    sphere: &Sphere,
     point_of_intersection: Vector3<f64>,
     normal: Vector3<f64>,
     depth_immutable: u32,
 ) -> Vector3<f64> {
     let mut depth = depth_immutable;
-    let sphere_color = sphere.color;
-    let mut c = Vector3::new(0.0, 0.0, 0.0);
-    let mut lambert_c = Vector3::new(0.0, 0.0, 0.0);
-    let mut lambert_amount_lights = 0.0;
+    // let sphere_color = sphere.color;
+    // let mut c = Vector3::new(0.0, 0.0, 0.0);
+    // let mut lambert_c = Vector3::new(0.0, 0.0, 0.0);
+    // let mut lambert_amount_lights = 0.0;
 
-    if sphere.lambert > 0.0 {
-        // Check all the lights for visibility if visible use
-        // the cross product of the normal and the vector to the light
-        // to calculate the lambert contribution.
-        for light in scene.lights.clone() {
-            if !check_light_visible(point_of_intersection, &scene, light) {
-                continue;
-            }
+    // if sphere.lambert > 0.0 {
+    //     // Check all the lights for visibility if visible use
+    //     // the cross product of the normal and the vector to the light
+    //     // to calculate the lambert contribution.
+    //     for light in scene.lights.clone() {
+    //         if !check_light_visible(point_of_intersection, &scene, light) {
+    //             continue;
+    //         }
 
-            let contribution = (light.position - point_of_intersection)
-                .normalize()
-                .dot(normal)
-                * light.intensity;
-            if contribution > 0.0 {
-                lambert_amount_lights += contribution;
-            }
+    //         let contribution = (light.position - point_of_intersection)
+    //             .normalize()
+    //             .dot(normal)
+    //             * light.intensity;
+    //         if contribution > 0.0 {
+    //             lambert_amount_lights += contribution;
+    //         }
+    //     }
+
+    //     // cap the lambert amount to 1
+    //     if lambert_amount_lights > 1.0 {
+    //         lambert_amount_lights = 1.0;
+    //     }
+
+    //     // throw random ray
+    //     let target = point_of_intersection + normal + get_random_in_unit_sphere();
+
+    //     let reflect_ray = Ray {
+    //         point: point_of_intersection,
+    //         direction: target - point_of_intersection,
+    //     };
+
+    //     depth += 1;
+
+    //     if let Some(lambert_surface_color) = trace(reflect_ray, scene, depth) {
+    //         lambert_c += lambert_surface_color * 0.5;
+    //     } 
+    // }
+
+    // if sphere.specular > 0.0 {
+    //     let reflect_ray = Ray {
+    //         point: point_of_intersection,
+    //         direction: vector_reflect(ray.direction, normal) + 0.07 * get_random_in_unit_sphere(),
+    //     };
+
+    //     depth += 1;
+
+    //     if let Some(reflect_surface_color) = trace(reflect_ray, scene, depth) {
+    //         c += reflect_surface_color * sphere.specular;
+    //     }
+    // }
+
+    let mut color = Vector3::new(0.0,0.0,0.0);
+
+
+
+    for material in &sphere.materials {
+        if let Some(calculated_color) = material.get_surface_color(ray, &scene, point_of_intersection, normal, depth) {
+        color += calculated_color;
+
         }
-
-        // cap the lambert amount to 1
-        if lambert_amount_lights > 1.0 {
-            lambert_amount_lights = 1.0;
-        }
-
-        // throw random ray
-        let target = point_of_intersection + normal + get_random_in_unit_sphere();
-
-        let reflect_ray = Ray {
-            point: point_of_intersection,
-            direction: target - point_of_intersection,
-        };
-
-        depth += 1;
-
-        if let Some(lambert_surface_color) = trace(reflect_ray, scene, depth) {
-            lambert_c += lambert_surface_color * 0.5;
-        } 
     }
 
-    if sphere.specular > 0.0 {
-        let reflect_ray = Ray {
-            point: point_of_intersection,
-            direction: vector_reflect(ray.direction, normal) + 0.07 * get_random_in_unit_sphere(),
-        };
 
-        depth += 1;
 
-        if let Some(reflect_surface_color) = trace(reflect_ray, scene, depth) {
-            c += reflect_surface_color * sphere.specular;
-        }
-    }
+   // return c + (sphere_color * (lambert_amount_lights * sphere.lambert)) + lambert_c ;//+ (sphere_color * sphere.ambient);
 
-    return c + (sphere_color * (lambert_amount_lights * sphere.lambert)) + lambert_c ;//+ (sphere_color * sphere.ambient);
+   color
 }
