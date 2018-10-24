@@ -6,6 +6,7 @@ extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
 
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -56,29 +57,40 @@ fn main() {
     );
 
     let sphere = scene::Sphere {
-        position: Vector3::new(0.0, 0.0, -3.0),
-        radius: 0.3,
+        position: Vector3::new(0.0, 0.2, -1.0),
+        radius: 0.2,
         materials: vec![
             Box::new(materials::Lambert {
                 weight: 0.0,
-                color: Vector3::new(0.7, 0.0, 0.0),
+                color: Vector3::new(0.0, 0.0, 0.7),
             }),
             Box::new(materials::FresnelReflection {
-                weight: 0.9,
-
+                weight: 1.0,
                 glossiness: 1.0,
-                ior: 0.8,
+                ior: 1.3,
             }),
+            //   Box::new(materials::Refraction {
+            //     weight: 1.0,
+            //     //glossiness: 1.0,
+            //     ior: 1.5,
+            // }),
         ],
     };
 
     let sphere_1 = scene::Sphere {
         position: Vector3::new(0.0, -1.8, -3.0),
         radius: 1.5,
-        materials: vec![Box::new(materials::Lambert {
-            weight: 1.0,
-            color: Vector3::new(0.7, 0.7, 0.0),
-        })],
+        materials: vec![
+            Box::new(materials::Lambert {
+                weight: 0.5,
+                color: Vector3::new(0.7, 0.7, 0.0),
+            }),
+            Box::new(materials::Reflection {
+                weight: 0.5,
+                glossiness: 0.8,
+                //ior: 1.5,
+            }),
+        ],
     };
 
     let sphere_2 = scene::Sphere {
