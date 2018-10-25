@@ -9,9 +9,9 @@ use std::thread;
 use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 8;
-const BUCKETS: u32 = 60;
-const MAX_DEPTH: u32 = 10;
-const SAMPLES: u32 = 100;
+const BUCKETS: u32 =300;
+const MAX_DEPTH: u32 = 5;
+const SAMPLES: u32 = 30;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 
 #[derive(Copy, Clone, Debug)]

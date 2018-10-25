@@ -156,6 +156,9 @@ pub struct FresnelReflection {
     pub weight: f64,
     pub glossiness: f64,
     pub ior: f64,
+    pub color: Vector3<f64>,
+    pub reflection: f64,
+    pub refraction: f64,
 }
 
 impl Material for FresnelReflection {
@@ -172,11 +175,11 @@ impl Material for FresnelReflection {
         depth: u32,
     ) -> Option<Vector3<f64>> {
         let fresnel_ratio = get_fresnel_ratio(normal, ray.direction, self.ior);
-        let mut reflect_ray_color = Vector3::new(0.0, 0.0, 1.0);
-        let mut refract_ray_color = Vector3::new(1.0, 0.0, 0.0);
+        let mut reflect_ray_color = Vector3::new(0.0, 0.0, 0.0);
+        let mut refract_ray_color = Vector3::new(0.0, 0.0, 0.0);
         let outside = ray.direction.dot(normal) < 0.0;
 
-        let bias = 0.01 * normal;
+        let bias = 0.001 * normal;
 
         if fresnel_ratio < 1.0 {
             if let Some(refract_vector) = get_refract_ray(normal, ray.direction, self.ior) {
@@ -195,8 +198,6 @@ impl Material for FresnelReflection {
                 {
                     refract_ray_color = refract_surface_color;
                 }
-            } else {
-                println!("Shouldn't happen?");
             }
         }
 
@@ -216,20 +217,13 @@ impl Material for FresnelReflection {
             reflect_ray_color = reflect_surface_color;
         }
 
-        // Some(
-        //     ((reflect_ray_color * fresnel_ratio) + (refract_ray_color * (1.0 - fresnel_ratio)))
-        //         * self.weight,
-        // )
+        let color = ((reflect_ray_color * fresnel_ratio * self.reflection)
+            + (refract_ray_color * (1.0 - fresnel_ratio) * self.refraction))
+            + (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.color 
+            * self.weight;
 
-        if fresnel_ratio < 0.0 {
-            println!("Negative");
-        }
+        Some(color)
 
-        if fresnel_ratio > 1.0 {
-            println!("Too large");
-        }
-
-        println!("Fresnel ratio: {}", fresnel_ratio);
-        Some(Vector3::new(1.0,0.0,0.0) * (fresnel_ratio/100.0))
+        //Some(Vector3::new(1.0,0.0,0.0) * fresnel_ratio)
     }
 }
