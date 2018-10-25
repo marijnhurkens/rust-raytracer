@@ -50,8 +50,8 @@ fn main() {
         Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
 
     let camera = camera::Camera::new(
-        Vector3::new(0.0, 0.0, 1.0),
-        Vector3::new(0.0, 0.0, -3.0),
+        Vector3::new(7.0, 7.0, 10.0),
+        Vector3::new(0.0, 0.0, 0.0),
         90.0,
     );
 
@@ -68,79 +68,48 @@ fn main() {
         })],
     };
 
-    let sphere_1 = scene::Sphere {
-        position: Vector3::new(1.0, 0.1, -3.0),
-        radius: 0.6,
-        materials: vec![
-            Box::new(materials::Lambert {
-                weight: 0.5,
-                color: Vector3::new(0.7, 0.7, 0.0),
-            }),
-            Box::new(materials::Reflection {
-                weight: 0.5,
-                glossiness: 1.0,
-                //ior: 1.5,
-            }),
-        ],
-    };
-
-    let sphere_2 = scene::Sphere {
-        position: Vector3::new(-2.9, 0.0, -2.0),
-        radius: 0.7,
-        materials: vec![Box::new(materials::Lambert {
-            weight: 1.0,
-            color: Vector3::new(0.3, 0.3, 0.7),
-        })],
-    };
-
-    let sphere_3 = scene::Sphere {
-        position: Vector3::new(-0.4, -0.4, 1.7),
-        radius: 0.5,
-        materials: vec![
-            Box::new(materials::Lambert {
-                weight: 0.4,
-                color: Vector3::new(0.3, 0.3, 0.3),
-            }),
-            // Box::new(materials::FresnelReflection {
-            //     weight: 0.6,
-            //     ior: 1.5,
-            //     color: Vector3::new(0.3, 0.3, 0.3),
-            //     glossiness: 1.0,
-            // }),
-        ],
-    };
+   
 
     let light = scene::Light {
-        position: Vector3::new(0.0, 1.0, 1.0),
+        position: Vector3::new(0.0, 0.0, 0.0),
         intensity: 0.8,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
-    let light_1 = scene::Light {
-        position: Vector3::new(1.0, 0.0, 0.0),
-        intensity: 0.3,
-        color: Vector3::new(1.0, 1.0, 1.0), // white
-    };
-
+   
     let mut spheres: Vec<scene::Sphere> = vec![];
 
-    for x in -10..10 {
-        for y in -10..10 {
-            for z in 0..10 {
+    let spacing = 1.0;
+    let radius = 0.4;
+    let xcount = 10;
+    let ycount = 10;
+    let zcount = 8;
+
+
+    for x in -xcount/2..xcount/2+1 {
+        for y in -ycount/2..ycount/2+1 {
+            for z in -zcount/2..zcount/2+1 {
                 // skip own position
-                if x == 0 && y == 0 && z == 0 {
-                    continue;
-                }
+                // if x == 0 && y == 0 && z == 0 {
+                //     continue;
+                // }
+
+                let c = Vector3::new(
+                    (x + xcount /2 ) as f64 / xcount as f64,
+                    (y + ycount /2 ) as f64 / ycount as f64,
+                    (z + zcount /2 ) as f64 / zcount as f64,
+                  
+                );
                 let sphere = scene::Sphere {
-                    position: Vector3::new(x as f64, y as f64, -z as f64),
-                    radius: 0.5,
+                    position: Vector3::new(x as f64 * spacing, y as f64 * spacing, -z as f64 * spacing),
+                    radius: radius,
                     materials: vec![Box::new(materials::FresnelReflection {
                         weight: 1.0,
                         glossiness: 1.0,
                         ior: 1.3,
                         reflection: 1.0,
-                        refraction: 0.4,
-                        color: Vector3::new(0.4, 0.4, 0.4),
+                        refraction: 0.5,
+                        color: c,
                     })],
                 };
 

@@ -181,7 +181,7 @@ impl Material for FresnelReflection {
 
         let bias = 0.001 * normal;
 
-        if fresnel_ratio < 1.0 {
+        if self.refraction > 0.0 && fresnel_ratio < 1.0 {
             if let Some(refract_vector) = get_refract_ray(normal, ray.direction, self.ior) {
                 let refract_ray_start = if outside {
                     point_of_intersection - bias
@@ -201,26 +201,27 @@ impl Material for FresnelReflection {
             }
         }
 
-        let reflect_ray_start = if outside {
-            point_of_intersection + bias
-        } else {
-            point_of_intersection - bias
-        };
+        if self.reflection > 0.0 {
+            let reflect_ray_start = if outside {
+                point_of_intersection + bias
+            } else {
+                point_of_intersection - bias
+            };
 
-        let reflect_ray = renderer::Ray {
-            point: reflect_ray_start,
-            direction: vector_reflect(ray.direction, normal)
-                + (1.0 - self.glossiness) * get_random_in_unit_sphere(),
-        };
+            let reflect_ray = renderer::Ray {
+                point: reflect_ray_start,
+                direction: vector_reflect(ray.direction, normal)
+                    + (1.0 - self.glossiness) * get_random_in_unit_sphere(),
+            };
 
-        if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 1) {
-            reflect_ray_color = reflect_surface_color;
+            if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 1) {
+                reflect_ray_color = reflect_surface_color;
+            }
         }
 
         let color = ((reflect_ray_color * fresnel_ratio * self.reflection)
             + (refract_ray_color * (1.0 - fresnel_ratio) * self.refraction))
-            + (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.color 
-            * self.weight;
+            + (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.color * self.weight;
 
         Some(color)
 
