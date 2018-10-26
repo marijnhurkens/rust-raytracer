@@ -214,17 +214,25 @@ impl Material for FresnelReflection {
                     + (1.0 - self.glossiness) * get_random_in_unit_sphere(),
             };
 
-            if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 1) {
+            if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 2) {
                 reflect_ray_color = reflect_surface_color;
             }
         }
 
+        // Mix the colors
+        //
+        // Reflection color = reflect ray color * fresnel ratio * reflection amount
+        // Refraction color = refract ray color * 1 - fresnel ratio * refraction amount
+        //
+        // Add reflection and refraction (total will not be more than 1)
+        //
+        // If reflection or refraction amount is not 1 --> add some self color
+        //
+        // Finally take the total and adjust for weight of material.
         let color = ((reflect_ray_color * fresnel_ratio * self.reflection)
             + (refract_ray_color * (1.0 - fresnel_ratio) * self.refraction))
             + (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.color * self.weight;
 
         Some(color)
-
-        //Some(Vector3::new(1.0,0.0,0.0) * fresnel_ratio)
     }
 }

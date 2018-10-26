@@ -12,15 +12,15 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(position: Vector3<f64>, target: Vector3<f64>, fov: f64) -> Camera {
-        // x left right
-        // y forward backward
-        // z up down
+        // x +right -left
+        // y +up -down
+        // z +backward -forward
 
         // To find the forward vector we subtract the position from the target
         // and find the unit vector
         let forward = (target - position).normalize();
 
-        // The right vector is the dot product of forward and the z axis
+        // The right vector is the dot product of forward and a unit y vector
         let right = Vector3::cross(forward, Vector3::unit_y()).normalize();
 
         // The up vector is the dot product of the right vector and the forward vector

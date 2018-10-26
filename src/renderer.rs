@@ -3,21 +3,36 @@ use cgmath::*;
 use image;
 use rand::*;
 use scene::{Light, Scene, Sphere};
-use std::cmp;
-use std::sync::{Arc, Mutex};
+use std::time::{SystemTime};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
+use std::collections::HashMap;
 use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 8;
-const BUCKETS: u32 =300;
-const MAX_DEPTH: u32 = 14;
-const SAMPLES: u32 = 10;
+const BUCKETS: u32 = 40;
+const MAX_DEPTH: u32 = 12;
+const SAMPLES: u32 = 300;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
+const GAMMA: f64 = 0.454545; // ??? this would normally decode from srgb to linear space, looks fine though
 
 #[derive(Copy, Clone, Debug)]
 struct Work {
     start: u32,
     end: u32,
+}
+
+#[derive(Debug)]
+
+pub struct Stats {
+    pub threads: HashMap<u32, StatsThread>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct StatsThread {
+    pub start_time: SystemTime,
+    pub ns_per_ray: f64,
+    pub rays_done: u32,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -42,6 +57,16 @@ lazy_static! {
     };
 }
 
+lazy_static!{
+    pub static ref STATS: RwLock<Stats> = {
+        let stats = Stats {
+            threads: HashMap::new(),
+        };
+
+        RwLock::new(stats)
+    };
+}
+
 fn get_work() -> Option<Work> {
     let mut rng = thread_rng();
     let mut queue = WORK_QUEUE.lock().unwrap();
@@ -58,47 +83,45 @@ pub fn render(camera: Camera, scene: Arc<Scene>) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
 
-    println!("Start render, w{}, h{}", image_width, image_height);
+    println!("Start render, w{} px, h{} px", image_width, image_height);
     println!("Camera {:?}", camera);
 
     // thread id is used to divide the work
-    for _id in 0..THREAD_COUNT {
+    for thread_id in 0..THREAD_COUNT {
         let thread_scene = scene.clone();
         let _thread = thread::spawn(move || {
-            //let thread_id = id.clone();
+        
+            STATS.write().unwrap().threads.insert(thread_id, StatsThread {
+                start_time: SystemTime::now(),
+                rays_done: 0,
+                ns_per_ray: 0.0,
+            });
 
-            loop {
-                let work_wrapped = get_work();
-
-                if let None = work_wrapped {
-                    break;
-                }
-
-                let work = work_wrapped.unwrap();
-
+            while let Some(work) = get_work() {
                 // prevent rounding error, cap at max work
-                let work_end = cmp::min(WORK, work.end);
+                let work_end = work.end.min(WORK);
+
+                let time_start = SystemTime::now();
 
                 for pos in work.start..work_end {
+                    
                     let rays =
                         get_rays_at(camera, image_width, image_height, pos, SAMPLES).unwrap();
                     let rays_len = rays.len();
 
                     let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
 
+                    // Get the average pixel color using the samples.
                     for ray in rays {
-                        //println!("pos: {}, ray: {:?}", pos, ray);
                         pixel_color += trace(ray, &thread_scene, 1).unwrap();
                     }
 
                     pixel_color /= rays_len as f64;
 
-                    //println!("Thread id {}, pos {}, Ray {:?}", thread_id, pos, ray);
-
                     let pixel_color_rgba = image::Rgba([
-                        ((pixel_color.x.powf(2.2)) * 255.0) as u8,
-                        ((pixel_color.y.powf(2.2)) * 255.0) as u8,
-                        ((pixel_color.z.powf(2.2)) * 255.0) as u8,
+                        ((pixel_color.x.powf(1.0/GAMMA)) * 255.0) as u8,
+                        ((pixel_color.y.powf(1.0/GAMMA)) * 255.0) as u8,
+                        ((pixel_color.z.powf(1.0/GAMMA)) * 255.0) as u8,
                         255,
                     ]);
 
@@ -108,7 +131,19 @@ pub fn render(camera: Camera, scene: Arc<Scene>) {
                         pixel_color_rgba,
                     );
                 }
-            }
+
+                 if let Some(stats_thread) = STATS.write().unwrap().threads.get_mut(&thread_id) {
+                        let duration = time_start.elapsed().expect("Duration failed!");
+                        let rays_done = ( work.end - work.start) * SAMPLES;
+
+                        let secs = duration.as_secs();
+                        let sub_nanos = duration.subsec_nanos();
+                        let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+
+                        stats_thread.rays_done += rays_done;
+                        stats_thread.ns_per_ray = nanos as f64 / rays_done as f64;
+                    }
+            } // end of work loop
         });
     }
 }
@@ -190,9 +225,13 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32) -> Option<Vector3<f64>> {
             let mut color = Vector3::new(0.0, 0.0, 0.0);
 
             for material in &sphere.materials {
-                if let Some(calculated_color) =
-                    material.get_surface_color(ray, &scene, point_of_intersection, sphere_normal(&sphere, point_of_intersection), depth)
-                {
+                if let Some(calculated_color) = material.get_surface_color(
+                    ray,
+                    &scene,
+                    point_of_intersection,
+                    sphere_normal(&sphere, point_of_intersection),
+                    depth,
+                ) {
                     color += calculated_color;
                 }
             }
