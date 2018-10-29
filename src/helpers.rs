@@ -24,6 +24,7 @@ pub fn get_fresnel_ratio(normal: Vector3<f64>, angle_of_incidence: Vector3<f64>,
     let fresnel_ratio: f64;
 
     // FROM POVRAY
+    // https://github.com/POV-Ray/povray/blob/master/source/core/render/trace.cpp#L2668
 
     let cos_theta_incidence = normal.dot(angle_of_incidence).abs();
     let sqrg = ior * ior + cos_theta_incidence * cos_theta_incidence - 1.0;

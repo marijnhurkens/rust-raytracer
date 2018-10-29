@@ -48,9 +48,9 @@ fn main() {
         Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
 
     let camera = camera::Camera::new(
-        Vector3::new(0.0, 1.3, 4.0),
-        Vector3::new(0.0, 0.0, 0.0),
-        60.0,
+        Vector3::new(2.0, 1.4, 4.0),
+        Vector3::new(0.0, -0.5, 0.0),
+        80.0,
     );
 
     let _sphere = scene::Sphere {
@@ -67,19 +67,25 @@ fn main() {
     };
 
     let light = scene::Light {
-        position: Vector3::new(0.0, 0.0, 0.0),
-        intensity: 0.8,
+        position: Vector3::new(-10.0, 2.0, 10.0),
+        intensity: 1.0,
+        color: Vector3::new(1.0, 1.0, 1.0), // white
+    };
+
+       let light_1 = scene::Light {
+        position: Vector3::new(-2.0, 1.5, -5.0),
+        intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     // Setup a basic test scene
-    let mut spheres: Vec<scene::Sphere> = vec![];
+    let mut spheres: Vec<Box<scene::Object>> = vec![];
 
     let spacing = 1.0;
     let radius = 0.4;
-    let xcount = 3;
-    let ycount = 1;
-    let zcount = 3;
+    let xcount = 4;
+    let ycount = 4;
+    let zcount = 4;
 
     for x in -xcount / 2..xcount / 2 + 1 {
         for y in -ycount / 2..ycount / 2 + 1 {
@@ -101,29 +107,59 @@ fn main() {
                         -z as f64 * spacing,
                     ),
                     radius: radius,
-                    materials: vec![Box::new(materials::FresnelReflection {
-                        weight: 1.0,
-                        glossiness: 1.0,
-                        ior: 1.5,
-                        reflection: 1.0,
-                        refraction: 0.5,
-                        color: c,
-                    })],
+                    materials: vec![
+                            Box::new(materials::FresnelReflection {
+                            weight: 1.0,
+                            glossiness: 1.0,
+                            ior: 1.5,
+                            reflection: 0.8,
+                            refraction: 0.0,
+                            color: c,
+                        }),
+                        // Box::new(materials::Lambert {
+                        //     color: Vector3::new(0.5, 0.5, 0.5),
+                        //     weight: 1.0,
+                        // }),
+                    ],
                 };
 
-                spheres.push(sphere);
+                spheres.push(Box::new(sphere));
             }
         }
     }
 
-    let scene: Arc<scene::Scene> = Arc::new(scene::Scene {
-        bg_color: Vector3::new(0.9, 0.9, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
-        spheres: spheres,
-        lights: vec![light],
-    });
+    let plane = scene::Plane {
+        position: Vector3::new(0.0, -1.3, 0.0),
+        normal: Vector3::new(0.0, 1.0, 0.0), // up
+        materials: vec![
+            // Box::new(materials::Lambert {
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            //     weight: 1.0,
+            // }),
+            Box::new(materials::FresnelReflection {
+                color: Vector3::new(0.5, 0.5, 0.5),
+                glossiness: 0.9,
+                ior: 1.5,
+                reflection: 0.0,
+                refraction: 0.0,
+                weight: 1.0,
+            }),
+        ],
+    };
+
+    let mut scene = scene::Scene {
+        bg_color: Vector3::new(0.7, 0.7, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
+        spheres: vec![],                       //spheres,
+        objects: spheres,
+        lights: vec![light, light_1],
+    };
+
+    scene.push_object(Box::new(plane));
+
+    // println!("{:#?}", scene);
 
     // Start the render threads
-    renderer::render(camera, scene);
+    renderer::render(camera, Arc::new(scene));
 
     let mut glyph_cache =
         GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
@@ -139,7 +175,8 @@ fn main() {
             let mut stats_text: String = "".to_owned();
             for (_, thread) in &renderer::STATS.read().unwrap().threads {
                 stats_text.push_str(" ");
-                stats_text.push_str(&format!("{:.0} ns", thread.ns_per_ray));
+                stats_text.push_str(&format!("| {:.0} ns, ", thread.ns_per_ray));
+                stats_text.push_str(&format!("{} rays done ", thread.rays_done));
             }
 
             gl.draw(args.viewport(), |c, gl| {
@@ -149,7 +186,7 @@ fn main() {
                 let transform = c.transform.trans(10.0, 15.0);
                 text(
                     [1.0, 0.0, 0.0, 1.0],
-                    12,
+                    10,
                     &stats_text,
                     &mut glyph_cache,
                     transform,

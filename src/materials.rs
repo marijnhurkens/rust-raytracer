@@ -12,7 +12,8 @@ pub trait Material: Debug + Send + Sync {
         scene: &scene::Scene,
         point_of_intersection: Vector3<f64>,
         normal: Vector3<f64>,
-        depth_immutable: u32,
+        depth: u32,
+        contribution: f64,
     ) -> Option<Vector3<f64>>;
 
     fn get_weight(&self) -> f64;
@@ -36,6 +37,7 @@ impl Material for Lambert {
         point_of_intersection: Vector3<f64>,
         normal: Vector3<f64>,
         depth: u32,
+        contribution: f64,
     ) -> Option<Vector3<f64>> {
         let mut lights_contribution = 0.0;
         let mut lambert_color = Vector3::new(0.0, 0.0, 0.0);
@@ -44,7 +46,8 @@ impl Material for Lambert {
         // the cross product of the normal and the vector to the light
         // to calculate the lambert contribution.
         for light in scene.lights.clone() {
-            if !renderer::check_light_visible(point_of_intersection, &scene, light) {
+            if !renderer::check_light_visible(point_of_intersection + normal * 1e-4, &scene, light)
+            {
                 continue;
             }
 
@@ -63,18 +66,20 @@ impl Material for Lambert {
         }
 
         // throw random ray
-        let target = point_of_intersection + normal + get_random_in_unit_sphere();
+        let ray_point = point_of_intersection + normal * 1e-4;
+        let target = ray_point + normal + get_random_in_unit_sphere();
 
         let reflect_ray = renderer::Ray {
-            point: point_of_intersection,
-            direction: target - point_of_intersection,
+            point: ray_point,
+            direction: target - ray_point,
         };
 
-        if let Some(lambert_surface_color) = renderer::trace(reflect_ray, scene, depth + 1) {
+        let lambert_contribution = contribution * 0.5 * self.weight; // contribution is half of the final color times the weight
+        if let Some(lambert_surface_color) = renderer::trace(reflect_ray, scene, depth + 1, lambert_contribution) {
             lambert_color += lambert_surface_color * 0.5;
         }
 
-        Some(((self.color * lights_contribution) + lambert_color) * self.weight)
+        Some(((self.color * lights_contribution) + lambert_color) / 2.0 * self.weight)
     }
 }
 
@@ -100,6 +105,7 @@ impl Material for Reflection {
         point_of_intersection: Vector3<f64>,
         normal: Vector3<f64>,
         depth: u32,
+        contribution: f64,
     ) -> Option<Vector3<f64>> {
         let reflect_ray = renderer::Ray {
             point: point_of_intersection,
@@ -107,7 +113,8 @@ impl Material for Reflection {
                 + (1.0 - self.glossiness) * get_random_in_unit_sphere(),
         };
 
-        if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 1) {
+        let reflection_contribution = contribution * self.weight;
+        if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 1, reflection_contribution) {
             return Some(reflect_surface_color * self.weight);
         }
 
@@ -133,6 +140,7 @@ impl Material for Refraction {
         point_of_intersection: Vector3<f64>,
         normal: Vector3<f64>,
         depth: u32,
+        contribution: f64,
     ) -> Option<Vector3<f64>> {
         let mut refract_ray_color = Vector3::new(1.0, 0.0, 0.0);
 
@@ -142,7 +150,9 @@ impl Material for Refraction {
                 direction: refract_vector,
             };
 
-            if let Some(refract_surface_color) = renderer::trace(refract_ray, scene, depth + 1) {
+        let refraction_contribution = contribution * self.weight; // contribution is half of the final color times the weight
+
+            if let Some(refract_surface_color) = renderer::trace(refract_ray, scene, depth + 1, refraction_contribution) {
                 refract_ray_color = refract_surface_color;
             }
         }
@@ -173,14 +183,19 @@ impl Material for FresnelReflection {
         point_of_intersection: Vector3<f64>,
         normal: Vector3<f64>,
         depth: u32,
+        contribution: f64,
     ) -> Option<Vector3<f64>> {
         let fresnel_ratio = get_fresnel_ratio(normal, ray.direction, self.ior);
         let mut reflect_ray_color = Vector3::new(0.0, 0.0, 0.0);
         let mut refract_ray_color = Vector3::new(0.0, 0.0, 0.0);
+        let mut lambert_ray_color = Vector3::new(0.0, 0.0, 0.0);
+        let mut lambert_lights_contribution = 0.0;
+
         let outside = ray.direction.dot(normal) < 0.0;
 
         let bias = 0.001 * normal;
 
+        // REFRACTION
         if self.refraction > 0.0 && fresnel_ratio < 1.0 {
             if let Some(refract_vector) = get_refract_ray(normal, ray.direction, self.ior) {
                 let refract_ray_start = if outside {
@@ -194,14 +209,17 @@ impl Material for FresnelReflection {
                     direction: refract_vector,
                 };
 
-                if let Some(refract_surface_color) = renderer::trace(refract_ray, scene, depth + 1)
+                let refract_contribution = contribution * (1.0 - fresnel_ratio) * self.refraction; // contribution is half of the final color times the weight
+                if let Some(refract_surface_color) = renderer::trace(refract_ray, scene, depth + 1, refract_contribution)
                 {
                     refract_ray_color = refract_surface_color;
                 }
             }
         }
 
-        if self.reflection > 0.0 {
+
+        // REFLECTION
+        if self.reflection > 0.0 && fresnel_ratio > 0.0 {
             let reflect_ray_start = if outside {
                 point_of_intersection + bias
             } else {
@@ -214,10 +232,57 @@ impl Material for FresnelReflection {
                     + (1.0 - self.glossiness) * get_random_in_unit_sphere(),
             };
 
-            if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 2) {
+        let reflect_contribution = contribution * fresnel_ratio * self.reflection; // contribution is half of the final color times the weight
+            if let Some(reflect_surface_color) = renderer::trace(reflect_ray, scene, depth + 1, reflect_contribution) {
                 reflect_ray_color = reflect_surface_color;
             }
         }
+
+        if self.reflection < 1.0 || self.refraction < 1.0 {
+            // Check all the lights for visibility if visible use
+            // the cross product of the normal and the vector to the light
+            // to calculate the lambert contribution.
+            for light in scene.lights.clone() {
+                if !renderer::check_light_visible(
+                    point_of_intersection + normal * 1e-4,
+                    &scene,
+                    light,
+                ) {
+                    continue;
+                }
+
+                let contribution = (light.position - point_of_intersection)
+                    .normalize()
+                    .dot(normal)
+                    * light.intensity;
+                if contribution > 0.0 {
+                    lambert_lights_contribution += contribution;
+                }
+            }
+
+            // cap the lambert amount to 1
+            if lambert_lights_contribution > 1.0 {
+                lambert_lights_contribution = 1.0;
+            }
+
+            // throw random ray
+            let ray_point = point_of_intersection + normal * 1e-4;
+            let target = ray_point + normal + get_random_in_unit_sphere();
+
+            let reflect_ray = renderer::Ray {
+                point: ray_point,
+                direction: target - ray_point,
+            };
+
+        let lambert_contribution = contribution * (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.weight; // contribution is half of the final color times the weight
+            if let Some(lambert_surface_color) = renderer::trace(reflect_ray, scene, depth + 1, lambert_contribution) {
+                lambert_ray_color += lambert_surface_color * 0.5;
+            }
+        }
+
+        let reflect_color = reflect_ray_color * fresnel_ratio * self.reflection;
+        let refract_color = refract_ray_color * (1.0 - fresnel_ratio) * self.refraction;
+        let lambert_color = ((self.color * lambert_lights_contribution) + ((self.color +  lambert_ray_color) / 2.0)) / 2.0;
 
         // Mix the colors
         //
@@ -229,9 +294,9 @@ impl Material for FresnelReflection {
         // If reflection or refraction amount is not 1 --> add some self color
         //
         // Finally take the total and adjust for weight of material.
-        let color = ((reflect_ray_color * fresnel_ratio * self.reflection)
-            + (refract_ray_color * (1.0 - fresnel_ratio) * self.refraction))
-            + (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.color * self.weight;
+        let color = reflect_color
+            + refract_color
+            + ((1.0 - ((self.reflection + self.refraction) / 2.0)) * lambert_color) * self.weight;
 
         Some(color)
     }
