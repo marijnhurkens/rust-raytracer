@@ -2,17 +2,18 @@ use camera::Camera;
 use cgmath::*;
 use image;
 use rand::*;
-use scene::{Light, Scene, Object};
+use scene::{Light, Object, Scene};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
+use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 7;
-const BUCKETS: u32 = 60;
-const MAX_DEPTH: u32 = 7;
-const SAMPLES: u32 = 20;
+const THREAD_COUNT: u32 = 1;
+const BUCKETS: u32 = 1;
+const MAX_DEPTH: u32 = 10;
+pub const SAMPLES: u32 = 5;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 const GAMMA: f64 = 0.4545454545; // ??? this would normally decode from srgb to linear space, looks fine though
 
@@ -25,6 +26,7 @@ struct Work {
 #[derive(Debug)]
 
 pub struct Stats {
+    pub rays_done: u32,
     pub threads: HashMap<u32, StatsThread>,
 }
 
@@ -60,6 +62,7 @@ lazy_static! {
 lazy_static! {
     pub static ref STATS: RwLock<Stats> = {
         let stats = Stats {
+            rays_done: 0,
             threads: HashMap::new(),
         };
 
@@ -79,9 +82,10 @@ fn get_work() -> Option<Work> {
     Some(queue.remove(rng.gen_range(0, len)))
 }
 
-pub fn render(camera: Camera, scene: Arc<Scene>) {
+pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
+    let mut threads: Vec<JoinHandle<()>> = vec![];
 
     println!("Start render, w{} px, h{} px", image_width, image_height);
     println!("Camera {:#?}", camera);
@@ -89,7 +93,7 @@ pub fn render(camera: Camera, scene: Arc<Scene>) {
     // thread id is used to divide the work
     for thread_id in 0..THREAD_COUNT {
         let thread_scene = scene.clone();
-        let _thread = thread::spawn(move || {
+        let thread = thread::spawn(move || {
             STATS.write().unwrap().threads.insert(
                 thread_id,
                 StatsThread {
@@ -98,6 +102,7 @@ pub fn render(camera: Camera, scene: Arc<Scene>) {
                     ns_per_ray: 0.0,
                 },
             );
+
 
             while let Some(work) = get_work() {
                 // prevent rounding error, cap at max work
@@ -133,20 +138,30 @@ pub fn render(camera: Camera, scene: Arc<Scene>) {
                     );
                 }
 
-                if let Some(stats_thread) = STATS.write().unwrap().threads.get_mut(&thread_id) {
-                    let duration = time_start.elapsed().expect("Duration failed!");
-                    let rays_done = (work.end - work.start) * SAMPLES;
+                let mut stats = STATS.write().unwrap();
 
-                    let secs = duration.as_secs();
-                    let sub_nanos = duration.subsec_nanos();
-                    let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+                let duration = time_start.elapsed().expect("Duration failed!");
+                let rays_done = (work.end - work.start) * SAMPLES;
 
+                let secs = duration.as_secs();
+                let sub_nanos = duration.subsec_nanos();
+                let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+
+                stats.rays_done += rays_done;
+
+                if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
                     stats_thread.rays_done += rays_done;
                     stats_thread.ns_per_ray = nanos as f64 / rays_done as f64;
                 }
             } // end of work loop
+
+            ()
         });
+
+        threads.push(thread);
     }
+
+    threads
 }
 
 fn get_rays_at(
@@ -210,9 +225,13 @@ fn get_rays_at(
 
 pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<Vector3<f64>> {
     // Early exit when max depth is reach or the contribution factor is too low.
-    // 
+    //
     // The contribution factor is checked here to force the user to provide one.
-    if depth > MAX_DEPTH || contribution < 0.01 {
+    if contribution < 0.03 {
+        return None;
+    }
+
+    if depth > MAX_DEPTH {
         return None;
     }
 
@@ -246,8 +265,7 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
     }
 }
 
-fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Object>)>
-{
+fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Object>)> {
     let mut closest: Option<(f64, &Box<Object>)> = None;
 
     for object in &scene.objects {
@@ -265,7 +283,6 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
             }
         }
     }
-
 
     closest
 }

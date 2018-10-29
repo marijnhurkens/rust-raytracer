@@ -12,3 +12,7 @@ piston2d-opengl_graphics = "0.54.0"
 image = "*"
 cgmath = "0.16.1"
 rand = "0.5"
+
+
+[profile.release]
+debug = true

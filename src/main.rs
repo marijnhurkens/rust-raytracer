@@ -1,6 +1,5 @@
 extern crate cgmath;
 extern crate glutin_window;
-
 extern crate graphics;
 extern crate image;
 extern crate opengl_graphics;
@@ -17,7 +16,10 @@ use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
+//use std::env;
+use std::fs::File;
 use std::sync::{Arc, RwLock};
+use std::{thread, time};
 
 mod camera;
 mod helpers;
@@ -25,8 +27,9 @@ mod materials;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 800;
-const IMAGE_HEIGHT: u32 = 500;
+const IMAGE_WIDTH: u32 = 300;
+const IMAGE_HEIGHT: u32 = 300;
+const OUTPUT: &str = "FILE";
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -35,17 +38,7 @@ lazy_static! {
 }
 
 fn main() {
-    let opengl = OpenGL::V3_2;
-    let mut window: Window = WindowSettings::new("Rust Raytracer", [IMAGE_WIDTH, IMAGE_HEIGHT])
-        .opengl(opengl)
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
-
-    let mut gl = GlGraphics::new(opengl);
-
-    let mut texture: Texture =
-        Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
+    //let args: Vec<String> = env::args().collect();
 
     let camera = camera::Camera::new(
         Vector3::new(2.0, 1.4, 4.0),
@@ -72,7 +65,7 @@ fn main() {
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
-       let light_1 = scene::Light {
+    let light_1 = scene::Light {
         position: Vector3::new(-2.0, 1.5, -5.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
@@ -108,7 +101,7 @@ fn main() {
                     ),
                     radius: radius,
                     materials: vec![
-                            Box::new(materials::FresnelReflection {
+                        Box::new(materials::FresnelReflection {
                             weight: 1.0,
                             glossiness: 1.0,
                             ior: 1.5,
@@ -156,43 +149,80 @@ fn main() {
 
     scene.push_object(Box::new(plane));
 
-    // println!("{:#?}", scene);
-
     // Start the render threads
-    renderer::render(camera, Arc::new(scene));
+    let threads = renderer::render(camera, Arc::new(scene));
 
-    let mut glyph_cache =
-        GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
+    if OUTPUT == "window" {
+        let opengl = OpenGL::V3_2;
+        let mut window: Window = WindowSettings::new("Rust Raytracer", [IMAGE_WIDTH, IMAGE_HEIGHT])
+            .opengl(opengl)
+            .exit_on_esc(true)
+            .build()
+            .unwrap();
 
-    let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-        // draw current render state
-        if let Some(args) = e.render_args() {
-            // The RwLock doesn't require locking on read, so this doesn't
-            // block the rendering.
-            texture.update(&IMAGE_BUFFER.read().unwrap());
+        let mut gl = GlGraphics::new(opengl);
+        let mut texture: Texture =
+            Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
+        let mut glyph_cache =
+            GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
 
-            let mut stats_text: String = "".to_owned();
-            for (_, thread) in &renderer::STATS.read().unwrap().threads {
-                stats_text.push_str(" ");
-                stats_text.push_str(&format!("| {:.0} ns, ", thread.ns_per_ray));
-                stats_text.push_str(&format!("{} rays done ", thread.rays_done));
+        let mut events = Events::new(EventSettings::new());
+        while let Some(e) = events.next(&mut window) {
+            // draw current render state
+            if let Some(args) = e.render_args() {
+                // The RwLock doesn't require locking on read, so this doesn't
+                // block the rendering.
+                texture.update(&IMAGE_BUFFER.read().unwrap());
+
+                let mut stats_text: String = "".to_owned();
+                for (_, thread) in &renderer::STATS.read().unwrap().threads {
+                    stats_text.push_str(" ");
+                    stats_text.push_str(&format!("| {:.0} ns, ", thread.ns_per_ray));
+                    stats_text.push_str(&format!("{} rays done ", thread.rays_done));
+                }
+
+                gl.draw(args.viewport(), |c, gl| {
+                    clear([0.0, 0.0, 0.0, 1.0], gl);
+                    image(&texture, c.transform, gl);
+
+                    let transform = c.transform.trans(10.0, 15.0);
+                    text(
+                        [1.0, 0.0, 0.0, 1.0],
+                        10,
+                        &stats_text,
+                        &mut glyph_cache,
+                        transform,
+                        gl,
+                    ).expect("Error drawing text.");
+                });
             }
-
-            gl.draw(args.viewport(), |c, gl| {
-                clear([0.0, 0.0, 0.0, 1.0], gl);
-                image(&texture, c.transform, gl);
-
-                let transform = c.transform.trans(10.0, 15.0);
-                text(
-                    [1.0, 0.0, 0.0, 1.0],
-                    10,
-                    &stats_text,
-                    &mut glyph_cache,
-                    transform,
-                    gl,
-                ).expect("Error drawing text.");
-            });
         }
+    } else {
+        println!("Waiting...");
+
+        let mut done = false;
+
+        let total_rays = IMAGE_WIDTH * IMAGE_HEIGHT * renderer::SAMPLES;
+
+        // while !done {
+        //     let stats = renderer::STATS.read().unwrap();
+
+        //     println!("{:?}", stats);
+        //     println!(
+        //         "Progress {}/{} ({:.3}%)",
+        //         stats.rays_done,
+        //         total_rays,
+        //         (stats.rays_done as f64 / total_rays as f64) * 100.0
+        //     );
+
+        //     thread::sleep(time::Duration::from_millis(1000));
+        // }
+        // wait for all threads to finish
+        for handle in threads {
+            let _ = handle.join();
+        }
+
+
+        println!("Done!");
     }
 }
