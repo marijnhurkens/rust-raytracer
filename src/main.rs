@@ -5,6 +5,9 @@ extern crate image;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
+extern crate nalgebra;
+extern crate bvh;
+
 
 #[macro_use]
 extern crate lazy_static;
@@ -16,10 +19,10 @@ use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
-//use std::env;
-use std::fs::File;
 use std::sync::{Arc, RwLock};
 use std::{thread, time};
+
+
 
 mod camera;
 mod helpers;
@@ -27,9 +30,9 @@ mod materials;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 300;
-const IMAGE_HEIGHT: u32 = 300;
-const OUTPUT: &str = "FILE";
+const IMAGE_WIDTH: u32 = 800;
+const IMAGE_HEIGHT: u32 = 800;
+const OUTPUT: &str = "window";
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -76,9 +79,9 @@ fn main() {
 
     let spacing = 1.0;
     let radius = 0.4;
-    let xcount = 4;
-    let ycount = 4;
-    let zcount = 4;
+    let xcount = 2;
+    let ycount = 2;
+    let zcount = 1;
 
     for x in -xcount / 2..xcount / 2 + 1 {
         for y in -ycount / 2..ycount / 2 + 1 {
@@ -221,7 +224,6 @@ fn main() {
         for handle in threads {
             let _ = handle.join();
         }
-
 
         println!("Done!");
     }

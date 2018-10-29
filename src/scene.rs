@@ -2,6 +2,7 @@ use cgmath::*;
 use materials;
 use renderer;
 use std::fmt::Debug;
+use bvh::aabb::{AABB, Bounded};
 
 #[derive(Debug)]
 pub struct Scene {
@@ -86,6 +87,7 @@ impl Object for Sphere {
         (point - self.position).normalize()
     }
 }
+
 
 #[derive(Debug)]
 pub struct Plane {

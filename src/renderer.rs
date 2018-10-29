@@ -10,10 +10,10 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 1;
-const BUCKETS: u32 = 1;
-const MAX_DEPTH: u32 = 10;
-pub const SAMPLES: u32 = 5;
+const THREAD_COUNT: u32 = 7;
+const BUCKETS: u32 = THREAD_COUNT * 10;
+const MAX_DEPTH: u32 = 12;
+pub const SAMPLES: u32 = 300;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 const GAMMA: f64 = 0.4545454545; // ??? this would normally decode from srgb to linear space, looks fine though
 
@@ -102,7 +102,6 @@ pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
                     ns_per_ray: 0.0,
                 },
             );
-
 
             while let Some(work) = get_work() {
                 // prevent rounding error, cap at max work

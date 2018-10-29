@@ -12,6 +12,8 @@ piston2d-opengl_graphics = "0.54.0"
 image = "*"
 cgmath = "0.16.1"
 rand = "0.5"
+bvh = "0.2.3"
+nalgebra = "0.16.6"
 
 
 [profile.release]
