@@ -1,5 +1,5 @@
 use camera::Camera;
-use cgmath::*;
+use nalgebra::{Point3, Vector3};
 use image;
 use rand::*;
 use scene::{Light, Object, Scene};
@@ -10,12 +10,12 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 7;
+const THREAD_COUNT: u32 = 8;
 const BUCKETS: u32 = THREAD_COUNT * 10;
 const MAX_DEPTH: u32 = 12;
-pub const SAMPLES: u32 = 300;
+pub const SAMPLES: u32 = 70;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
-const GAMMA: f64 = 0.4545454545; // ??? this would normally decode from srgb to linear space, looks fine though
+const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 
 #[derive(Copy, Clone, Debug)]
 struct Work {
@@ -39,7 +39,7 @@ pub struct StatsThread {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Ray {
-    pub point: Vector3<f64>,
+    pub point: Point3<f64>,
     pub direction: Vector3<f64>,
 }
 
@@ -176,8 +176,6 @@ fn get_rays_at(
     let pos_x = pos % width;
     let pos_y = pos / width;
 
-    //println!("x {}, y {}", pos_x, pos_y);
-
     if pos_y >= height {
         return Err("Position exceeds number of pixels.");
     }
@@ -226,7 +224,7 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
     // Early exit when max depth is reach or the contribution factor is too low.
     //
     // The contribution factor is checked here to force the user to provide one.
-    if contribution < 0.03 {
+    if contribution < 0.01 {
         return None;
     }
 
@@ -286,7 +284,7 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
     closest
 }
 
-pub fn check_light_visible(position: Vector3<f64>, scene: &Scene, light: Light) -> bool {
+pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: Light) -> bool {
     let ray = Ray {
         point: position,
         direction: light.position - position,

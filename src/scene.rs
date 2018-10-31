@@ -1,8 +1,9 @@
-use cgmath::*;
+use bvh::aabb::{Bounded, AABB};
+use bvh::bvh::BVH;
 use materials;
+use nalgebra::{Vector3, Point3};
 use renderer;
 use std::fmt::Debug;
-use bvh::aabb::{AABB, Bounded};
 
 #[derive(Debug)]
 pub struct Scene {
@@ -21,12 +22,12 @@ impl Scene {
 pub trait Object: Debug + Send + Sync {
     fn get_materials(&self) -> &Vec<Box<materials::Material>>;
     fn test_intersect(&self, renderer::Ray) -> Option<f64>;
-    fn get_normal(&self, Vector3<f64>) -> Vector3<f64>;
+    fn get_normal(&self, Point3<f64>) -> Vector3<f64>;
 }
 
 #[derive(Debug)]
 pub struct Sphere {
-    pub position: Vector3<f64>,
+    pub position: Point3<f64>,
     pub radius: f64,
     pub materials: Vec<Box<materials::Material>>,
 }
@@ -40,9 +41,9 @@ impl Object for Sphere {
         use std::f64;
 
         let camera_to_sphere_center = ray.point - self.position;
-        let a = ray.direction.dot(ray.direction); // camera_to_sphere length squared
-        let b = camera_to_sphere_center.dot(ray.direction);
-        let c = camera_to_sphere_center.dot(camera_to_sphere_center) - self.radius * self.radius;
+        let a = ray.direction.dot(&ray.direction); // camera_to_sphere length squared
+        let b = camera_to_sphere_center.dot(&ray.direction);
+        let c = camera_to_sphere_center.dot(&camera_to_sphere_center) - self.radius * self.radius;
         let discriminant = b * b - a * c;
 
         // let v = camera_to_sphere_center.dot(ray.direction);
@@ -83,15 +84,23 @@ impl Object for Sphere {
         None
     }
 
-    fn get_normal(&self, point: Vector3<f64>) -> Vector3<f64> {
+    fn get_normal(&self, point: Point3<f64>) -> Vector3<f64> {
         (point - self.position).normalize()
     }
 }
 
+// impl Bounded for Sphere {
+//     fn aabb(&self) -> AABB {
+//         let half_size = Vector3::new(self.radius, self.radius, self.radius);
+//         let min = self.position - half_size;
+//         let max = self.position + half_size;
+//         AABB::with_bounds(min, max as f32)
+//     }
+// }
 
 #[derive(Debug)]
 pub struct Plane {
-    pub position: Vector3<f64>,
+    pub position: Point3<f64>,
     pub normal: Vector3<f64>,
     pub materials: Vec<Box<materials::Material>>,
 }
@@ -102,12 +111,12 @@ impl Object for Plane {
     }
 
     fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
-        let denom = self.normal.dot(ray.direction);
+        let denom = self.normal.dot(&ray.direction);
 
         if denom.abs() > 1e-6 {
             let v = self.position - ray.point;
 
-            let distance = v.dot(self.normal) / denom;
+            let distance = v.dot(&self.normal) / denom;
 
             if distance >= 0.0 {
                 return Some(distance);
@@ -117,14 +126,14 @@ impl Object for Plane {
         None
     }
 
-    fn get_normal(&self, _: Vector3<f64>) -> Vector3<f64> {
+    fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
         self.normal
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Light {
-    pub position: Vector3<f64>,
+    pub position: Point3<f64>,
     pub intensity: f64,
     pub color: Vector3<f64>,
 }

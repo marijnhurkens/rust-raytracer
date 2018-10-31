@@ -1,9 +1,9 @@
-use cgmath::*;
+use nalgebra::{Point3, Vector3};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Camera {
-    pub position: Vector3<f64>,
-    pub target: Vector3<f64>,
+    pub position: Point3<f64>,
+    pub target: Point3<f64>,
     pub forward: Vector3<f64>,
     pub up: Vector3<f64>,
     pub right: Vector3<f64>,
@@ -11,7 +11,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(position: Vector3<f64>, target: Vector3<f64>, fov: f64) -> Camera {
+    pub fn new(position: Point3<f64>, target: Point3<f64>, fov: f64) -> Camera {
         // x +right -left
         // y +up -down
         // z +backward -forward
@@ -21,10 +21,10 @@ impl Camera {
         let forward = (target - position).normalize();
 
         // The right vector is the dot product of forward and a unit y vector
-        let right = Vector3::cross(forward, Vector3::unit_y()).normalize();
+        let right = forward.cross(&Vector3::new(0.0,1.0,0.0)).normalize();
 
         // The up vector is the dot product of the right vector and the forward vector
-        let up = Vector3::cross(right, forward).normalize();
+        let up = right.cross(&forward).normalize();
 
         Camera {
             position: position,

@@ -1,4 +1,3 @@
-extern crate cgmath;
 extern crate glutin_window;
 extern crate graphics;
 extern crate image;
@@ -12,7 +11,6 @@ extern crate bvh;
 #[macro_use]
 extern crate lazy_static;
 
-use cgmath::Vector3;
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
 use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
@@ -20,8 +18,7 @@ use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
-use std::{thread, time};
-
+use nalgebra::{Point3,Vector3};
 
 
 mod camera;
@@ -44,13 +41,13 @@ fn main() {
     //let args: Vec<String> = env::args().collect();
 
     let camera = camera::Camera::new(
-        Vector3::new(2.0, 1.4, 4.0),
-        Vector3::new(0.0, -0.5, 0.0),
+        Point3::new(2.0, 1.4, 4.0),
+        Point3::new(0.0, -0.5, 0.0),
         80.0,
     );
 
     let _sphere = scene::Sphere {
-        position: Vector3::new(0.0, 0.0, 0.0),
+        position: Point3::new(0.0, 0.0, 0.0),
         radius: 0.5,
         materials: vec![Box::new(materials::FresnelReflection {
             weight: 1.0,
@@ -63,13 +60,13 @@ fn main() {
     };
 
     let light = scene::Light {
-        position: Vector3::new(-10.0, 2.0, 10.0),
+        position: Point3::new(-10.0, 2.0, 10.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let light_1 = scene::Light {
-        position: Vector3::new(-2.0, 1.5, -5.0),
+        position: Point3::new(-2.0, 1.5, -5.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
@@ -78,11 +75,12 @@ fn main() {
     let mut spheres: Vec<Box<scene::Object>> = vec![];
 
     let spacing = 1.0;
-    let radius = 0.4;
-    let xcount = 2;
-    let ycount = 2;
-    let zcount = 1;
+    let radius = 0.5;
+    let xcount = 3;
+    let ycount = 3;
+    let zcount = 3;
 
+    
     for x in -xcount / 2..xcount / 2 + 1 {
         for y in -ycount / 2..ycount / 2 + 1 {
             for z in -zcount / 2..zcount / 2 + 1 {
@@ -97,7 +95,7 @@ fn main() {
                     (z + zcount / 2) as f64 / zcount as f64,
                 );
                 let sphere = scene::Sphere {
-                    position: Vector3::new(
+                    position: Point3::new(
                         x as f64 * spacing,
                         y as f64 * spacing,
                         -z as f64 * spacing,
@@ -108,7 +106,7 @@ fn main() {
                             weight: 1.0,
                             glossiness: 1.0,
                             ior: 1.5,
-                            reflection: 0.8,
+                            reflection: 1.0,
                             refraction: 0.0,
                             color: c,
                         }),
@@ -125,21 +123,21 @@ fn main() {
     }
 
     let plane = scene::Plane {
-        position: Vector3::new(0.0, -1.3, 0.0),
+        position: Point3::new(0.0, -1.3, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
-            // Box::new(materials::Lambert {
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            //     weight: 1.0,
-            // }),
-            Box::new(materials::FresnelReflection {
+            Box::new(materials::Lambert {
                 color: Vector3::new(0.5, 0.5, 0.5),
-                glossiness: 0.9,
-                ior: 1.5,
-                reflection: 0.0,
-                refraction: 0.0,
                 weight: 1.0,
             }),
+            // Box::new(materials::FresnelReflection {
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            //     glossiness: 0.9,
+            //     ior: 1.5,
+            //     reflection: 0.0,
+            //     refraction: 0.0,
+            //     weight: 1.0,
+            // }),
         ],
     };
 

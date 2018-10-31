@@ -1,8 +1,8 @@
-use cgmath::*;
+use nalgebra::Vector3;
 use rand::{thread_rng, Rng};
 
 pub fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
-    vec - 2.0 * vec.dot(normal) * normal
+    vec - 2.0 * vec.dot(&normal) * normal
 }
 
 pub fn get_random_in_unit_sphere() -> Vector3<f64> {
@@ -14,7 +14,7 @@ pub fn get_random_in_unit_sphere() -> Vector3<f64> {
         vec = 2.0 * Vector3::new(rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>())
             - Vector3::new(1.0, 1.0, 1.0);
 
-        vec.dot(vec) >= 1.0
+        vec.dot(&vec) >= 1.0
     } {}
 
     vec
@@ -26,7 +26,7 @@ pub fn get_fresnel_ratio(normal: Vector3<f64>, angle_of_incidence: Vector3<f64>,
     // FROM POVRAY
     // https://github.com/POV-Ray/povray/blob/master/source/core/render/trace.cpp#L2668
 
-    let cos_theta_incidence = normal.dot(angle_of_incidence).abs();
+    let cos_theta_incidence = normal.dot(&angle_of_incidence).abs();
     let sqrg = ior * ior + cos_theta_incidence * cos_theta_incidence - 1.0;
 
     if sqrg <= 0.0 {
@@ -58,7 +58,7 @@ pub fn get_refract_ray(
     angle_of_incidence: Vector3<f64>,
     ior: f64,
 ) -> Option<Vector3<f64>> {
-    let mut cosi = angle_of_incidence.dot(normal);
+    let mut cosi = angle_of_incidence.dot(&normal);
 
     // clamp
     if cosi > 1.0 {
@@ -124,9 +124,9 @@ mod tests {
     }
 
     #[test]
-    fn test_fresnel_ratio_half_at_around_80_deg_on_normal() {
+    fn test_fresnel_ratio_half_at_around_82_deg_on_normal() {
         let normal = Vector3::new(0.0, 0.0, -1.0); // normal is straight forward
-        let angle_of_incidence = Vector3::new(1.0, 0.0, 0.2); // impact is 80 at normal
+        let angle_of_incidence = Vector3::new(1.0, 0.0, 0.1259879).normalize(); // impact is 82 at normal
         let ior = 1.5; // Test ior
 
         let ratio = get_fresnel_ratio(normal, angle_of_incidence, ior);

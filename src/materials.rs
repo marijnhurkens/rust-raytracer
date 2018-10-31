@@ -1,4 +1,4 @@
-use cgmath::*;
+use nalgebra::{Point3,Vector3};
 use helpers::*;
 use renderer;
 use scene;
@@ -10,7 +10,7 @@ pub trait Material: Debug + Send + Sync {
         &self,
         ray: renderer::Ray,
         scene: &scene::Scene,
-        point_of_intersection: Vector3<f64>,
+        point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
         contribution: f64,
@@ -34,7 +34,7 @@ impl Material for Lambert {
         &self,
         _ray: renderer::Ray,
         scene: &scene::Scene,
-        point_of_intersection: Vector3<f64>,
+        point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
         contribution: f64,
@@ -45,15 +45,15 @@ impl Material for Lambert {
         // Check all the lights for visibility if visible use
         // the cross product of the normal and the vector to the light
         // to calculate the lambert contribution.
-        for light in scene.lights.clone() {
-            if !renderer::check_light_visible(point_of_intersection + normal * 1e-4, &scene, light)
+        for light in &scene.lights {
+            if !renderer::check_light_visible(point_of_intersection + normal * 1e-4, &scene, *light)
             {
                 continue;
             }
 
             let contribution = (light.position - point_of_intersection)
                 .normalize()
-                .dot(normal)
+                .dot(&normal)
                 * light.intensity;
             if contribution > 0.0 {
                 lights_contribution += contribution;
@@ -102,7 +102,7 @@ impl Material for Reflection {
         &self,
         ray: renderer::Ray,
         scene: &scene::Scene,
-        point_of_intersection: Vector3<f64>,
+        point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
         contribution: f64,
@@ -137,7 +137,7 @@ impl Material for Refraction {
         &self,
         ray: renderer::Ray,
         scene: &scene::Scene,
-        point_of_intersection: Vector3<f64>,
+        point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
         contribution: f64,
@@ -180,7 +180,7 @@ impl Material for FresnelReflection {
         &self,
         ray: renderer::Ray,
         scene: &scene::Scene,
-        point_of_intersection: Vector3<f64>,
+        point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
         contribution: f64,
@@ -191,7 +191,7 @@ impl Material for FresnelReflection {
         let mut lambert_ray_color = Vector3::new(0.0, 0.0, 0.0);
         let mut lambert_lights_contribution = 0.0;
 
-        let outside = ray.direction.dot(normal) < 0.0;
+        let outside = ray.direction.dot(&normal) < 0.0;
 
         let bias = 0.001 * normal;
 
@@ -253,7 +253,7 @@ impl Material for FresnelReflection {
 
                 let contribution = (light.position - point_of_intersection)
                     .normalize()
-                    .dot(normal)
+                    .dot(&normal)
                     * light.intensity;
                 if contribution > 0.0 {
                     lambert_lights_contribution += contribution;
