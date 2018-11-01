@@ -19,6 +19,7 @@ use piston::input::*;
 use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
 use nalgebra::{Point3,Vector3};
+use bvh::bvh::BVH;
 
 
 mod camera;
@@ -57,6 +58,7 @@ fn main() {
             refraction: 0.4,
             color: Vector3::new(0.4, 0.4, 0.4),
         })],
+        node_index: 0,
     };
 
     let light = scene::Light {
@@ -72,7 +74,7 @@ fn main() {
     };
 
     // Setup a basic test scene
-    let mut spheres: Vec<Box<scene::Object>> = vec![];
+    let mut spheres_boxed: Vec<Box<scene::Object>>= vec![];
 
     let spacing = 1.0;
     let radius = 0.5;
@@ -115,9 +117,12 @@ fn main() {
                         //     weight: 1.0,
                         // }),
                     ],
+                    node_index: 0,
                 };
 
-                spheres.push(Box::new(sphere));
+               
+
+                spheres_boxed.push(Box::new(sphere));
             }
         }
     }
@@ -139,12 +144,15 @@ fn main() {
             //     weight: 1.0,
             // }),
         ],
+        node_index: 0,
     };
+
+    let bvh =  BVH::build(&mut spheres_boxed);
 
     let mut scene = scene::Scene {
         bg_color: Vector3::new(0.7, 0.7, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
-        spheres: vec![],                       //spheres,
-        objects: spheres,
+        objects: spheres_boxed,                      //spheres,
+        bvh: bvh,
         lights: vec![light, light_1],
     };
 

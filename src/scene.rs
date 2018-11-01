@@ -1,35 +1,53 @@
 use bvh::aabb::{Bounded, AABB};
+use bvh::bounding_hierarchy::{BoundingHierarchy, BHShape};
 use bvh::bvh::BVH;
 use materials;
 use nalgebra::{Vector3, Point3};
 use renderer;
 use std::fmt::Debug;
 
-#[derive(Debug)]
 pub struct Scene {
     pub bg_color: Vector3<f64>,
-    pub spheres: Vec<Sphere>,
     pub objects: Vec<Box<Object>>,
+    pub bvh: BVH,
     pub lights: Vec<Light>,
 }
 
 impl Scene {
     pub fn push_object(&mut self, o: Box<dyn Object>) {
-        self.objects.push(o);
+        //self.objects.push(o);
     }
 }
 
-pub trait Object: Debug + Send + Sync {
+pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<Box<materials::Material>>;
     fn test_intersect(&self, renderer::Ray) -> Option<f64>;
     fn get_normal(&self, Point3<f64>) -> Vector3<f64>;
 }
+
+impl Bounded for Box<Object> {
+      fn aabb(&self) -> AABB {
+          (**self).aabb()
+      }
+}
+
+impl BHShape for Box<Object> {
+    fn set_bh_node_index(&mut self, index: usize) {
+        (**self).set_bh_node_index(index);
+    }
+
+    fn bh_node_index(&self) -> usize {
+        (**self).bh_node_index()
+    }
+}
+
 
 #[derive(Debug)]
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
     pub materials: Vec<Box<materials::Material>>,
+    pub node_index: usize,
 }
 
 impl Object for Sphere {
@@ -89,20 +107,31 @@ impl Object for Sphere {
     }
 }
 
-// impl Bounded for Sphere {
-//     fn aabb(&self) -> AABB {
-//         let half_size = Vector3::new(self.radius, self.radius, self.radius);
-//         let min = self.position - half_size;
-//         let max = self.position + half_size;
-//         AABB::with_bounds(min, max as f32)
-//     }
-// }
+impl Bounded for Sphere {
+    fn aabb(&self) -> AABB {
+        let half_size = Vector3::new(self.radius, self.radius, self.radius);
+        let min = self.position - half_size;
+        let max = self.position + half_size;
+        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
+    }
+}
+
+impl BHShape for Sphere {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}
 
 #[derive(Debug)]
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
     pub materials: Vec<Box<materials::Material>>,
+    pub node_index: usize,
 }
 
 impl Object for Plane {
@@ -128,6 +157,28 @@ impl Object for Plane {
 
     fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
         self.normal
+    }
+}
+
+impl Bounded for Plane {
+    fn aabb(&self) -> AABB {
+        use std::f64;
+
+        // The plane is infinite
+        let half_size = Vector3::new(f64::MAX, f64::MAX, f64::MAX);
+        let min = self.position - half_size;
+        let max = self.position + half_size;
+        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
+    }
+}
+
+impl BHShape for Plane {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
     }
 }
 

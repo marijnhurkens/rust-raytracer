@@ -19,7 +19,7 @@ pub trait Material: Debug + Send + Sync {
     fn get_weight(&self) -> f64;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Lambert {
     pub color: Vector3<f64>,
     pub weight: f64,
@@ -83,7 +83,7 @@ impl Material for Lambert {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Reflection {
     pub weight: f64,
     pub glossiness: f64,

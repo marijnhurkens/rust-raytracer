@@ -1,6 +1,6 @@
 use camera::Camera;
-use nalgebra::{Point3, Vector3};
 use image;
+use nalgebra::{Point3, Vector3};
 use rand::*;
 use scene::{Light, Object, Scene};
 use std::collections::HashMap;
@@ -265,7 +265,16 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
 fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Object>)> {
     let mut closest: Option<(f64, &Box<Object>)> = None;
 
-    for object in &scene.objects {
+    let bvh_ray = bvh::ray::Ray::new(
+        nalgebra::convert(ray.point),
+        nalgebra::convert(ray.direction),
+    );
+
+    let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
+
+    //let hit_sphere_aabbs = &scene.objects;
+
+    for object in hit_sphere_aabbs {
         if let Some(dist) = object.test_intersect(ray) {
             // If we found an intersection we check if the current
             // closest intersection is farther than the intersection
