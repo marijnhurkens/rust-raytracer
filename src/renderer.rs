@@ -10,10 +10,10 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 12;
+const THREAD_COUNT: u32 = 8;
 const BUCKETS: u32 = THREAD_COUNT * 10;
 const MAX_DEPTH: u32 = 6;
-pub const SAMPLES: u32 = 30;
+pub const SAMPLES: u32 = 25;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 

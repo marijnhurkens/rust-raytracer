@@ -188,7 +188,10 @@ fn main() {
         let mut glyph_cache =
             GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
 
-        let mut events = Events::new(EventSettings::new());
+        let event_settings = EventSettings::new();
+        event_settings.max_fps(30);
+
+        let mut events = Events::new(event_settings);
         while let Some(e) = events.next(&mut window) {
             // draw current render state
             if let Some(args) = e.render_args() {
