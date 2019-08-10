@@ -8,30 +8,30 @@ use std::fmt::Debug;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
-    pub objects: Vec<Box<Object>>,
+    pub objects: Vec<Box<dyn Object>>,
     pub bvh: BVH,
     pub lights: Vec<Light>,
 }
 
 impl Scene {
     pub fn push_object(&mut self, o: Box<dyn Object>) {
-        //self.objects.push(o);
+        self.objects.push(o);
     }
 }
 
 pub trait Object: Debug + Send + Sync + Bounded + BHShape {
-    fn get_materials(&self) -> &Vec<Box<materials::Material>>;
+    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
     fn test_intersect(&self, renderer::Ray) -> Option<f64>;
     fn get_normal(&self, Point3<f64>) -> Vector3<f64>;
 }
 
-impl Bounded for Box<Object> {
+impl Bounded for Box<dyn Object> {
       fn aabb(&self) -> AABB {
           (**self).aabb()
       }
 }
 
-impl BHShape for Box<Object> {
+impl BHShape for Box<dyn Object> {
     fn set_bh_node_index(&mut self, index: usize) {
         (**self).set_bh_node_index(index);
     }
@@ -46,12 +46,12 @@ impl BHShape for Box<Object> {
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
-    pub materials: Vec<Box<materials::Material>>,
+    pub materials: Vec<Box<dyn materials::Material>>,
     pub node_index: usize,
 }
 
 impl Object for Sphere {
-    fn get_materials(&self) -> &Vec<Box<materials::Material>> {
+    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
     }
 
@@ -130,12 +130,12 @@ impl BHShape for Sphere {
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
-    pub materials: Vec<Box<materials::Material>>,
+    pub materials: Vec<Box<dyn materials::Material>>,
     pub node_index: usize,
 }
 
 impl Object for Plane {
-    fn get_materials(&self) -> &Vec<Box<materials::Material>> {
+    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
     }
 

@@ -10,10 +10,10 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 8;
+const THREAD_COUNT: u32 = 12;
 const BUCKETS: u32 = THREAD_COUNT * 10;
-const MAX_DEPTH: u32 = 12;
-pub const SAMPLES: u32 = 70;
+const MAX_DEPTH: u32 = 3;
+pub const SAMPLES: u32 = 3;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 
@@ -263,7 +263,7 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
 }
 
 fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Object>)> {
-    let mut closest: Option<(f64, &Box<Object>)> = None;
+    let mut closest: Option<(f64, &Box<dyn Object>)> = None;
 
     let bvh_ray = bvh::ray::Ray::new(
         nalgebra::convert(ray.point),

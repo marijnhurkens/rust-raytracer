@@ -1,26 +1,24 @@
+extern crate bvh;
 extern crate glutin_window;
 extern crate graphics;
 extern crate image;
+extern crate nalgebra;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
-extern crate nalgebra;
-extern crate bvh;
-
 
 #[macro_use]
 extern crate lazy_static;
 
+use bvh::bvh::BVH;
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
+use nalgebra::{Point3, Vector3};
 use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
-use nalgebra::{Point3,Vector3};
-use bvh::bvh::BVH;
-
 
 mod camera;
 mod helpers;
@@ -28,8 +26,8 @@ mod materials;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 800;
-const IMAGE_HEIGHT: u32 = 800;
+const IMAGE_WIDTH: u32 = 600;
+const IMAGE_HEIGHT: u32 = 600;
 const OUTPUT: &str = "window";
 
 lazy_static! {
@@ -41,11 +39,7 @@ lazy_static! {
 fn main() {
     //let args: Vec<String> = env::args().collect();
 
-    let camera = camera::Camera::new(
-        Point3::new(2.0, 1.4, 4.0),
-        Point3::new(0.0, -0.5, 0.0),
-        80.0,
-    );
+    let camera = camera::Camera::new(Point3::new(0.0, 0.0, 3.0), Point3::new(0.0, 0.0, 0.0), 90.0);
 
     let _sphere = scene::Sphere {
         position: Point3::new(0.0, 0.0, 0.0),
@@ -74,7 +68,7 @@ fn main() {
     };
 
     // Setup a basic test scene
-    let mut spheres_boxed: Vec<Box<scene::Object>>= vec![];
+    let mut spheres_boxed: Vec<Box<dyn scene::Object>> = vec![];
 
     let spacing = 1.0;
     let radius = 0.5;
@@ -82,7 +76,6 @@ fn main() {
     let ycount = 3;
     let zcount = 3;
 
-    
     for x in -xcount / 2..xcount / 2 + 1 {
         for y in -ycount / 2..ycount / 2 + 1 {
             for z in -zcount / 2..zcount / 2 + 1 {
@@ -120,8 +113,6 @@ fn main() {
                     node_index: 0,
                 };
 
-               
-
                 spheres_boxed.push(Box::new(sphere));
             }
         }
@@ -147,11 +138,11 @@ fn main() {
         node_index: 0,
     };
 
-    let bvh =  BVH::build(&mut spheres_boxed);
+    let bvh = BVH::build(&mut spheres_boxed);
 
     let mut scene = scene::Scene {
         bg_color: Vector3::new(0.7, 0.7, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
-        objects: spheres_boxed,                      //spheres,
+        objects: spheres_boxed,                //spheres,
         bvh: bvh,
         lights: vec![light, light_1],
     };
@@ -164,7 +155,7 @@ fn main() {
     if OUTPUT == "window" {
         let opengl = OpenGL::V3_2;
         let mut window: Window = WindowSettings::new("Rust Raytracer", [IMAGE_WIDTH, IMAGE_HEIGHT])
-            .opengl(opengl)
+            .graphics_api(opengl)
             .exit_on_esc(true)
             .build()
             .unwrap();
@@ -202,7 +193,8 @@ fn main() {
                         &mut glyph_cache,
                         transform,
                         gl,
-                    ).expect("Error drawing text.");
+                    )
+                    .expect("Error drawing text.");
                 });
             }
         }
