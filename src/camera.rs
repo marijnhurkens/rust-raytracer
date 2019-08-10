@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Vector3};
+use bvh::nalgebra::{Point3, Vector3};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Camera {

@@ -1,6 +1,6 @@
+use bvh::nalgebra::{Point3, Vector3};
 use camera::Camera;
 use image;
-use nalgebra::{Point3, Vector3};
 use rand::*;
 use scene::{Light, Object, Scene};
 use std::collections::HashMap;
@@ -12,8 +12,8 @@ use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 12;
 const BUCKETS: u32 = THREAD_COUNT * 10;
-const MAX_DEPTH: u32 = 3;
-pub const SAMPLES: u32 = 3;
+const MAX_DEPTH: u32 = 6;
+pub const SAMPLES: u32 = 30;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 
@@ -107,8 +107,6 @@ pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
                 // prevent rounding error, cap at max work
                 let work_end = work.end.min(WORK);
 
-                let time_start = SystemTime::now();
-
                 for pos in work.start..work_end {
                     let rays =
                         get_rays_at(camera, image_width, image_height, pos, SAMPLES).unwrap();
@@ -139,18 +137,18 @@ pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
 
                 let mut stats = STATS.write().unwrap();
 
-                let duration = time_start.elapsed().expect("Duration failed!");
                 let rays_done = (work.end - work.start) * SAMPLES;
-
-                let secs = duration.as_secs();
-                let sub_nanos = duration.subsec_nanos();
-                let nanos = secs * 1_000_000_000 + sub_nanos as u64;
 
                 stats.rays_done += rays_done;
 
                 if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
+                    let duration = stats_thread.start_time.elapsed().expect("Duration failed!");
+                    let secs = duration.as_secs();
+                    let sub_nanos = duration.subsec_nanos();
+                    let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+
                     stats_thread.rays_done += rays_done;
-                    stats_thread.ns_per_ray = nanos as f64 / rays_done as f64;
+                    stats_thread.ns_per_ray = nanos as f64 / stats_thread.rays_done as f64;
                 }
             } // end of work loop
 
@@ -266,14 +264,11 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
     let mut closest: Option<(f64, &Box<dyn Object>)> = None;
 
     let bvh_ray = bvh::ray::Ray::new(
-        nalgebra::convert(ray.point),
-        nalgebra::convert(ray.direction),
+        bvh::nalgebra::convert(ray.point),
+        bvh::nalgebra::convert(ray.direction),
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
-
-    //let hit_sphere_aabbs = &scene.objects;
-
     for object in hit_sphere_aabbs {
         if let Some(dist) = object.test_intersect(ray) {
             // If we found an intersection we check if the current

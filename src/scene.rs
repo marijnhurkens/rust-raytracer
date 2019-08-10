@@ -1,8 +1,8 @@
 use bvh::aabb::{Bounded, AABB};
-use bvh::bounding_hierarchy::{BoundingHierarchy, BHShape};
+use bvh::bounding_hierarchy::{BHShape, BoundingHierarchy};
 use bvh::bvh::BVH;
+use bvh::nalgebra::{Point3, Vector3};
 use materials;
-use nalgebra::{Vector3, Point3};
 use renderer;
 use std::fmt::Debug;
 
@@ -26,9 +26,9 @@ pub trait Object: Debug + Send + Sync + Bounded + BHShape {
 }
 
 impl Bounded for Box<dyn Object> {
-      fn aabb(&self) -> AABB {
-          (**self).aabb()
-      }
+    fn aabb(&self) -> AABB {
+        (**self).aabb()
+    }
 }
 
 impl BHShape for Box<dyn Object> {
@@ -40,7 +40,6 @@ impl BHShape for Box<dyn Object> {
         (**self).bh_node_index()
     }
 }
-
 
 #[derive(Debug)]
 pub struct Sphere {
@@ -112,7 +111,7 @@ impl Bounded for Sphere {
         let half_size = Vector3::new(self.radius, self.radius, self.radius);
         let min = self.position - half_size;
         let max = self.position + half_size;
-        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
+        AABB::with_bounds(bvh::nalgebra::convert(min), bvh::nalgebra::convert(max))
     }
 }
 
@@ -162,13 +161,16 @@ impl Object for Plane {
 
 impl Bounded for Plane {
     fn aabb(&self) -> AABB {
+        use std::f32;
         use std::f64;
 
         // The plane is infinite
-        let half_size = Vector3::new(f64::MAX, f64::MAX, f64::MAX);
+        const MAX_SIZE: f64 = 100000.0;
+
+        let half_size = Vector3::new(MAX_SIZE, MAX_SIZE, MAX_SIZE);
         let min = self.position - half_size;
         let max = self.position + half_size;
-        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
+        AABB::with_bounds(bvh::nalgebra::convert(min), bvh::nalgebra::convert(max))
     }
 }
 

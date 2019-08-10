@@ -2,7 +2,6 @@ extern crate bvh;
 extern crate glutin_window;
 extern crate graphics;
 extern crate image;
-extern crate nalgebra;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
@@ -11,9 +10,9 @@ extern crate rand;
 extern crate lazy_static;
 
 use bvh::bvh::BVH;
+use bvh::nalgebra::{Point3, Vector3};
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
-use nalgebra::{Point3, Vector3};
 use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
 use piston::event_loop::*;
 use piston::input::*;
@@ -26,8 +25,8 @@ mod materials;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 600;
-const IMAGE_HEIGHT: u32 = 600;
+const IMAGE_WIDTH: u32 = 1700;
+const IMAGE_HEIGHT: u32 =1300;
 const OUTPUT: &str = "window";
 
 lazy_static! {
@@ -39,7 +38,7 @@ lazy_static! {
 fn main() {
     //let args: Vec<String> = env::args().collect();
 
-    let camera = camera::Camera::new(Point3::new(0.0, 0.0, 3.0), Point3::new(0.0, 0.0, 0.0), 90.0);
+    let camera = camera::Camera::new(Point3::new(3.0, 0.0, 3.0), Point3::new(0.0,0.0, 0.0), 80.0);
 
     let _sphere = scene::Sphere {
         position: Point3::new(0.0, 0.0, 0.0),
@@ -56,13 +55,13 @@ fn main() {
     };
 
     let light = scene::Light {
-        position: Point3::new(-10.0, 2.0, 10.0),
+        position: Point3::new(7.0, 2.0, 10.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let light_1 = scene::Light {
-        position: Point3::new(-2.0, 1.5, -5.0),
+        position: Point3::new(9.0, 1.5, -5.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
@@ -70,11 +69,11 @@ fn main() {
     // Setup a basic test scene
     let mut spheres_boxed: Vec<Box<dyn scene::Object>> = vec![];
 
-    let spacing = 1.0;
-    let radius = 0.5;
-    let xcount = 3;
-    let ycount = 3;
-    let zcount = 3;
+    let spacing = 0.3;
+    let radius = 0.1;
+    let xcount = 10;
+    let ycount = 10;
+    let zcount = 10;
 
     for x in -xcount / 2..xcount / 2 + 1 {
         for y in -ycount / 2..ycount / 2 + 1 {
@@ -99,7 +98,7 @@ fn main() {
                     materials: vec![
                         Box::new(materials::FresnelReflection {
                             weight: 1.0,
-                            glossiness: 1.0,
+                            glossiness: 0.9,
                             ior: 1.5,
                             reflection: 1.0,
                             refraction: 0.0,
@@ -122,21 +121,44 @@ fn main() {
         position: Point3::new(0.0, -1.3, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
-            Box::new(materials::Lambert {
-                color: Vector3::new(0.5, 0.5, 0.5),
-                weight: 1.0,
-            }),
-            // Box::new(materials::FresnelReflection {
+            // Box::new(materials::Lambert {
             //     color: Vector3::new(0.5, 0.5, 0.5),
-            //     glossiness: 0.9,
-            //     ior: 1.5,
-            //     reflection: 0.0,
-            //     refraction: 0.0,
             //     weight: 1.0,
             // }),
+            Box::new(materials::FresnelReflection {
+                color: Vector3::new(0.9, 0.9, 0.9),
+                glossiness: 1.0,
+                ior: 1.5,
+                reflection: 0.8,
+                refraction: 0.0,
+                weight: 1.0,
+            }),
         ],
         node_index: 0,
     };
+
+      let plane2 = scene::Plane {
+        position: Point3::new(-2.0, 0.0, 0.0),
+        normal: Vector3::new(1.0, 0.3, -0.3), 
+        materials: vec![
+            // Box::new(materials::Lambert {
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            //     weight: 1.0,
+            // }),
+            Box::new(materials::FresnelReflection {
+                color: Vector3::new(0.9, 0.9, 0.9),
+                glossiness: 1.0,
+                ior: 1.5,
+                reflection: 0.8,
+                refraction: 0.0,
+                weight: 1.0,
+            }),
+        ],
+        node_index: 0,
+    };
+
+    spheres_boxed.push(Box::new(plane));
+    spheres_boxed.push(Box::new(plane2));
 
     let bvh = BVH::build(&mut spheres_boxed);
 
@@ -147,7 +169,7 @@ fn main() {
         lights: vec![light, light_1],
     };
 
-    scene.push_object(Box::new(plane));
+    // scene.push_object(Box::new(plane));
 
     // Start the render threads
     let threads = renderer::render(camera, Arc::new(scene));
@@ -184,6 +206,13 @@ fn main() {
                 gl.draw(args.viewport(), |c, gl| {
                     clear([0.0, 0.0, 0.0, 1.0], gl);
                     image(&texture, c.transform, gl);
+
+                    rectangle(
+                        [0.0, 0.0, 0.0, 0.9],
+                        rectangle::rectangle_by_corners(0.0, 0.0, IMAGE_WIDTH as f64, 25.0),
+                        c.transform.trans(0.0, 0.0),
+                        gl,
+                    );
 
                     let transform = c.transform.trans(10.0, 15.0);
                     text(
