@@ -1,5 +1,5 @@
 use bvh::aabb::{Bounded, AABB};
-use bvh::bounding_hierarchy::{BHShape, BoundingHierarchy};
+use bvh::bounding_hierarchy::{BHShape};
 use bvh::bvh::BVH;
 use bvh::nalgebra::{Point3, Vector3};
 use materials;

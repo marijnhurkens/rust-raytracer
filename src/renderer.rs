@@ -3,6 +3,7 @@ use camera::Camera;
 use image;
 use rand::*;
 use scene::{Light, Object, Scene};
+use std::cmp;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -11,16 +12,16 @@ use std::time::SystemTime;
 use IMAGE_BUFFER;
 
 const THREAD_COUNT: u32 = 10;
-const BUCKETS: u32 = THREAD_COUNT * 8;
+const BUCKET_WIDTH: u32 = 10;
+const BUCKET_HEIGHT: u32 = 10;
 const MAX_DEPTH: u32 = 6;
-pub const SAMPLES: u32 = 10;
-const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
+pub const SAMPLES: u32 = 100;
 const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 
 #[derive(Copy, Clone, Debug)]
 struct Work {
-    start: u32,
-    end: u32,
+    x: u32,
+    y: u32,
 }
 
 #[derive(Debug)]
@@ -46,13 +47,14 @@ pub struct Ray {
 lazy_static! {
     static ref WORK_QUEUE: Mutex<Vec<Work>> = {
         let mut vec: Vec<Work> = Vec::new();
-        let per_bucket = WORK / BUCKETS;
 
-        for x in 0..BUCKETS {
-            vec.push(Work {
-                start: x * per_bucket,
-                end: x * per_bucket + per_bucket,
-            });
+        for x in 0..(::IMAGE_WIDTH as f32 / BUCKET_WIDTH as f32).ceil() as u32 {
+            for y in 0..(::IMAGE_HEIGHT as f32 / BUCKET_HEIGHT as f32).ceil() as u32 {
+                vec.push(Work {
+                    x: x * BUCKET_WIDTH,
+                    y: y * BUCKET_HEIGHT,
+                });
+            }
         }
 
         Mutex::new(vec)
@@ -105,39 +107,41 @@ pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
 
             while let Some(work) = get_work() {
                 // prevent rounding error, cap at max work
-                let work_end = work.end.min(WORK);
+                let x_end = cmp::min(work.x + BUCKET_WIDTH, image_width);
+                let y_end = cmp::min(work.y + BUCKET_HEIGHT, image_height);
 
-                for pos in work.start..work_end {
-                    let rays =
-                        get_rays_at(camera, image_width, image_height, pos, SAMPLES).unwrap();
-                    let rays_len = rays.len();
+                for y in work.y..y_end {
+                    for x in work.x..x_end {
+                        let rays =
+                            get_rays_at(camera, image_width, image_height, x, y, SAMPLES).unwrap();
+                        let rays_len = rays.len();
 
-                    let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
+                        let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
 
-                    // Get the average pixel color using the samples.
-                    for ray in rays {
-                        pixel_color += trace(ray, &thread_scene, 1, 1.0).unwrap();
+                        // Get the average pixel color using the samples.
+                        for ray in rays {
+                            pixel_color += trace(ray, &thread_scene, 1, 1.0).unwrap();
+                        }
+
+                        pixel_color /= rays_len as f64;
+
+                        let pixel_color_rgba = image::Rgba([
+                            ((pixel_color.x.powf(1.0 / GAMMA)) * 255.0) as u8,
+                            ((pixel_color.y.powf(1.0 / GAMMA)) * 255.0) as u8,
+                            ((pixel_color.z.powf(1.0 / GAMMA)) * 255.0) as u8,
+                            255,
+                        ]);
+
+                        IMAGE_BUFFER
+                            .write()
+                            .unwrap()
+                            .put_pixel(x, y, pixel_color_rgba);
                     }
-
-                    pixel_color /= rays_len as f64;
-
-                    let pixel_color_rgba = image::Rgba([
-                        ((pixel_color.x.powf(1.0 / GAMMA)) * 255.0) as u8,
-                        ((pixel_color.y.powf(1.0 / GAMMA)) * 255.0) as u8,
-                        ((pixel_color.z.powf(1.0 / GAMMA)) * 255.0) as u8,
-                        255,
-                    ]);
-
-                    IMAGE_BUFFER.write().unwrap().put_pixel(
-                        pos % image_width,
-                        (pos / image_width) % image_height,
-                        pixel_color_rgba,
-                    );
                 }
 
                 let mut stats = STATS.write().unwrap();
 
-                let rays_done = (work.end - work.start) * SAMPLES;
+                let rays_done = ((x_end - work.x) * (y_end - work.y)) * SAMPLES;
 
                 stats.rays_done += rays_done;
 
@@ -165,14 +169,15 @@ fn get_rays_at(
     camera: Camera,
     width: u32,
     height: u32,
-    pos: u32,
+    pos_x: u32,
+    pos_y: u32,
     samples: u32,
 ) -> Result<Vec<Ray>, &'static str> {
     use std::f64::consts::PI;
     let mut rng = thread_rng();
 
-    let pos_x = pos % width;
-    let pos_y = pos / width;
+    // let pos_x = pos % width;
+    // let pos_y = pos / width;
 
     if pos_y >= height {
         return Err("Position exceeds number of pixels.");

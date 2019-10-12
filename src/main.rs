@@ -170,7 +170,7 @@ fn main() {
 
     let bvh = BVH::build(&mut spheres_boxed);
 
-    let mut scene = scene::Scene {
+    let scene = scene::Scene {
         bg_color: Vector3::new(0.7, 0.7, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
         objects: spheres_boxed,                //spheres,
         bvh: bvh,
@@ -197,7 +197,7 @@ fn main() {
             GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
 
         let event_settings = EventSettings::new();
-        event_settings.max_fps(30);
+        event_settings.max_fps(3);
 
         let mut events = Events::new(event_settings);
         while let Some(e) = events.next(&mut window) {
