@@ -85,7 +85,6 @@ pub fn get_refract_ray(
     let k = 1.0 - eta * eta * (1.0 - cosi * cosi);
     if k < 0.0 {
         // no refraction
-        //println!("No refrac");
         return None;
     } else {
         return Some(eta * angle_of_incidence + (eta * cosi - k.sqrt()) * n);

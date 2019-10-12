@@ -139,14 +139,15 @@ impl Object for Plane {
     }
 
     fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
+        
         let denom = self.normal.dot(&ray.direction);
 
-        if denom.abs() > 1e-6 {
+        if denom.abs() > 1e-4 {
             let v = self.position - ray.point;
 
             let distance = v.dot(&self.normal) / denom;
-
-            if distance >= 0.0 {
+            
+            if distance > 0.0001 {
                 return Some(distance);
             }
         }
@@ -161,11 +162,10 @@ impl Object for Plane {
 
 impl Bounded for Plane {
     fn aabb(&self) -> AABB {
-        use std::f32;
         use std::f64;
 
         // The plane is infinite
-        const MAX_SIZE: f64 = 100000.0;
+        const MAX_SIZE: f64 = 1000000000.0;
 
         let half_size = Vector3::new(MAX_SIZE, MAX_SIZE, MAX_SIZE);
         let min = self.position - half_size;

@@ -10,10 +10,10 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 8;
-const BUCKETS: u32 = THREAD_COUNT * 10;
+const THREAD_COUNT: u32 = 10;
+const BUCKETS: u32 = THREAD_COUNT * 8;
 const MAX_DEPTH: u32 = 6;
-pub const SAMPLES: u32 = 25;
+pub const SAMPLES: u32 = 10;
 const WORK: u32 = ::IMAGE_WIDTH * ::IMAGE_HEIGHT;
 const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 
@@ -230,7 +230,6 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
         return None;
     }
 
-    // for now we just check for intersection with the spheres
     let intersect = check_intersect_scene(ray, scene);
 
     match intersect {
@@ -288,18 +287,37 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
     closest
 }
 
+fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
+    let bvh_ray = bvh::ray::Ray::new(
+        bvh::nalgebra::convert(ray.point),
+        bvh::nalgebra::convert(ray.direction),
+    );
+
+    let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
+    for object in hit_sphere_aabbs {
+        if let Some(dist) = object.test_intersect(ray) {
+            // If we found an intersection we check if distance is less
+            // than the max distance we want to check. If so -> exit with true
+            if dist < max_dist {
+                return true;
+            }
+        }
+    }
+
+    // No intersections found within distance
+    false
+}
+
 pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: Light) -> bool {
     let ray = Ray {
         point: position,
-        direction: light.position - position,
+        direction: bvh::nalgebra::normalize(&(light.position - position)),
     };
 
-    if let Some((dist, _object)) = check_intersect_scene(ray, scene) {
-        if dist < -0.00005 {
-            return true;
-        } else {
-            return false;
-        }
+    let distance = bvh::nalgebra::distance(&position, &light.position);
+
+    if check_intersect_scene_simple(ray, scene, distance) {
+        return false;
     }
 
     true

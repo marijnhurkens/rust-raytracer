@@ -25,8 +25,8 @@ mod materials;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 1700;
-const IMAGE_HEIGHT: u32 =1300;
+const IMAGE_WIDTH: u32 = 800;
+const IMAGE_HEIGHT: u32 = 600;
 const OUTPUT: &str = "window";
 
 lazy_static! {
@@ -38,36 +38,44 @@ lazy_static! {
 fn main() {
     //let args: Vec<String> = env::args().collect();
 
-    let camera = camera::Camera::new(Point3::new(3.0, 0.0, 3.0), Point3::new(0.0,0.0, 0.0), 80.0);
+    let camera = camera::Camera::new(Point3::new(3.0, 0.0, 2.2), Point3::new(0.0, 0.0, 1.0), 50.0);
 
     let _sphere = scene::Sphere {
-        position: Point3::new(0.0, 0.0, 0.0),
-        radius: 0.5,
-        materials: vec![Box::new(materials::FresnelReflection {
+        position: Point3::new(0.0, 0.0, 2.7),
+        radius: 1.0,
+        materials: vec![
+        //     Box::new(materials::FresnelReflection {
+        //     weight: 1.0,
+        //     glossiness: 1.0,
+        //     ior: 1.2,
+        //     reflection: 1.0,
+        //     refraction: 0.0,
+        //     color: Vector3::new(1.0,1.0,1.0),
+        // }),
+           Box::new(materials::Reflection {
             weight: 1.0,
             glossiness: 1.0,
-            ior: 1.3,
-            reflection: 1.0,
-            refraction: 0.4,
-            color: Vector3::new(0.4, 0.4, 0.4),
-        })],
+        }),
+        ],
         node_index: 0,
     };
 
     let light = scene::Light {
-        position: Point3::new(7.0, 2.0, 10.0),
+        position: Point3::new(7.0, 2.0, 0.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     let light_1 = scene::Light {
-        position: Point3::new(9.0, 1.5, -5.0),
+        position: Point3::new(-1.0, 0.0, 8.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
-    // Setup a basic test scene
+    // // Setup a basic test scene
     let mut spheres_boxed: Vec<Box<dyn scene::Object>> = vec![];
+
+    spheres_boxed.push(Box::new(_sphere));
 
     let spacing = 0.3;
     let radius = 0.1;
@@ -118,41 +126,41 @@ fn main() {
     }
 
     let plane = scene::Plane {
-        position: Point3::new(0.0, -1.3, 0.0),
+        position: Point3::new(0.0, -2.0, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
-            // Box::new(materials::Lambert {
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            //     weight: 1.0,
-            // }),
-            Box::new(materials::FresnelReflection {
-                color: Vector3::new(0.9, 0.9, 0.9),
-                glossiness: 1.0,
-                ior: 1.5,
-                reflection: 0.8,
-                refraction: 0.0,
+            Box::new(materials::Lambert {
+                color: Vector3::new(0.5, 0.5, 0.5),
                 weight: 1.0,
             }),
+            // Box::new(materials::FresnelReflection {
+            //     color: Vector3::new(0.9, 0.9, 0.9),
+            //     glossiness: 1.0,
+            //     ior: 1.5,
+            //     reflection: 0.8,
+            //     refraction: 0.0,
+            //     weight: 1.0,
+            // }),
         ],
         node_index: 0,
     };
 
-      let plane2 = scene::Plane {
+    let plane2 = scene::Plane {
         position: Point3::new(-2.0, 0.0, 0.0),
-        normal: Vector3::new(1.0, 0.3, -0.3), 
+        normal: Vector3::new(1.0, 0.0, 0.0), // right
         materials: vec![
-            // Box::new(materials::Lambert {
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            //     weight: 1.0,
-            // }),
-            Box::new(materials::FresnelReflection {
-                color: Vector3::new(0.9, 0.9, 0.9),
-                glossiness: 1.0,
-                ior: 1.5,
-                reflection: 0.8,
-                refraction: 0.0,
+            Box::new(materials::Lambert {
+                color: Vector3::new(0.5, 0.5, 0.5),
                 weight: 1.0,
             }),
+            // Box::new(materials::FresnelReflection {
+            //     color: Vector3::new(0.9, 0.9, 0.9),
+            //     glossiness: 1.0,
+            //     ior: 1.5,
+            //     reflection: 0.8,
+            //     refraction: 0.0,
+            //     weight: 1.0,
+            // }),
         ],
         node_index: 0,
     };
