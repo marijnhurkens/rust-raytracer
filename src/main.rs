@@ -38,24 +38,28 @@ lazy_static! {
 fn main() {
     //let args: Vec<String> = env::args().collect();
 
-    let camera = camera::Camera::new(Point3::new(3.0, 0.2, 2.2), Point3::new(0.0, 0.0, 1.0), 140.0);
+    let camera = camera::Camera::new(
+        Point3::new(3.0, 0.2, 2.2),
+        Point3::new(0.0, 0.0, 1.0),
+        140.0,
+    );
 
     let _sphere = scene::Sphere {
         position: Point3::new(0.0, 0.0, 2.7),
         radius: 1.0,
         materials: vec![
-        //     Box::new(materials::FresnelReflection {
-        //     weight: 1.0,
-        //     glossiness: 1.0,
-        //     ior: 1.2,
-        //     reflection: 1.0,
-        //     refraction: 0.0,
-        //     color: Vector3::new(1.0,1.0,1.0),
-        // }),
-           Box::new(materials::Reflection {
-            weight: 1.0,
-            glossiness: 1.0,
-        }),
+            //     Box::new(materials::FresnelReflection {
+            //     weight: 1.0,
+            //     glossiness: 1.0,
+            //     ior: 1.2,
+            //     reflection: 1.0,
+            //     refraction: 0.0,
+            //     color: Vector3::new(1.0,1.0,1.0),
+            // }),
+            Box::new(materials::Reflection {
+                weight: 1.0,
+                glossiness: 1.0,
+            }),
         ],
         node_index: 0,
     };
@@ -184,7 +188,7 @@ fn main() {
         bucket_width: 16,
         bucket_height: 16,
         depth_limit: 8,
-        samples: 1024
+        samples: 1024,
     };
 
     // Start the render threads

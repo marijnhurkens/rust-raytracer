@@ -21,7 +21,7 @@ impl Camera {
         let forward = (target - position).normalize();
 
         // The right vector is the dot product of forward and a unit y vector
-        let right = forward.cross(&Vector3::new(0.0,1.0,0.0)).normalize();
+        let right = forward.cross(&Vector3::new(0.0, 1.0, 0.0)).normalize();
 
         // The up vector is the dot product of the right vector and the forward vector
         let up = right.cross(&forward).normalize();
