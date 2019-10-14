@@ -192,7 +192,7 @@ fn main() {
     };
 
     // Start the render threads
-    let threads = renderer::render(camera, Arc::new(scene), settings);
+    let (threads, thread_senders) = renderer::render(camera, Arc::new(scene), settings);
 
     if OUTPUT == "window" {
         let opengl = OpenGL::V3_2;
@@ -213,6 +213,17 @@ fn main() {
 
         let mut events = Events::new(event_settings);
         while let Some(e) = events.next(&mut window) {
+            if let Some(Button::Keyboard(key)) = e.press_args() {
+                if key == Key::C {
+                    println!("Stopping from main ");
+                    for thread_sender in &thread_senders {
+                        thread_sender
+                            .send(renderer::ThreadMessage { exit: true })
+                            .unwrap()
+                    }
+                }
+            };
+
             // draw current render state
             if let Some(args) = e.render_args() {
                 // The RwLock doesn't require locking on read, so this doesn't

@@ -12,7 +12,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(position: Point3<f64>, target: Point3<f64>, fov: f64) -> Camera {
-        // x +right -left
+        // x +strafe right - strafe left
         // y +up -down
         // z +backward -forward
 

@@ -5,6 +5,8 @@ use rand::*;
 use scene::{Light, Object, Scene};
 use std::cmp;
 use std::collections::HashMap;
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
@@ -21,6 +23,10 @@ pub struct Settings {
     pub bucket_height: u32,
     pub depth_limit: u32,
     pub samples: u32,
+}
+
+pub struct ThreadMessage {
+    pub exit: bool,
 }
 
 #[derive(Debug)]
@@ -94,10 +100,16 @@ lazy_static! {
     };
 }
 
-pub fn render(camera: Camera, scene: Arc<Scene>, settings: Settings) -> Vec<JoinHandle<()>> {
+pub fn render(
+    camera: Camera,
+    scene: Arc<Scene>,
+    settings: Settings,
+) -> (Vec<JoinHandle<()>>, Vec<Sender<ThreadMessage>>) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
     let mut threads: Vec<JoinHandle<()>> = vec![];
+    let mut thread_senders: Vec<Sender<ThreadMessage>> = vec![];
+
     let work_queue = Arc::new(Mutex::new(WorkQueue::new(settings)));
 
     println!("Start render, w{} px, h{} px", image_width, image_height);
@@ -107,6 +119,9 @@ pub fn render(camera: Camera, scene: Arc<Scene>, settings: Settings) -> Vec<Join
     for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
         let work_queue = work_queue.clone();
+
+        let (thread_sender, thread_receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) =
+            mpsc::channel();
 
         let thread = thread::spawn(move || {
             STATS.write().unwrap().threads.insert(
@@ -130,9 +145,25 @@ pub fn render(camera: Camera, scene: Arc<Scene>, settings: Settings) -> Vec<Join
 
                         for y in work.y..y_end {
                             for x in work.x..x_end {
-                                let rays =
-                                    get_rays_at(camera, image_width, image_height, x, y, settings.samples)
-                                        .unwrap();
+                                match thread_receiver.try_recv() {
+                                    Ok(thread_message) => {
+                                        if thread_message.exit {
+                                            println!("Stopping...");
+                                            return;
+                                        }
+                                    }
+                                    Err(_err) => {}
+                                }
+
+                                let rays = get_rays_at(
+                                    camera,
+                                    image_width,
+                                    image_height,
+                                    x,
+                                    y,
+                                    settings.samples,
+                                )
+                                .unwrap();
                                 let rays_len = rays.len();
 
                                 let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
@@ -181,9 +212,10 @@ pub fn render(camera: Camera, scene: Arc<Scene>, settings: Settings) -> Vec<Join
         }); // end of thread
 
         threads.push(thread);
+        thread_senders.push(thread_sender);
     }
 
-    threads
+    (threads, thread_senders)
 }
 
 fn get_rays_at(
