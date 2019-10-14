@@ -11,21 +11,19 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const THREAD_COUNT: u32 = 10;
-const BUCKET_WIDTH: u32 = 10;
-const BUCKET_HEIGHT: u32 = 10;
 const MAX_DEPTH: u32 = 6;
-pub const SAMPLES: u32 = 100;
-const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
+const GAMMA: f64 = 1.2; // ??? this would normally decode from srgb to linear space, looks fine though
 
-#[derive(Copy, Clone, Debug)]
-struct Work {
-    x: u32,
-    y: u32,
+#[derive(Debug, Copy, Clone)]
+pub struct Settings {
+    pub thread_count: u32,
+    pub bucket_width: u32,
+    pub bucket_height: u32,
+    pub depth_limit: u32,
+    pub samples: u32,
 }
 
 #[derive(Debug)]
-
 pub struct Stats {
     pub rays_done: u32,
     pub threads: HashMap<u32, StatsThread>,
@@ -44,21 +42,45 @@ pub struct Ray {
     pub direction: Vector3<f64>,
 }
 
-lazy_static! {
-    static ref WORK_QUEUE: Mutex<Vec<Work>> = {
-        let mut vec: Vec<Work> = Vec::new();
+#[derive(Debug)]
+struct WorkQueue {
+    queue: Vec<Work>,
+}
 
-        for x in 0..(::IMAGE_WIDTH as f32 / BUCKET_WIDTH as f32).ceil() as u32 {
-            for y in 0..(::IMAGE_HEIGHT as f32 / BUCKET_HEIGHT as f32).ceil() as u32 {
-                vec.push(Work {
-                    x: x * BUCKET_WIDTH,
-                    y: y * BUCKET_HEIGHT,
+#[derive(Debug, Copy, Clone)]
+struct Work {
+    x: u32,
+    y: u32,
+}
+
+impl WorkQueue {
+    fn new(settings: Settings) -> WorkQueue {
+        let mut queue = Vec::new();
+
+        for x in 0..(::IMAGE_WIDTH as f32 / settings.bucket_width as f32).ceil() as u32 {
+            for y in 0..(::IMAGE_HEIGHT as f32 / settings.bucket_height as f32).ceil() as u32 {
+                queue.push(Work {
+                    x: x * settings.bucket_width,
+                    y: y * settings.bucket_height,
                 });
             }
         }
 
-        Mutex::new(vec)
-    };
+        let work_queue = WorkQueue { queue: queue };
+
+        work_queue
+    }
+
+    fn get_work(&mut self) -> Option<Work> {
+        let mut rng = thread_rng();
+        let len = self.queue.len();
+
+        if len == 0 {
+            return None;
+        }
+
+        Some(self.queue.remove(rng.gen_range(0, len)))
+    }
 }
 
 lazy_static! {
@@ -72,29 +94,20 @@ lazy_static! {
     };
 }
 
-fn get_work() -> Option<Work> {
-    let mut rng = thread_rng();
-    let mut queue = WORK_QUEUE.lock().unwrap();
-    let len = queue.len();
-
-    if len == 0 {
-        return None;
-    }
-
-    Some(queue.remove(rng.gen_range(0, len)))
-}
-
-pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
+pub fn render(camera: Camera, scene: Arc<Scene>, settings: Settings) -> Vec<JoinHandle<()>> {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
     let mut threads: Vec<JoinHandle<()>> = vec![];
+    let work_queue = Arc::new(Mutex::new(WorkQueue::new(settings)));
 
     println!("Start render, w{} px, h{} px", image_width, image_height);
-    println!("Camera {:#?}", camera);
+    //println!("Camera {:#?}", camera);
 
     // thread id is used to divide the work
-    for thread_id in 0..THREAD_COUNT {
+    for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
+        let work_queue = work_queue.clone();
+
         let thread = thread::spawn(move || {
             STATS.write().unwrap().threads.insert(
                 thread_id,
@@ -105,59 +118,67 @@ pub fn render(camera: Camera, scene: Arc<Scene>) -> Vec<JoinHandle<()>> {
                 },
             );
 
-            while let Some(work) = get_work() {
-                // prevent rounding error, cap at max work
-                let x_end = cmp::min(work.x + BUCKET_WIDTH, image_width);
-                let y_end = cmp::min(work.y + BUCKET_HEIGHT, image_height);
+            // use loop to split getting work and executing work. Else the lock
+            // would be retained during execution.
+            loop {
+                let work = work_queue.lock().unwrap().get_work(); // drop lock
+                match work {
+                    Some(work) => {
+                        // prevent rounding error, cap at image size
+                        let x_end = cmp::min(work.x + settings.bucket_width, image_width);
+                        let y_end = cmp::min(work.y + settings.bucket_height, image_height);
 
-                for y in work.y..y_end {
-                    for x in work.x..x_end {
-                        let rays =
-                            get_rays_at(camera, image_width, image_height, x, y, SAMPLES).unwrap();
-                        let rays_len = rays.len();
+                        for y in work.y..y_end {
+                            for x in work.x..x_end {
+                                let rays =
+                                    get_rays_at(camera, image_width, image_height, x, y, settings.samples)
+                                        .unwrap();
+                                let rays_len = rays.len();
 
-                        let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
+                                let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
 
-                        // Get the average pixel color using the samples.
-                        for ray in rays {
-                            pixel_color += trace(ray, &thread_scene, 1, 1.0).unwrap();
+                                // Get the average pixel color using the samples.
+                                for ray in rays {
+                                    pixel_color += trace(ray, &thread_scene, 1, 1.0).unwrap();
+                                }
+
+                                pixel_color /= rays_len as f64;
+
+                                let pixel_color_rgba = image::Rgba([
+                                    ((pixel_color.x.powf(1.0 / GAMMA)) * 255.0) as u8,
+                                    ((pixel_color.y.powf(1.0 / GAMMA)) * 255.0) as u8,
+                                    ((pixel_color.z.powf(1.0 / GAMMA)) * 255.0) as u8,
+                                    255,
+                                ]);
+
+                                IMAGE_BUFFER
+                                    .write()
+                                    .unwrap()
+                                    .put_pixel(x, y, pixel_color_rgba);
+                            }
                         }
 
-                        pixel_color /= rays_len as f64;
+                        let mut stats = STATS.write().unwrap();
 
-                        let pixel_color_rgba = image::Rgba([
-                            ((pixel_color.x.powf(1.0 / GAMMA)) * 255.0) as u8,
-                            ((pixel_color.y.powf(1.0 / GAMMA)) * 255.0) as u8,
-                            ((pixel_color.z.powf(1.0 / GAMMA)) * 255.0) as u8,
-                            255,
-                        ]);
+                        let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.samples;
 
-                        IMAGE_BUFFER
-                            .write()
-                            .unwrap()
-                            .put_pixel(x, y, pixel_color_rgba);
+                        stats.rays_done += rays_done;
+
+                        if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
+                            let duration =
+                                stats_thread.start_time.elapsed().expect("Duration failed!");
+                            let secs = duration.as_secs();
+                            let sub_nanos = duration.subsec_nanos();
+                            let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+
+                            stats_thread.rays_done += rays_done;
+                            stats_thread.ns_per_ray = nanos as f64 / stats_thread.rays_done as f64;
+                        }
                     }
+                    None => break,
                 }
-
-                let mut stats = STATS.write().unwrap();
-
-                let rays_done = ((x_end - work.x) * (y_end - work.y)) * SAMPLES;
-
-                stats.rays_done += rays_done;
-
-                if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
-                    let duration = stats_thread.start_time.elapsed().expect("Duration failed!");
-                    let secs = duration.as_secs();
-                    let sub_nanos = duration.subsec_nanos();
-                    let nanos = secs * 1_000_000_000 + sub_nanos as u64;
-
-                    stats_thread.rays_done += rays_done;
-                    stats_thread.ns_per_ray = nanos as f64 / stats_thread.rays_done as f64;
-                }
-            } // end of work loop
-
-            ()
-        });
+            } // end of loop
+        }); // end of thread
 
         threads.push(thread);
     }

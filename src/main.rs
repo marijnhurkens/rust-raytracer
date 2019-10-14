@@ -38,7 +38,7 @@ lazy_static! {
 fn main() {
     //let args: Vec<String> = env::args().collect();
 
-    let camera = camera::Camera::new(Point3::new(3.0, 0.0, 2.2), Point3::new(0.0, 0.0, 1.0), 50.0);
+    let camera = camera::Camera::new(Point3::new(3.0, 0.2, 2.2), Point3::new(0.0, 0.0, 1.0), 140.0);
 
     let _sphere = scene::Sphere {
         position: Point3::new(0.0, 0.0, 2.7),
@@ -179,8 +179,16 @@ fn main() {
 
     // scene.push_object(Box::new(plane));
 
+    let settings = renderer::Settings {
+        thread_count: 6,
+        bucket_width: 16,
+        bucket_height: 16,
+        depth_limit: 8,
+        samples: 1024
+    };
+
     // Start the render threads
-    let threads = renderer::render(camera, Arc::new(scene));
+    let threads = renderer::render(camera, Arc::new(scene), settings);
 
     if OUTPUT == "window" {
         let opengl = OpenGL::V3_2;
@@ -243,7 +251,7 @@ fn main() {
 
         let mut done = false;
 
-        let total_rays = IMAGE_WIDTH * IMAGE_HEIGHT * renderer::SAMPLES;
+        //let total_rays = IMAGE_WIDTH * IMAGE_HEIGHT * renderer::SAMPLES;
 
         // while !done {
         //     let stats = renderer::STATS.read().unwrap();
