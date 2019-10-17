@@ -1,0 +1,24 @@
+lights:
+  - light-1:
+    type: point
+    options:
+      position: [4.0, 4.0, -4.0]
+      intensity: 1.0
+      color: [1.0, 1.0, 1.0]
+
+objects:
+  - sphere-1:
+    type: sphere
+    options:
+      position: [1.0, 1.0, 1.0]
+      radius: 1.0
+      materials:
+        - fresnel:
+          type: fresnel
+          options:
+            weight: 1.0
+            glossiness: 0.95
+            ior: 1.5
+            color: [1.0, 1.0, 1.0]
+            reflection: 0.95
+            refraction: 0.0

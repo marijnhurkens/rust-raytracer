@@ -19,9 +19,10 @@ use piston::input::*;
 use piston::window::WindowSettings;
 use std::sync::{Arc, RwLock};
 
+use scene::*;
+
 mod camera;
 mod helpers;
-mod materials;
 mod renderer;
 mod scene;
 
@@ -44,7 +45,7 @@ fn main() {
         140.0,
     );
 
-    let _sphere = scene::Sphere {
+    let _sphere = objects::Sphere {
         position: Point3::new(0.0, 0.0, 2.7),
         radius: 1.0,
         materials: vec![
@@ -64,20 +65,20 @@ fn main() {
         node_index: 0,
     };
 
-    let light = scene::Light {
+    let light = lights::Light {
         position: Point3::new(7.0, 2.0, 0.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
-    let light_1 = scene::Light {
+    let light_1 = lights::Light {
         position: Point3::new(-1.0, 0.0, 8.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
     // // Setup a basic test scene
-    let mut spheres_boxed: Vec<Box<dyn scene::Object>> = vec![];
+    let mut spheres_boxed: Vec<Box<dyn objects::Object>> = vec![];
 
     spheres_boxed.push(Box::new(_sphere));
 
@@ -100,7 +101,7 @@ fn main() {
                     (y + ycount / 2) as f64 / ycount as f64,
                     (z + zcount / 2) as f64 / zcount as f64,
                 );
-                let sphere = scene::Sphere {
+                let sphere = objects::Sphere {
                     position: Point3::new(
                         x as f64 * spacing,
                         y as f64 * spacing,
@@ -129,7 +130,7 @@ fn main() {
         }
     }
 
-    let plane = scene::Plane {
+    let plane = objects::Plane {
         position: Point3::new(0.0, -2.0, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
@@ -149,7 +150,7 @@ fn main() {
         node_index: 0,
     };
 
-    let plane2 = scene::Plane {
+    let plane2 = objects::Plane {
         position: Point3::new(-2.0, 0.0, 0.0),
         normal: Vector3::new(1.0, 0.0, 0.0), // right
         materials: vec![

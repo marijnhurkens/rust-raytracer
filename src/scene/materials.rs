@@ -1,15 +1,17 @@
 use bvh::nalgebra::{Point3, Vector3};
 use helpers::*;
-use renderer;
-use scene;
 use std::clone::Clone;
 use std::fmt::Debug;
+
+use crate::renderer;
+
+use super::*;
 
 pub trait Material: Debug + Send + Sync {
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
-        scene: &scene::Scene,
+        scene: &Scene,
         point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
@@ -33,7 +35,7 @@ impl Material for Lambert {
     fn get_surface_color(
         &self,
         _ray: renderer::Ray,
-        scene: &scene::Scene,
+        scene: &Scene,
         point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
@@ -105,7 +107,7 @@ impl Material for Reflection {
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
-        scene: &scene::Scene,
+        scene: &Scene,
         point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
@@ -142,7 +144,7 @@ impl Material for Refraction {
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
-        scene: &scene::Scene,
+        scene: &Scene,
         point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,
@@ -187,7 +189,7 @@ impl Material for FresnelReflection {
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
-        scene: &scene::Scene,
+        scene: &Scene,
         point_of_intersection: Point3<f64>,
         normal: Vector3<f64>,
         depth: u32,

@@ -1,23 +1,11 @@
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::{BHShape};
-use bvh::bvh::BVH;
 use bvh::nalgebra::{Point3, Vector3};
-use materials;
-use renderer;
 use std::fmt::Debug;
 
-pub struct Scene {
-    pub bg_color: Vector3<f64>,
-    pub objects: Vec<Box<dyn Object>>,
-    pub bvh: BVH,
-    pub lights: Vec<Light>,
-}
+use super::*;
+use crate::renderer;
 
-impl Scene {
-    pub fn push_object(&mut self, o: Box<dyn Object>) {
-        self.objects.push(o);
-    }
-}
 
 pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
@@ -25,6 +13,7 @@ pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_normal(&self, Point3<f64>) -> Vector3<f64>;
 }
 
+// BOX
 impl Bounded for Box<dyn Object> {
     fn aabb(&self) -> AABB {
         (**self).aabb()
@@ -41,6 +30,7 @@ impl BHShape for Box<dyn Object> {
     }
 }
 
+// SPHERE
 #[derive(Debug)]
 pub struct Sphere {
     pub position: Point3<f64>,
@@ -54,7 +44,7 @@ impl Object for Sphere {
         &self.materials
     }
 
-    fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
+    fn test_intersect(&self, ray: crate::renderer::Ray) -> Option<f64> {
         use std::f64;
 
         let camera_to_sphere_center = ray.point - self.position;
@@ -125,6 +115,8 @@ impl BHShape for Sphere {
     }
 }
 
+
+// PLANE
 #[derive(Debug)]
 pub struct Plane {
     pub position: Point3<f64>,
@@ -182,11 +174,4 @@ impl BHShape for Plane {
     fn bh_node_index(&self) -> usize {
         self.node_index
     }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Light {
-    pub position: Point3<f64>,
-    pub intensity: f64,
-    pub color: Vector3<f64>,
 }

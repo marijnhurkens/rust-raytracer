@@ -2,7 +2,10 @@ use bvh::nalgebra::{Point3, Vector3};
 use camera::Camera;
 use image;
 use rand::*;
-use scene::{Light, Object, Scene};
+use scene::Scene;
+use scene::lights::Light;
+use scene::objects::Object;
+
 use std::cmp;
 use std::collections::HashMap;
 use std::sync::mpsc;
