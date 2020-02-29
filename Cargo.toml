@@ -11,8 +11,11 @@ pistoncore-glutin_window = "0.63.0"
 piston2d-opengl_graphics = "0.68.0"
 image = "*"
 rand = "0.7"
-bvh = "0.3.1"
-yaml-rust = "0.4.3"
+typetag = "^0.1.4"
+nalgebra = { version= "0.17", features = ["serde-serialize"]}
+bvh = {version = "0.3.1" }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
 
 [profile.release]
 opt-level = 3

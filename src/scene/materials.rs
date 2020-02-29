@@ -1,12 +1,14 @@
-use bvh::nalgebra::{Point3, Vector3};
+use nalgebra::{Point3, Vector3};
 use helpers::*;
 use std::clone::Clone;
 use std::fmt::Debug;
+use serde::{Serialize, Deserialize};
 
 use crate::renderer;
 
 use super::*;
 
+#[typetag::serde(tag = "type")]
 pub trait Material: Debug + Send + Sync {
     fn get_surface_color(
         &self,
@@ -22,11 +24,13 @@ pub trait Material: Debug + Send + Sync {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
 pub struct Lambert {
     pub color: Vector3<f64>,
     pub weight: f64,
 }
 
+#[typetag::serde]
 impl Material for Lambert {
     fn get_weight(&self) -> f64 {
         self.weight
@@ -90,11 +94,13 @@ impl Material for Lambert {
 }
 
 #[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Reflection {
     pub weight: f64,
     pub glossiness: f64,
 }
 
+#[typetag::serde]
 impl Material for Reflection {
     fn get_weight(&self) -> f64 {
         self.weight
@@ -131,11 +137,13 @@ impl Material for Reflection {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Refraction {
     pub weight: f64,
     pub ior: f64,
 }
 
+#[typetag::serde]
 impl Material for Refraction {
     fn get_weight(&self) -> f64 {
         self.weight
@@ -172,6 +180,7 @@ impl Material for Refraction {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct FresnelReflection {
     pub weight: f64,
     pub glossiness: f64,
@@ -181,6 +190,7 @@ pub struct FresnelReflection {
     pub refraction: f64,
 }
 
+#[typetag::serde]
 impl Material for FresnelReflection {
     fn get_weight(&self) -> f64 {
         self.weight

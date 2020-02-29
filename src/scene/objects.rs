@@ -1,17 +1,20 @@
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::{BHShape};
-use bvh::nalgebra::{Point3, Vector3};
+use nalgebra::{Point3, Vector3};
 use std::fmt::Debug;
+use serde::{Serialize, Deserialize};
 
-use super::*;
 use crate::renderer;
 
+use super::*;
 
-pub trait Object: Debug + Send + Sync + Bounded + BHShape {
+#[typetag::serde(tag = "type")]
+pub trait Object: Debug + Send + Sync + Bounded + BHShape  {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
-    fn test_intersect(&self, renderer::Ray) -> Option<f64>;
-    fn get_normal(&self, Point3<f64>) -> Vector3<f64>;
+    fn test_intersect(&self, renderer: renderer::Ray) -> Option<f64>;
+    fn get_normal(&self, point: Point3<f64>) -> Vector3<f64>;
 }
+
 
 // BOX
 impl Bounded for Box<dyn Object> {
@@ -32,13 +35,17 @@ impl BHShape for Box<dyn Object> {
 
 // SPHERE
 #[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
+
     pub materials: Vec<Box<dyn materials::Material>>,
+
     pub node_index: usize,
 }
 
+#[typetag::serde]
 impl Object for Sphere {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
@@ -101,7 +108,7 @@ impl Bounded for Sphere {
         let half_size = Vector3::new(self.radius, self.radius, self.radius);
         let min = self.position - half_size;
         let max = self.position + half_size;
-        AABB::with_bounds(bvh::nalgebra::convert(min), bvh::nalgebra::convert(max))
+        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
     }
 }
 
@@ -118,13 +125,17 @@ impl BHShape for Sphere {
 
 // PLANE
 #[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
+
     pub materials: Vec<Box<dyn materials::Material>>,
+    
     pub node_index: usize,
 }
 
+#[typetag::serde]
 impl Object for Plane {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
@@ -162,7 +173,7 @@ impl Bounded for Plane {
         let half_size = Vector3::new(MAX_SIZE, MAX_SIZE, MAX_SIZE);
         let min = self.position - half_size;
         let max = self.position + half_size;
-        AABB::with_bounds(bvh::nalgebra::convert(min), bvh::nalgebra::convert(max))
+        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
     }
 }
 

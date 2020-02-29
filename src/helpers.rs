@@ -1,4 +1,4 @@
-use bvh::nalgebra::Vector3;
+use nalgebra::Vector3;
 use rand::{thread_rng, Rng};
 
 pub fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {

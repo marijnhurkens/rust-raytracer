@@ -5,23 +5,27 @@ extern crate image;
 extern crate opengl_graphics;
 extern crate piston;
 extern crate rand;
+extern crate nalgebra;
+extern crate serde;
+extern crate serde_yaml;
 
 #[macro_use]
 extern crate lazy_static;
 
 use bvh::bvh::BVH;
-use bvh::nalgebra::{Point3, Vector3};
+use nalgebra::{Point3, Vector3};
 use glutin_window::GlutinWindow as Window;
 use graphics::*;
 use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
 use piston::event_loop::*;
 use piston::input::*;
 use piston::window::WindowSettings;
+use std::fs;
+use std::env;
 use std::sync::{Arc, RwLock};
 
 use scene::*;
 
-mod camera;
 mod helpers;
 mod renderer;
 mod scene;
@@ -37,13 +41,24 @@ lazy_static! {
 }
 
 fn main() {
-    //let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 2 {
+        panic!("Please provide scene file");
+    }
 
     let camera = camera::Camera::new(
         Point3::new(3.0, 0.2, 2.2),
         Point3::new(0.0, 0.0, 1.0),
         140.0,
     );
+
+    let file = fs::read_to_string(&args[1]).expect("Cannot read scene file");
+    
+
+    scene_loader::load_scene(&file);
+
+    return;
 
     let _sphere = objects::Sphere {
         position: Point3::new(0.0, 0.0, 2.7),
