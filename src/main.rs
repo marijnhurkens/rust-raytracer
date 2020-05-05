@@ -1,9 +1,10 @@
 extern crate bvh;
-extern crate glutin_window;
-extern crate graphics;
+// extern crate piston;
+// extern crate graphics;
 extern crate image;
-extern crate opengl_graphics;
-extern crate piston;
+// extern crate opengl_graphics;
+//extern crate piston_window;
+extern crate ggez;
 extern crate rand;
 extern crate nalgebra;
 extern crate serde;
@@ -14,12 +15,17 @@ extern crate lazy_static;
 
 use bvh::bvh::BVH;
 use nalgebra::{Point3, Vector3};
-use glutin_window::GlutinWindow as Window;
-use graphics::*;
-use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
-use piston::event_loop::*;
-use piston::input::*;
-use piston::window::WindowSettings;
+//use glutin_window::GlutinWindow as Window;
+// use graphics::*;
+// use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
+// use piston::event_loop::*;
+// use piston::input::*;
+//use piston::window::WindowSettings;
+//use piston_window::*;
+
+use ggez::event;
+use ggez::graphics::{self, Color, DrawParam};
+use ggez::{Context, GameResult};
 use std::fs;
 use std::env;
 use std::sync::{Arc, RwLock};
@@ -40,7 +46,71 @@ lazy_static! {
     ));
 }
 
-fn main() {
+struct MainState {
+    canvas: graphics::Canvas,
+    text: graphics::Text,
+}
+
+impl MainState {
+    fn new(ctx: &mut Context) -> GameResult<MainState> {
+        let canvas = graphics::Canvas::with_window_size(ctx)?;
+        let font = graphics::Font::default();
+        let text = graphics::Text::new(("Hello world!", font, 24.0));
+        Ok(MainState { canvas, text })
+    }
+}
+
+impl event::EventHandler for MainState {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        // first lets render to our canvas
+        graphics::set_canvas(ctx, Some(&self.canvas));
+        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+        graphics::draw(
+            ctx,
+            &self.text,
+            (ggez::mint::Point2 {x: 400.0, y: 300.0}, graphics::WHITE),
+        )?;
+
+        // now lets render our scene once in the top left and in the bottom
+        // right
+        // let window_size = graphics::size(ctx);
+        // let scale = Vector2::new(
+        //     0.5 * window_size.0 as f32 / self.canvas.image().width() as f32,
+        //     0.5 * window_size.1 as f32 / self.canvas.image().height() as f32,
+        // );
+        // // let scale = Vector2::new(1.0, 1.0);
+        // graphics::set_canvas(ctx, None);
+        // graphics::clear(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
+        // graphics::draw(
+        //     ctx,
+        //     &self.canvas,
+        //     DrawParam::default()
+        //         .dest(Point2::new(0.0, 0.0))
+        //         .scale(scale),
+        // )?;
+        // graphics::draw(
+        //     ctx,
+        //     &self.canvas,
+        //     DrawParam::default()
+        //         .dest(Point2::new(400.0, 300.0))
+        //         .scale(scale),
+        // )?;
+        // graphics::present(ctx)?;
+
+        Ok(())
+    }
+
+    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+        let new_rect = graphics::Rect::new(0.0, 0.0, width, height);
+        graphics::set_screen_coordinates(ctx, new_rect).unwrap();
+    }
+}
+
+fn main() -> GameResult {
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
@@ -55,10 +125,11 @@ fn main() {
 
     let file = fs::read_to_string(&args[1]).expect("Cannot read scene file");
     
+    
 
     scene_loader::load_scene(&file);
 
-    return;
+    //return;
 
     let _sphere = objects::Sphere {
         position: Point3::new(0.0, 0.0, 2.7),
@@ -210,98 +281,103 @@ fn main() {
     // Start the render threads
     let (threads, thread_senders) = renderer::render(camera, Arc::new(scene), settings);
 
-    if OUTPUT == "window" {
-        let opengl = OpenGL::V3_2;
-        let mut window: Window = WindowSettings::new("Rust Raytracer", [IMAGE_WIDTH, IMAGE_HEIGHT])
-            .graphics_api(opengl)
-            .exit_on_esc(true)
-            .build()
-            .unwrap();
 
-        let mut gl = GlGraphics::new(opengl);
-        let mut texture: Texture =
-            Texture::from_image(&IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
-        let mut glyph_cache =
-            GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
+    let cb = ggez::ContextBuilder::new("render_to_image", "ggez");
+    let (ctx, event_loop) = &mut cb.build()?;
+    let state = &mut MainState::new(ctx)?;
+    event::run(ctx, event_loop, state)
 
-        let event_settings = EventSettings::new();
-        event_settings.max_fps(3);
+    // if OUTPUT == "window" {
+    //     let opengl = OpenGL::V3_2;
+    //     let window = Window::new(opengl, WindowSettings::new(
+    //         "test",
+    //          [IMAGE_WIDTH, IMAGE_HEIGHT]
+    //     ).exit_on_esc(true));
 
-        let mut events = Events::new(event_settings);
-        while let Some(e) = events.next(&mut window) {
-            if let Some(Button::Keyboard(key)) = e.press_args() {
-                if key == Key::C {
-                    println!("Stopping from main ");
-                    for thread_sender in &thread_senders {
-                        thread_sender
-                            .send(renderer::ThreadMessage { exit: true })
-                            .unwrap()
-                    }
-                }
-            };
+    //     let mut gl = GlGraphics::new(opengl);
+    //     let mut texture: Texture =
+    //         Texture::from_image(&*IMAGE_BUFFER.read().unwrap(), &TextureSettings::new());
+    //     let mut glyph_cache =
+    //         GlyphCache::new("assets/FiraSans-Regular.ttf", (), TextureSettings::new()).unwrap();
 
-            // draw current render state
-            if let Some(args) = e.render_args() {
-                // The RwLock doesn't require locking on read, so this doesn't
-                // block the rendering.
-                texture.update(&IMAGE_BUFFER.read().unwrap());
+    //     let event_settings = EventSettings::new();
+    //     event_settings.max_fps(3);
 
-                let mut stats_text: String = "".to_owned();
-                for (_, thread) in &renderer::STATS.read().unwrap().threads {
-                    stats_text.push_str(" ");
-                    stats_text.push_str(&format!("| {:.0} ns, ", thread.ns_per_ray));
-                    stats_text.push_str(&format!("{} rays done ", thread.rays_done));
-                }
+    //     let mut events = Events::new(event_settings);
+    //     while let Some(e) = events.next(&mut window) {
+    //         if let Some(Button::Keyboard(key)) = e.press_args() {
+    //             if key == Key::C {
+    //                 println!("Stopping from main ");
+    //                 for thread_sender in &thread_senders {
+    //                     thread_sender
+    //                         .send(renderer::ThreadMessage { exit: true })
+    //                         .unwrap()
+    //                 }
+    //             }
+    //         };
 
-                gl.draw(args.viewport(), |c, gl| {
-                    clear([0.0, 0.0, 0.0, 1.0], gl);
-                    image(&texture, c.transform, gl);
+    //         // draw current render state
+    //         if let Some(args) = e.render_args() {
+    //             // The RwLock doesn't require locking on read, so this doesn't
+    //             // block the rendering.
+    //             texture.update(&IMAGE_BUFFER.read().unwrap());
 
-                    rectangle(
-                        [0.0, 0.0, 0.0, 0.9],
-                        rectangle::rectangle_by_corners(0.0, 0.0, IMAGE_WIDTH as f64, 25.0),
-                        c.transform.trans(0.0, 0.0),
-                        gl,
-                    );
+    //             let mut stats_text: String = "".to_owned();
+    //             for (_, thread) in &renderer::STATS.read().unwrap().threads {
+    //                 stats_text.push_str(" ");
+    //                 stats_text.push_str(&format!("| {:.0} ns, ", thread.ns_per_ray));
+    //                 stats_text.push_str(&format!("{} rays done ", thread.rays_done));
+    //             }
 
-                    let transform = c.transform.trans(10.0, 15.0);
-                    text(
-                        [1.0, 0.0, 0.0, 1.0],
-                        10,
-                        &stats_text,
-                        &mut glyph_cache,
-                        transform,
-                        gl,
-                    )
-                    .expect("Error drawing text.");
-                });
-            }
-        }
-    } else {
-        println!("Waiting...");
+    //             gl.draw(args.viewport(), |c, gl| {
+    //                 clear([0.0, 0.0, 0.0, 1.0], gl);
+    //                 image(&texture, c.transform, gl);
 
-        let mut done = false;
+    //                 rectangle(
+    //                     [0.0, 0.0, 0.0, 0.9],
+    //                     rectangle::rectangle_by_corners(0.0, 0.0, IMAGE_WIDTH as f64, 25.0),
+    //                     c.transform.trans(0.0, 0.0),
+    //                     gl,
+    //                 );
 
-        //let total_rays = IMAGE_WIDTH * IMAGE_HEIGHT * renderer::SAMPLES;
+    //                 let transform = c.transform.trans(10.0, 15.0);
+    //                 text(
+    //                     [1.0, 0.0, 0.0, 1.0],
+    //                     10,
+    //                     &stats_text,
+    //                     &mut glyph_cache,
+    //                     transform,
+    //                     gl,
+    //                 )
+    //                 .expect("Error drawing text.");
+    //             });
+    //         }
+    //     }
+    // } else {
+    //     println!("Waiting...");
 
-        // while !done {
-        //     let stats = renderer::STATS.read().unwrap();
+    //     let mut done = false;
 
-        //     println!("{:?}", stats);
-        //     println!(
-        //         "Progress {}/{} ({:.3}%)",
-        //         stats.rays_done,
-        //         total_rays,
-        //         (stats.rays_done as f64 / total_rays as f64) * 100.0
-        //     );
+    //     //let total_rays = IMAGE_WIDTH * IMAGE_HEIGHT * renderer::SAMPLES;
 
-        //     thread::sleep(time::Duration::from_millis(1000));
-        // }
-        // wait for all threads to finish
-        for handle in threads {
-            let _ = handle.join();
-        }
+    //     // while !done {
+    //     //     let stats = renderer::STATS.read().unwrap();
 
-        println!("Done!");
-    }
+    //     //     println!("{:?}", stats);
+    //     //     println!(
+    //     //         "Progress {}/{} ({:.3}%)",
+    //     //         stats.rays_done,
+    //     //         total_rays,
+    //     //         (stats.rays_done as f64 / total_rays as f64) * 100.0
+    //     //     );
+
+    //     //     thread::sleep(time::Duration::from_millis(1000));
+    //     // }
+    //     // wait for all threads to finish
+    //     for handle in threads {
+    //         let _ = handle.join();
+    //     }
+
+    //     println!("Done!");
+    // }
 }

@@ -108,7 +108,10 @@ impl Bounded for Sphere {
         let half_size = Vector3::new(self.radius, self.radius, self.radius);
         let min = self.position - half_size;
         let max = self.position + half_size;
-        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
+        AABB::with_bounds( 
+            bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32), 
+        bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32), 
+    )
     }
 }
 
@@ -173,7 +176,10 @@ impl Bounded for Plane {
         let half_size = Vector3::new(MAX_SIZE, MAX_SIZE, MAX_SIZE);
         let min = self.position - half_size;
         let max = self.position + half_size;
-        AABB::with_bounds(nalgebra::convert(min), nalgebra::convert(max))
+        AABB::with_bounds(
+            bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32), 
+            bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32), 
+        )
     }
 }
 

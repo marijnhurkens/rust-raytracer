@@ -1,7 +1,7 @@
 # rust-raytracer
 
 Basic ray-tracer in Rust.
-t
+
 
 Features:
 
@@ -22,3 +22,6 @@ Todo:
 ## Example
 
 ![Test image](examples/fresnel.png)
+
+## Build and run
+

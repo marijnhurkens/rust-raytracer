@@ -324,8 +324,8 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
     let mut closest: Option<(f64, &Box<dyn Object>)> = None;
 
     let bvh_ray = bvh::ray::Ray::new(
-        nalgebra::convert(ray.point),
-        nalgebra::convert(ray.direction),
+        bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
+        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32)
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
@@ -350,8 +350,8 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
 
 fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
     let bvh_ray = bvh::ray::Ray::new(
-        nalgebra::convert(ray.point),
-        nalgebra::convert(ray.direction),
+        bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
+        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32)
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
@@ -372,7 +372,7 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
 pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: Light) -> bool {
     let ray = Ray {
         point: position,
-        direction: nalgebra::normalize(&(light.position - position)),
+        direction: (light.position - position).try_normalize(1.0e-6).unwrap(),
     };
 
     let distance = nalgebra::distance(&position, &light.position);
