@@ -66,17 +66,20 @@ impl event::EventHandler for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let image = ggez::graphics::Image::from_rgba8(ctx, IMAGE_WIDTH as u16, IMAGE_HEIGHT as u16, &IMAGE_BUFFER.read().unwrap().clone().into_raw())?;
+       
         // first lets render to our canvas
-        graphics::set_canvas(ctx, Some(&self.canvas));
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
-        graphics::draw(
-            ctx,
-            &self.text,
-            (ggez::mint::Point2 {x: 400.0, y: 300.0}, graphics::WHITE),
-        )?;
+        //graphics::set_canvas(ctx, Some(&self.canvas));
+        graphics::clear(ctx, [0.0, 0.0, 0.0, 1.0].into());
+        graphics::draw(ctx, &image, (ggez::mint::Point2 {x: 0.0, y: 0.0},))?;
+        // graphics::draw(
+        //     ctx,
+        //     &self.text,
+        //     (ggez::mint::Point2 {x: 400.0, y: 300.0}, graphics::WHITE),
+        // )?;
 
-        // now lets render our scene once in the top left and in the bottom
-        // right
+        // //now lets render our scene once in the top left and in the bottom
+        // // right
         // let window_size = graphics::size(ctx);
         // let scale = Vector2::new(
         //     0.5 * window_size.0 as f32 / self.canvas.image().width() as f32,
@@ -99,7 +102,7 @@ impl event::EventHandler for MainState {
         //         .dest(Point2::new(400.0, 300.0))
         //         .scale(scale),
         // )?;
-        // graphics::present(ctx)?;
+        graphics::present(ctx)?;
 
         Ok(())
     }
@@ -111,11 +114,6 @@ impl event::EventHandler for MainState {
 }
 
 fn main() -> GameResult {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() != 2 {
-        panic!("Please provide scene file");
-    }
 
     let camera = camera::Camera::new(
         Point3::new(3.0, 0.2, 2.2),
@@ -123,13 +121,6 @@ fn main() -> GameResult {
         140.0,
     );
 
-    let file = fs::read_to_string(&args[1]).expect("Cannot read scene file");
-    
-    
-
-    scene_loader::load_scene(&file);
-
-    //return;
 
     let _sphere = objects::Sphere {
         position: Point3::new(0.0, 0.0, 2.7),
@@ -261,14 +252,14 @@ fn main() -> GameResult {
 
     let bvh = BVH::build(&mut spheres_boxed);
 
-    let scene = scene::Scene {
-        bg_color: Vector3::new(0.7, 0.7, 0.9), //Vector3::new(0.62, 0.675, 0.855), // red
-        objects: spheres_boxed,                //spheres,
-        bvh: bvh,
-        lights: vec![light, light_1],
-    };
+    let scene = scene::Scene::new(
+       Vector3::new(0.7, 0.7, 0.9),
+       vec![light, light_1],
+         spheres_boxed,    
+      bvh      
+    );
 
-    // scene.push_object(Box::new(plane));
+
 
     let settings = renderer::Settings {
         thread_count: 6,
@@ -280,7 +271,6 @@ fn main() -> GameResult {
 
     // Start the render threads
     let (threads, thread_senders) = renderer::render(camera, Arc::new(scene), settings);
-
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez");
     let (ctx, event_loop) = &mut cb.build()?;

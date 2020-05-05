@@ -1,11 +1,11 @@
 bg_color: [1.0,1.0,1.0]
-lights:
-  - name: light-1
-    position: [4.0, 4.0, -4.0]
-    intensity: 1.0
-    color: [1.0, 1.0, 1.0]
+# lights:
+#   - name: light-1
+#     position: [4.0, 4.0, -4.0]
+#     intensity: 1.0
+#     color: [1.0, 1.0, 1.0]
 
-objects: []
+# objects: []
 
 #   - name: sphere-1
 #     type: sphere

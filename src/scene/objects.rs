@@ -2,14 +2,13 @@ use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::{BHShape};
 use nalgebra::{Point3, Vector3};
 use std::fmt::Debug;
-use serde::{Serialize, Deserialize};
 
 use crate::renderer;
 
 use super::*;
 
-#[typetag::serde(tag = "type")]
-pub trait Object: Debug + Send + Sync + Bounded + BHShape  {
+
+pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
     fn test_intersect(&self, renderer: renderer::Ray) -> Option<f64>;
     fn get_normal(&self, point: Point3<f64>) -> Vector3<f64>;
@@ -35,7 +34,6 @@ impl BHShape for Box<dyn Object> {
 
 // SPHERE
 #[derive(Debug)]
-#[derive(Serialize, Deserialize)]
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
@@ -45,7 +43,6 @@ pub struct Sphere {
     pub node_index: usize,
 }
 
-#[typetag::serde]
 impl Object for Sphere {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
@@ -128,7 +125,6 @@ impl BHShape for Sphere {
 
 // PLANE
 #[derive(Debug)]
-#[derive(Serialize, Deserialize)]
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
@@ -138,7 +134,6 @@ pub struct Plane {
     pub node_index: usize,
 }
 
-#[typetag::serde]
 impl Object for Plane {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
