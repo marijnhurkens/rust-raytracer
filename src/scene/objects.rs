@@ -1,12 +1,12 @@
-use bvh::aabb::{Bounded, AABB};
-use bvh::bounding_hierarchy::{BHShape};
-use nalgebra::{Point3, Vector3};
 use std::fmt::Debug;
+
+use bvh::aabb::{AABB, Bounded};
+use bvh::bounding_hierarchy::BHShape;
+use nalgebra::{Point3, Vector3};
 
 use crate::renderer;
 
 use super::*;
-
 
 pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
@@ -51,7 +51,7 @@ impl Object for Sphere {
     fn test_intersect(&self, ray: crate::renderer::Ray) -> Option<f64> {
         use std::f64;
 
-        let camera_to_sphere_center = ray.point - self.position;
+        let camera_to_sphere_center = ray.point - &self.position;
         let a = ray.direction.dot(&ray.direction); // camera_to_sphere length squared
         let b = camera_to_sphere_center.dot(&ray.direction);
         let c = camera_to_sphere_center.dot(&camera_to_sphere_center) - self.radius * self.radius;
@@ -96,19 +96,19 @@ impl Object for Sphere {
     }
 
     fn get_normal(&self, point: Point3<f64>) -> Vector3<f64> {
-        (point - self.position).normalize()
+        (point - &self.position).normalize()
     }
 }
 
 impl Bounded for Sphere {
     fn aabb(&self) -> AABB {
         let half_size = Vector3::new(self.radius, self.radius, self.radius);
-        let min = self.position - half_size;
-        let max = self.position + half_size;
-        AABB::with_bounds( 
-            bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32), 
-        bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32), 
-    )
+        let min = &self.position - half_size;
+        let max = &self.position + half_size;
+        AABB::with_bounds(
+            bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32),
+            bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32),
+        )
     }
 }
 
@@ -130,7 +130,7 @@ pub struct Plane {
     pub normal: Vector3<f64>,
 
     pub materials: Vec<Box<dyn materials::Material>>,
-    
+
     pub node_index: usize,
 }
 
@@ -140,14 +140,13 @@ impl Object for Plane {
     }
 
     fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
-        
         let denom = self.normal.dot(&ray.direction);
 
         if denom.abs() > 1e-4 {
             let v = self.position - ray.point;
 
             let distance = v.dot(&self.normal) / denom;
-            
+
             if distance > 0.0001 {
                 return Some(distance);
             }
@@ -169,16 +168,125 @@ impl Bounded for Plane {
         const MAX_SIZE: f64 = 1000000000.0;
 
         let half_size = Vector3::new(MAX_SIZE, MAX_SIZE, MAX_SIZE);
-        let min = self.position - half_size;
-        let max = self.position + half_size;
+        let min = &self.position - half_size;
+        let max = &self.position + half_size;
         AABB::with_bounds(
-            bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32), 
-            bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32), 
+            bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32),
+            bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32),
         )
     }
 }
 
 impl BHShape for Plane {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}
+
+
+// Triangle
+#[derive(Debug)]
+pub struct Triangle {
+    pub v0: Point3<f64>,
+    pub v1: Point3<f64>,
+    pub v2: Point3<f64>,
+    n: Vector3<f64>,
+    d: f64,
+    pub materials: Vec<Box<dyn materials::Material>>,
+    pub node_index: usize,
+}
+
+impl Triangle {
+    pub fn new(v0: Point3<f64>, v1: Point3<f64>, v2: Point3<f64>, materials: Vec<Box<dyn materials::Material>>) -> Triangle {
+        // pre-compute
+        let a = &v1 - &v0;
+        let b = &v2 - &v0;
+        let c = a.cross(&b);
+        let n = c.normalize();
+
+        let d = n.dot(&Vector3::new(v0.x, v0.y, v0.z));
+
+        Triangle {
+            v0,
+            v1,
+            v2,
+            n,
+            d,
+            materials,
+            node_index: 0
+        }
+    }
+}
+
+impl Object for Triangle {
+    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
+        &self.materials
+    }
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
+        let n = &self.n;
+        let d = &self.d;
+
+        let t = - (n.dot(&Vector3::new(ray.point.x, ray.point.y, ray.point.z)) + d) / n.dot(&ray.direction);
+
+        if t < 0.0
+        {
+            return None;
+        }
+
+        let intersection_point = &ray.point + &ray.direction * t;
+
+        // edge 0
+        let edge0 = &self.v1 - &self.v0;
+        let vp0 = intersection_point - &self.v0;
+        let c = edge0.cross(&vp0);
+        if n.dot(&c) < 0.0 {
+            return None;
+        }
+
+        // edge 1
+        let edge1 = &self.v2 - &self.v1;
+        let vp1 = intersection_point - &self.v1;
+        let c = edge1.cross(&vp1);
+        if n.dot(&c) < 0.0 {
+            return None;
+        }
+
+        // edge 2
+        let edge2 = &self.v0 - &self.v2;
+        let vp2 = intersection_point - &self.v2;
+        let c = edge2.cross(&vp2);
+        if n.dot(&c) < 0.0 {
+            return None;
+        }
+
+        Some(t)
+    }
+    fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
+        self.n.clone()
+    }
+}
+
+impl Bounded for Triangle {
+    fn aabb(&self) -> AABB {
+        let min_x = self.v0.x.min(self.v1.x.min(self.v2.x));
+        let min_y = self.v0.y.min(self.v1.y.min(self.v2.y));
+        let min_z = self.v0.z.min(self.v1.z.min(self.v2.z));
+        let max_x = self.v0.x.max(self.v1.x.max(self.v2.x));
+        let max_y = self.v0.y.max(self.v1.y.max(self.v2.y));
+        let max_z = self.v0.z.max(self.v1.z.max(self.v2.z));
+
+        AABB::with_bounds(
+            bvh::nalgebra::Point3::new(min_x as f32, min_y as f32, min_z as f32),
+            bvh::nalgebra::Point3::new(max_x as f32, max_y as f32, max_z as f32),
+        )
+    }
+}
+
+impl BHShape for Triangle {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }
