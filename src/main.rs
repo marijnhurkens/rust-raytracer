@@ -7,6 +7,7 @@ extern crate nalgebra;
 extern crate rand;
 extern crate serde;
 extern crate serde_yaml;
+extern crate tobj;
 
 use std::env;
 use std::fs;
@@ -25,7 +26,7 @@ mod helpers;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 1600;
+const IMAGE_WIDTH: u32 = 800;
 const IMAGE_HEIGHT: u32 = 800;
 const OUTPUT: &str = "window";
 
@@ -51,7 +52,7 @@ impl MainState {
 
 impl event::EventHandler for MainState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        dbg!(ggez::timer::fps(_ctx));
+        //dbg!(ggez::timer::fps(_ctx));
         Ok(())
     }
 
@@ -111,9 +112,9 @@ impl event::EventHandler for MainState {
 
 fn main() -> GameResult {
     let camera = camera::Camera::new(
-        Point3::new(0.5, 0.0, 1.0),
+        Point3::new(0.5, 0.0, 7.0),
         Point3::new(0.0, 0.0, 0.0),
-        90.0,
+        100.0,
     );
 
 
@@ -197,7 +198,7 @@ fn main() -> GameResult {
                     node_index: 0,
                 };
 
-                spheres_boxed.push(Box::new(sphere));
+                //spheres_boxed.push(Box::new(sphere));
             }
         }
     }
@@ -254,18 +255,82 @@ fn main() -> GameResult {
             //     color: Vector3::new(0.9, 0.5, 0.5),
             //     weight: 1.0,
             // }),
-            Box::new(materials::FresnelReflection {
-                weight: 1.0,
-                glossiness: 0.9,
-                ior: 1.5,
-                reflection: 1.0,
-                refraction: 0.0,
-                color: Vector3::new(0.5, 0.5, 0.5),
-            }),
+            // Box::new(materials::FresnelReflection {
+            //     weight: 1.0,
+            //     glossiness: 0.9,
+            //     ior: 1.5,
+            //     reflection: 1.0,
+            //     refraction: 0.0,
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            // }),
         ],
     );
 
-    spheres_boxed.push(Box::new(triangle));
+    //spheres_boxed.push(Box::new(triangle));
+
+
+    ////////// load model
+
+
+    let (models, materials) = tobj::load_obj("./scene/cow.obj", true)
+        .expect("Failed to load file");
+
+    for (i, m) in models.iter().enumerate() {
+        let mesh = &m.mesh;
+        println!("model[{}].name = \'{}\'", i, m.name);
+        println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
+
+        println!(
+            "Size of model[{}].num_face_indices: {}",
+            i,
+            mesh.num_face_indices.len()
+        );
+        //  let mut next_face = 0;
+        // for f in 0..mesh.num_face_indices.len() {
+        //     let end = next_face + mesh.num_face_indices[f] as usize;
+        //     let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
+        //     println!("    face[{}] = {:?}", f, face_indices);
+        //     dbg!(mesh.indices[*face_indices[0] as usize]);
+        //
+        //     next_face = end;
+        // }
+
+        // Normals and texture coordinates are also loaded, but not printed in this example
+        println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
+        println!("model[{}].indices: {}", i, mesh.indices.len());
+        println!("model[{}].num: {}", i, mesh.num_face_indices.len());
+        // for v in 0..mesh.indices.len()  {
+        //     dbg!(mesh.indices[v]);
+        // }
+
+        // for v in 0..mesh.num_face_indices.len() {
+        //     dbg!(mesh.num_face_indices[v]);
+        // }
+
+
+
+        assert!(mesh.indices.len() % 3 == 0);
+        for v in 0..mesh.indices.len() / 3 {
+            let v0 = mesh.indices[3 * v] as usize;
+            let v1 = mesh.indices[3 * v+1] as usize;
+            let v2 = mesh.indices[3 * v+2] as usize;
+
+            let triangle = objects::Triangle::new(
+                Point3::new(mesh.positions[v0*3] as f64, mesh.positions[v0*3 + 1] as f64, mesh.positions[v0*3 + 2] as f64),
+                Point3::new(mesh.positions[v1*3] as f64, mesh.positions[v1*3 + 1] as f64, mesh.positions[v1*3 + 2] as f64),
+                Point3::new(mesh.positions[v2*3] as f64, mesh.positions[v2*3 + 1] as f64, mesh.positions[v2*3 + 2] as f64),
+                vec![
+                    Box::new(materials::Lambert {
+                        color: Vector3::new(0.9, 0.5, 0.5),
+                        weight: 1.0,
+                    }),
+                ],
+            );
+
+            spheres_boxed.push(Box::new(triangle));
+        }
+    }
+
 
     let bvh = BVH::build(&mut spheres_boxed);
 
@@ -282,7 +347,7 @@ fn main() -> GameResult {
         bucket_width: 32,
         bucket_height: 32,
         depth_limit: 8,
-        samples: 40,
+        samples: 200,
     };
 
     // Start the render threads

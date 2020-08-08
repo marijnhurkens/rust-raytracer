@@ -230,7 +230,7 @@ impl Object for Triangle {
         let n = &self.n;
         let d = &self.d;
 
-        let t = - (n.dot(&Vector3::new(ray.point.x, ray.point.y, ray.point.z)) + d) / n.dot(&ray.direction);
+        let t = -(n.dot(&Vector3::new(ray.point.x, ray.point.y, ray.point.z)) + d) / n.dot(&ray.direction);
 
         if t < 0.0
         {
