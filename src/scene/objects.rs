@@ -7,6 +7,7 @@ use nalgebra::{Point3, Vector3};
 use crate::renderer;
 
 use super::*;
+use std::f64::EPSILON;
 
 pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
@@ -143,7 +144,7 @@ impl Object for Plane {
         let denom = self.normal.dot(&ray.direction);
 
         if denom.abs() > 1e-4 {
-            let v = self.position - ray.point;
+            let v = &self.position - ray.point;
 
             let distance = v.dot(&self.normal) / denom;
 
@@ -156,7 +157,7 @@ impl Object for Plane {
     }
 
     fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
-        self.normal
+        self.normal.clone()
     }
 }
 
@@ -195,29 +196,25 @@ pub struct Triangle {
     pub v1: Point3<f64>,
     pub v2: Point3<f64>,
     n: Vector3<f64>,
-    d: f64,
     pub materials: Vec<Box<dyn materials::Material>>,
     pub node_index: usize,
 }
 
 impl Triangle {
     pub fn new(v0: Point3<f64>, v1: Point3<f64>, v2: Point3<f64>, materials: Vec<Box<dyn materials::Material>>) -> Triangle {
-        // pre-compute
+        // pre-compute normal
         let a = &v1 - &v0;
         let b = &v2 - &v0;
         let c = a.cross(&b);
         let n = c.normalize();
-
-        let d = n.dot(&Vector3::new(v0.x, v0.y, v0.z));
 
         Triangle {
             v0,
             v1,
             v2,
             n,
-            d,
             materials,
-            node_index: 0
+            node_index: 0,
         }
     }
 }
@@ -227,43 +224,39 @@ impl Object for Triangle {
         &self.materials
     }
     fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
-        let n = &self.n;
-        let d = &self.d;
+        let v0v1 = &self.v1 - &self.v0;
+        let v0v2 = &self.v2 - &self.v0;
 
-        let t = -(n.dot(&Vector3::new(ray.point.x, ray.point.y, ray.point.z)) + d) / n.dot(&ray.direction);
+        let u_vec = ray.direction.cross(&v0v2);
+        let det = v0v1.dot(&u_vec);
 
-        if t < 0.0
+        if det < EPSILON {
+            return None;
+        }
+
+        let inv_det = 1.0 / det;
+
+        let a_to_origin = ray.point - &self.v0;
+        let u = a_to_origin.dot(&u_vec) * inv_det;
+
+        if u < 0.0 || u > 1.0 {
+            return None;
+        }
+
+        let v_vec = a_to_origin.cross(&v0v1);
+        let v = ray.direction.dot(&v_vec) * inv_det;
+        if v < 0.0 || (u + v) > 1.0
         {
             return None;
         }
 
-        let intersection_point = &ray.point + &ray.direction * t;
+        let t = v0v2.dot(&v_vec) * inv_det;
 
-        // edge 0
-        let edge0 = &self.v1 - &self.v0;
-        let vp0 = intersection_point - &self.v0;
-        let c = edge0.cross(&vp0);
-        if n.dot(&c) < 0.0 {
-            return None;
+        if t > EPSILON {
+            return Some(t);
         }
 
-        // edge 1
-        let edge1 = &self.v2 - &self.v1;
-        let vp1 = intersection_point - &self.v1;
-        let c = edge1.cross(&vp1);
-        if n.dot(&c) < 0.0 {
-            return None;
-        }
-
-        // edge 2
-        let edge2 = &self.v0 - &self.v2;
-        let vp2 = intersection_point - &self.v2;
-        let c = edge2.cross(&vp2);
-        if n.dot(&c) < 0.0 {
-            return None;
-        }
-
-        Some(t)
+        None
     }
     fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
         self.n.clone()

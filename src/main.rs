@@ -112,35 +112,35 @@ impl event::EventHandler for MainState {
 
 fn main() -> GameResult {
     let camera = camera::Camera::new(
-        Point3::new(0.5, 0.0, 7.0),
+        Point3::new(90.0, 20.0, 60.0),
         Point3::new(0.0, 0.0, 0.0),
-        100.0,
+        90.0,
     );
 
 
     let _sphere = objects::Sphere {
-        position: Point3::new(0.0, 0.0, 2.7),
-        radius: 1.0,
+        position: Point3::new(-30.0, 0.0, 0.0),
+        radius: 15.0,
         materials: vec![
-            //     Box::new(materials::FresnelReflection {
+            Box::new(materials::FresnelReflection {
+                weight: 1.0,
+                glossiness: 0.8,
+                ior: 1.2,
+                reflection: 0.8,
+                refraction: 0.0,
+                color: Vector3::new(1.0, 1.0, 1.0),
+            }),
+            // Box::new(materials::Reflection {
             //     weight: 1.0,
             //     glossiness: 1.0,
-            //     ior: 1.2,
-            //     reflection: 1.0,
-            //     refraction: 0.0,
-            //     color: Vector3::new(1.0,1.0,1.0),
             // }),
-            Box::new(materials::Reflection {
-                weight: 1.0,
-                glossiness: 1.0,
-            }),
         ],
         node_index: 0,
     };
 
     let light = lights::Light {
-        position: Point3::new(7.0, 2.0, 0.0),
-        intensity: 1.0,
+        position: Point3::new(100.0, 100.0, 100.0),
+        intensity: 0.7,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
 
@@ -153,7 +153,7 @@ fn main() -> GameResult {
     // // Setup a basic test scene
     let mut spheres_boxed: Vec<Box<dyn objects::Object>> = vec![];
 
-    //spheres_boxed.push(Box::new(_sphere));
+    // spheres_boxed.push(Box::new(_sphere));
 
     let spacing = 0.3;
     let radius = 0.1;
@@ -204,21 +204,21 @@ fn main() -> GameResult {
     }
 
     let plane = objects::Plane {
-        position: Point3::new(0.0, -2.0, 0.0),
+        position: Point3::new(0.0, -79.0, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
-            Box::new(materials::Lambert {
-                color: Vector3::new(0.5, 0.5, 0.5),
-                weight: 1.0,
-            }),
-            // Box::new(materials::FresnelReflection {
-            //     color: Vector3::new(0.9, 0.9, 0.9),
-            //     glossiness: 1.0,
-            //     ior: 1.5,
-            //     reflection: 0.8,
-            //     refraction: 0.0,
+            // Box::new(materials::Lambert {
+            //     color: Vector3::new(0.5, 0.5, 0.5),
             //     weight: 1.0,
             // }),
+            Box::new(materials::FresnelReflection {
+                color: Vector3::new(0.9, 0.9, 0.9),
+                glossiness: 1.0,
+                ior: 1.5,
+                reflection: 0.8,
+                refraction: 0.0,
+                weight: 1.0,
+            }),
         ],
         node_index: 0,
     };
@@ -243,36 +243,42 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    //spheres_boxed.push(Box::new(plane));
+    spheres_boxed.push(Box::new(plane));
     //spheres_boxed.push(Box::new(plane2));
 
+
+    ////////// load model
+
     let triangle = objects::Triangle::new(
-        Point3::new(-1.0, -1.0, 0.0),
-        Point3::new(1.0, -1.0, 0.0),
-        Point3::new(0.0, 1.0, 0.0),
+        Point3::new(-60.0, 0.0, 0.0),
+        Point3::new(60.0, 0.0, 0.0),
+        Point3::new(0.0, 60.0, 0.0),
         vec![
-            // Box::new(materials::Lambert {
-            //     color: Vector3::new(0.9, 0.5, 0.5),
-            //     weight: 1.0,
-            // }),
-            // Box::new(materials::FresnelReflection {
-            //     weight: 1.0,
-            //     glossiness: 0.9,
-            //     ior: 1.5,
-            //     reflection: 1.0,
-            //     refraction: 0.0,
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            // }),
+            Box::new(materials::Lambert {
+                color: Vector3::new(0.3, 0.3, 0.3),
+                weight: 1.0,
+            }),
         ],
     );
 
     //spheres_boxed.push(Box::new(triangle));
 
+    let triangle2 = objects::Triangle::new(
+        Point3::new(-30.0, 0.0, 80.0),
+        Point3::new(30.0, 0.0, 80.0),
+        Point3::new(0.0, 60.0, 0.0),
+        vec![
+            Box::new(materials::Lambert {
+                color: Vector3::new(0.9, 0.0, 0.0),
+                weight: 1.0,
+            }),
+        ],
+    );
 
-    ////////// load model
+    //spheres_boxed.push(Box::new(triangle2));
 
 
-    let (models, materials) = tobj::load_obj("./scene/cow.obj", true)
+    let (models, materials) = tobj::load_obj("./scene/diamond.obj", true)
         .expect("Failed to load file");
 
     for (i, m) in models.iter().enumerate() {
@@ -298,7 +304,8 @@ fn main() -> GameResult {
         // Normals and texture coordinates are also loaded, but not printed in this example
         println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
         println!("model[{}].indices: {}", i, mesh.indices.len());
-        println!("model[{}].num: {}", i, mesh.num_face_indices.len());
+        println!("model[{}].expected_triangles: {}", i, mesh.indices.len() / 3);
+        println!("model[{}].faces: {}", i, mesh.num_face_indices.len());
         // for v in 0..mesh.indices.len()  {
         //     dbg!(mesh.indices[v]);
         // }
@@ -307,21 +314,25 @@ fn main() -> GameResult {
         //     dbg!(mesh.num_face_indices[v]);
         // }
 
-
+        dbg!(&mesh.positions);
 
         assert!(mesh.indices.len() % 3 == 0);
+        //let v = 0;
+
         for v in 0..mesh.indices.len() / 3 {
             let v0 = mesh.indices[3 * v] as usize;
-            let v1 = mesh.indices[3 * v+1] as usize;
-            let v2 = mesh.indices[3 * v+2] as usize;
+            let v1 = mesh.indices[3 * v + 1] as usize;
+            let v2 = mesh.indices[3 * v + 2] as usize;
+
+           // dbg!(v,v0,v1,v2);
 
             let triangle = objects::Triangle::new(
-                Point3::new(mesh.positions[v0*3] as f64, mesh.positions[v0*3 + 1] as f64, mesh.positions[v0*3 + 2] as f64),
-                Point3::new(mesh.positions[v1*3] as f64, mesh.positions[v1*3 + 1] as f64, mesh.positions[v1*3 + 2] as f64),
-                Point3::new(mesh.positions[v2*3] as f64, mesh.positions[v2*3 + 1] as f64, mesh.positions[v2*3 + 2] as f64),
+                Point3::new(mesh.positions[3 * v0] as f64, mesh.positions[3 * v0 + 2] as f64, mesh.positions[3 * v0 + 1] as f64),
+                Point3::new(mesh.positions[3 * v1] as f64, mesh.positions[3 * v1 + 2] as f64, mesh.positions[3 * v1 + 1] as f64),
+                Point3::new(mesh.positions[3 * v2] as f64, mesh.positions[3 * v2 + 2] as f64, mesh.positions[3 * v2 + 1] as f64),
                 vec![
                     Box::new(materials::Lambert {
-                        color: Vector3::new(0.9, 0.5, 0.5),
+                        color: Vector3::new(0.5, 0.2, 0.2),
                         weight: 1.0,
                     }),
                 ],
@@ -336,18 +347,18 @@ fn main() -> GameResult {
 
     let scene = scene::Scene::new(
         Vector3::new(0.7, 0.7, 0.9),
-        vec![light, light_1],
+        vec![light],
         spheres_boxed,
         bvh,
     );
 
 
     let settings = renderer::Settings {
-        thread_count: 8,
+        thread_count: 10,
         bucket_width: 32,
         bucket_height: 32,
         depth_limit: 8,
-        samples: 200,
+        samples: 40,
     };
 
     // Start the render threads
