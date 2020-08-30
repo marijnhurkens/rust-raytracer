@@ -26,9 +26,10 @@ mod helpers;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 800;
-const IMAGE_HEIGHT: u32 = 800;
+const IMAGE_WIDTH: u32 = 1600;
+const IMAGE_HEIGHT: u32 = 900;
 const OUTPUT: &str = "window";
+const UP_AXIS: &str = "y";
 
 lazy_static! {
     static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
@@ -112,8 +113,8 @@ impl event::EventHandler for MainState {
 
 fn main() -> GameResult {
     let camera = camera::Camera::new(
-        Point3::new(90.0, 20.0, 60.0),
-        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(8.0, 2.0, 4.0),
+        Point3::new(3.0, 0.0, 0.0),
         90.0,
     );
 
@@ -204,7 +205,7 @@ fn main() -> GameResult {
     }
 
     let plane = objects::Plane {
-        position: Point3::new(0.0, -79.0, 0.0),
+        position: Point3::new(0.0, -3.2, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
             // Box::new(materials::Lambert {
@@ -263,22 +264,7 @@ fn main() -> GameResult {
 
     //spheres_boxed.push(Box::new(triangle));
 
-    let triangle2 = objects::Triangle::new(
-        Point3::new(-30.0, 0.0, 80.0),
-        Point3::new(30.0, 0.0, 80.0),
-        Point3::new(0.0, 60.0, 0.0),
-        vec![
-            Box::new(materials::Lambert {
-                color: Vector3::new(0.9, 0.0, 0.0),
-                weight: 1.0,
-            }),
-        ],
-    );
-
-    //spheres_boxed.push(Box::new(triangle2));
-
-
-    let (models, materials) = tobj::load_obj("./scene/diamond.obj", true)
+    let (models, materials) = tobj::load_obj("./scene/cow.obj", true)
         .expect("Failed to load file");
 
     for (i, m) in models.iter().enumerate() {
@@ -291,48 +277,50 @@ fn main() -> GameResult {
             i,
             mesh.num_face_indices.len()
         );
-        //  let mut next_face = 0;
-        // for f in 0..mesh.num_face_indices.len() {
-        //     let end = next_face + mesh.num_face_indices[f] as usize;
-        //     let face_indices: Vec<_> = mesh.indices[next_face..end].iter().collect();
-        //     println!("    face[{}] = {:?}", f, face_indices);
-        //     dbg!(mesh.indices[*face_indices[0] as usize]);
-        //
-        //     next_face = end;
-        // }
 
         // Normals and texture coordinates are also loaded, but not printed in this example
         println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
         println!("model[{}].indices: {}", i, mesh.indices.len());
         println!("model[{}].expected_triangles: {}", i, mesh.indices.len() / 3);
         println!("model[{}].faces: {}", i, mesh.num_face_indices.len());
-        // for v in 0..mesh.indices.len()  {
-        //     dbg!(mesh.indices[v]);
-        // }
-
-        // for v in 0..mesh.num_face_indices.len() {
-        //     dbg!(mesh.num_face_indices[v]);
-        // }
-
-        dbg!(&mesh.positions);
 
         assert!(mesh.indices.len() % 3 == 0);
         //let v = 0;
 
+        //dbg!(mesh.normals);
         for v in 0..mesh.indices.len() / 3 {
             let v0 = mesh.indices[3 * v] as usize;
             let v1 = mesh.indices[3 * v + 1] as usize;
             let v2 = mesh.indices[3 * v + 2] as usize;
 
-           // dbg!(v,v0,v1,v2);
+            // dbg!(v,v0,v1,v2);
+
+            let (p0, p1, p2) = match UP_AXIS {
+                // stored as x y z, where y is up
+                "y" => (
+                    Point3::new(mesh.positions[3 * v0] as f64, mesh.positions[3 * v0 + 1] as f64, mesh.positions[3 * v0 + 2] as f64),
+                    Point3::new(mesh.positions[3 * v1] as f64, mesh.positions[3 * v1 + 1] as f64, mesh.positions[3 * v1 + 2] as f64),
+                    Point3::new(mesh.positions[3 * v2] as f64, mesh.positions[3 * v2 + 1] as f64, mesh.positions[3 * v2 + 2] as f64)
+                ),
+                // stored as x z y, where z is up
+                _ => (
+                    Point3::new(mesh.positions[3 * v0] as f64, mesh.positions[3 * v0 + 2] as f64, mesh.positions[3 * v0 + 1] as f64),
+                    Point3::new(mesh.positions[3 * v1] as f64, mesh.positions[3 * v1 + 2] as f64, mesh.positions[3 * v1 + 1] as f64),
+                    Point3::new(mesh.positions[3 * v2] as f64, mesh.positions[3 * v2 + 2] as f64, mesh.positions[3 * v2 + 1] as f64)
+                )
+            };
 
             let triangle = objects::Triangle::new(
-                Point3::new(mesh.positions[3 * v0] as f64, mesh.positions[3 * v0 + 2] as f64, mesh.positions[3 * v0 + 1] as f64),
-                Point3::new(mesh.positions[3 * v1] as f64, mesh.positions[3 * v1 + 2] as f64, mesh.positions[3 * v1 + 1] as f64),
-                Point3::new(mesh.positions[3 * v2] as f64, mesh.positions[3 * v2 + 2] as f64, mesh.positions[3 * v2 + 1] as f64),
+                p0,
+                p1,
+                p2,
                 vec![
-                    Box::new(materials::Lambert {
-                        color: Vector3::new(0.5, 0.2, 0.2),
+                    Box::new(materials::FresnelReflection {
+                        color: Vector3::new(0.9, 0.2, 0.2),
+                        glossiness: 0.95,
+                        ior: 1.5,
+                        reflection: 0.8,
+                        refraction: 0.0,
                         weight: 1.0,
                     }),
                 ],
@@ -358,7 +346,7 @@ fn main() -> GameResult {
         bucket_width: 32,
         bucket_height: 32,
         depth_limit: 8,
-        samples: 40,
+        samples: 90,
     };
 
     // Start the render threads
