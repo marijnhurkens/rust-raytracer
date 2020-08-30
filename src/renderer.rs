@@ -51,6 +51,12 @@ pub struct Ray {
     pub direction: Vector3<f64>,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Intersection {
+    pub distance: f64,
+    pub normal: Vector3<f64>,
+}
+
 #[derive(Debug)]
 struct WorkQueue {
     queue: Vec<Work>,
@@ -232,9 +238,6 @@ fn get_rays_at(
     use std::f64::consts::PI;
     let mut rng = thread_rng();
 
-    // let pos_x = pos % width;
-    // let pos_y = pos / width;
-
     if pos_y >= height {
         return Err("Position exceeds number of pixels.");
     }
@@ -297,8 +300,8 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
         None => {
             return Some(scene.bg_color);
         }
-        Some((dist, object)) => {
-            let point_of_intersection = ray.point + (ray.direction * dist);
+        Some((intersection, object)) => {
+            let point_of_intersection = ray.point + (ray.direction * intersection.distance);
 
             let mut color = Vector3::new(0.0, 0.0, 0.0);
 
@@ -307,7 +310,7 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
                     ray,
                     &scene,
                     point_of_intersection,
-                    object.get_normal(point_of_intersection),
+                    intersection.normal,//object.get_normal(point_of_intersection),
                     depth,
                     contribution,
                 ) {
@@ -320,8 +323,8 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
     }
 }
 
-fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Object>)> {
-    let mut closest: Option<(f64, &Box<dyn Object>)> = None;
+fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<dyn Object>)> {
+    let mut closest: Option<(Intersection, &Box<dyn Object>)> = None;
 
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
@@ -330,15 +333,15 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(f64, &Box<dyn Objec
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
     for object in hit_sphere_aabbs {
-        if let Some(dist) = object.test_intersect(ray) {
+        if let Some(intersection) = object.test_intersect(ray) {
             // If we found an intersection we check if the current
             // closest intersection is farther than the intersection
             // we found.
             match closest {
-                None => closest = Some((dist, &object)),
+                None => closest = Some((intersection, &object)),
                 Some((closest_dist, _)) => {
-                    if dist < closest_dist {
-                        closest = Some((dist, &object));
+                    if intersection.distance < closest_dist.distance {
+                        closest = Some((intersection, &object));
                     }
                 }
             }
@@ -356,10 +359,10 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
     for object in hit_sphere_aabbs {
-        if let Some(dist) = object.test_intersect(ray) {
+        if let Some(intersection) = object.test_intersect(ray) {
             // If we found an intersection we check if distance is less
             // than the max distance we want to check. If so -> exit with true
-            if dist < max_dist {
+            if intersection.distance < max_dist {
                 return true;
             }
         }

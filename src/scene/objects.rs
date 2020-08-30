@@ -1,17 +1,19 @@
+use std::f64::EPSILON;
 use std::fmt::Debug;
 
 use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector3};
 
+use renderer::Intersection;
+
 use crate::renderer;
 
 use super::*;
-use std::f64::EPSILON;
 
 pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
-    fn test_intersect(&self, renderer: renderer::Ray) -> Option<f64>;
+    fn test_intersect(&self, renderer: renderer::Ray) -> Option<Intersection>;
     fn get_normal(&self, point: Point3<f64>) -> Vector3<f64>;
 }
 
@@ -49,7 +51,7 @@ impl Object for Sphere {
         &self.materials
     }
 
-    fn test_intersect(&self, ray: crate::renderer::Ray) -> Option<f64> {
+    fn test_intersect(&self, ray: crate::renderer::Ray) -> Option<Intersection> {
         use std::f64;
 
         let camera_to_sphere_center = ray.point - &self.position;
@@ -82,17 +84,22 @@ impl Object for Sphere {
 
         let temp_dist = (-b - (b * b - a * c).sqrt()) / a;
 
-        //return Some(temp_dist);
-
         if temp_dist > 0.0001 && temp_dist < f64::MAX {
-            return Some(temp_dist);
+            let contact_point = ray.point + ray.direction * temp_dist;
+            let n = &self.get_normal(contact_point);
+
+            return Some(Intersection { distance: temp_dist, normal: *n });
         }
 
         let temp_dist = (-b + (b * b - a * c).sqrt()) / a;
 
         if temp_dist > 0.0001 && temp_dist < f64::MAX {
-            return Some(temp_dist);
+            let contact_point = ray.point + ray.direction * temp_dist;
+            let n = &self.get_normal(contact_point);
+
+            return Some(Intersection { distance: temp_dist, normal: *n });
         }
+
         None
     }
 
@@ -140,7 +147,7 @@ impl Object for Plane {
         &self.materials
     }
 
-    fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection> {
         let denom = self.normal.dot(&ray.direction);
 
         if denom.abs() > 1e-4 {
@@ -149,7 +156,7 @@ impl Object for Plane {
             let distance = v.dot(&self.normal) / denom;
 
             if distance > 0.0001 {
-                return Some(distance);
+                return Some(Intersection { distance: distance, normal: self.normal });
             }
         }
 
@@ -195,13 +202,19 @@ pub struct Triangle {
     pub v0: Point3<f64>,
     pub v1: Point3<f64>,
     pub v2: Point3<f64>,
+    v0_normal: Vector3<f64>,
+    v1_normal: Vector3<f64>,
+    v2_normal: Vector3<f64>,
     n: Vector3<f64>,
     pub materials: Vec<Box<dyn materials::Material>>,
     pub node_index: usize,
 }
 
 impl Triangle {
-    pub fn new(v0: Point3<f64>, v1: Point3<f64>, v2: Point3<f64>, materials: Vec<Box<dyn materials::Material>>) -> Triangle {
+    pub fn new(v0: Point3<f64>, v1: Point3<f64>, v2: Point3<f64>,
+               v0_normal: Vector3<f64>, v1_normal: Vector3<f64>, v2_normal: Vector3<f64>,
+               materials: Vec<Box<dyn materials::Material>>,
+    ) -> Triangle {
         // pre-compute normal
         let a = &v1 - &v0;
         let b = &v2 - &v0;
@@ -212,6 +225,9 @@ impl Triangle {
             v0,
             v1,
             v2,
+            v0_normal,
+            v1_normal,
+            v2_normal,
             n,
             materials,
             node_index: 0,
@@ -223,7 +239,7 @@ impl Object for Triangle {
     fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
         &self.materials
     }
-    fn test_intersect(&self, ray: renderer::Ray) -> Option<f64> {
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection> {
         let v0v1 = &self.v1 - &self.v0;
         let v0v2 = &self.v2 - &self.v0;
 
@@ -253,7 +269,16 @@ impl Object for Triangle {
         let t = v0v2.dot(&v_vec) * inv_det;
 
         if t > EPSILON {
-            return Some(t);
+
+            //let normal = u * &self.v0_normal + v * &self.v1_normal + (1.0 - u - v) * &self.v2_normal;
+            //let normal = (1.0 - (u + v)) * &self.v1_normal + &self.v0_normal * u + &self.v2_normal * v;
+            let normal = Vector3::new(
+                (&self.v0_normal.x + &self.v1_normal.y + &self.v2_normal.z) / 3.0,
+                (&self.v0_normal.x + &self.v1_normal.y + &self.v2_normal.z) / 3.0,
+                (&self.v0_normal.x + &self.v1_normal.y + &self.v2_normal.z) / 3.0,
+            );
+
+            return Some(Intersection{distance: t, normal });
         }
 
         None
