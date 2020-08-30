@@ -3,7 +3,7 @@
 Basic ray-tracer in Rust.
 
 
-Features:
+Features done:
 
 - Spheres
 - Planes
@@ -13,15 +13,27 @@ Features:
 - Fresnel material
 - Multithreading
 - Adaptive ray depth
+- Triangle intersection
+- Obj loading (no materials)
 
 Todo:
 
 - Textures
-- Fix materials
+- Vertex normal interpolation
+
 
 ## Example
 
+Fresnel reflections:
 ![Test image](examples/fresnel.png)
+
+Obj model loading and triangle intersection:
+![Test image](examples/cow.png)
 
 ## Build and run
 
+```
+cargo run
+
+cargo run --release
+```
