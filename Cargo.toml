@@ -14,6 +14,7 @@ bvh = {version = "0.3.1" }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
 tobj = "2.0.2"
+indicatif = "0.15"
 
 [profile.release]
 opt-level = 3

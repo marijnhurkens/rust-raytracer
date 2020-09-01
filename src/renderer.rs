@@ -16,8 +16,8 @@ use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
 
-const MAX_DEPTH: u32 = 6;
-const GAMMA: f64 = 1.2; // ??? this would normally decode from srgb to linear space, looks fine though
+const MAX_DEPTH: u32 = 10; // todo: get from settings
+const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {

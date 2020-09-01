@@ -269,16 +269,9 @@ impl Object for Triangle {
         let t = v0v2.dot(&v_vec) * inv_det;
 
         if t > EPSILON {
+            let normal = u * &self.v1_normal + v * &self.v2_normal + (1.0 - u - v) * &self.v0_normal;
 
-            //let normal = u * &self.v0_normal + v * &self.v1_normal + (1.0 - u - v) * &self.v2_normal;
-            //let normal = (1.0 - (u + v)) * &self.v1_normal + &self.v0_normal * u + &self.v2_normal * v;
-            let normal = Vector3::new(
-                (&self.v0_normal.x + &self.v1_normal.y + &self.v2_normal.z) / 3.0,
-                (&self.v0_normal.x + &self.v1_normal.y + &self.v2_normal.z) / 3.0,
-                (&self.v0_normal.x + &self.v1_normal.y + &self.v2_normal.z) / 3.0,
-            );
-
-            return Some(Intersection{distance: t, normal });
+            return Some(Intersection { distance: t, normal });
         }
 
         None

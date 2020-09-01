@@ -318,3 +318,27 @@ impl Material for FresnelReflection {
         Some(color)
     }
 }
+
+
+#[derive(Debug, Clone)]
+pub struct DebugNormal {
+    pub weight: f64,
+}
+
+impl Material for DebugNormal {
+    fn get_surface_color(
+        &self,
+        ray: renderer::Ray,
+        scene: &Scene,
+        point_of_intersection: Point3<f64>,
+        normal: Vector3<f64>,
+        depth: u32,
+        contribution: f64,
+    ) -> Option<Vector3<f64>> {
+        Some(normal)
+    }
+
+    fn get_weight(&self) -> f64 {
+        self.weight
+    }
+}

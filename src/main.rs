@@ -8,6 +8,7 @@ extern crate rand;
 extern crate serde;
 extern crate serde_yaml;
 extern crate tobj;
+extern crate indicatif;
 
 use std::env;
 use std::fs;
@@ -21,13 +22,14 @@ use ggez::graphics::{self, Color, Drawable, DrawParam};
 use nalgebra::{Point3, Vector3};
 
 use scene::*;
+use indicatif::ProgressBar;
 
 mod helpers;
 mod renderer;
 mod scene;
 
-const IMAGE_WIDTH: u32 = 800;
-const IMAGE_HEIGHT: u32 = 600;
+const IMAGE_WIDTH: u32 = 2000;
+const IMAGE_HEIGHT: u32 = 1800;
 const OUTPUT: &str = "window";
 const UP_AXIS: &str = "y";
 
@@ -112,9 +114,17 @@ impl event::EventHandler for MainState {
 }
 
 fn main() -> GameResult {
+    let settings = renderer::Settings {
+        thread_count: 10,
+        bucket_width: 16,
+        bucket_height: 16,
+        depth_limit: 10,
+        samples: 200,
+    };
+
     let camera = camera::Camera::new(
-        Point3::new(10.0, 10.0, 20.0),
-        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(7.0, 3.0, -2.0),
+        Point3::new(0.0, 3.5, 0.0),
         90.0,
     );
 
@@ -146,7 +156,7 @@ fn main() -> GameResult {
     };
 
     let light_1 = lights::Light {
-        position: Point3::new(-1.0, 0.0, 8.0),
+        position: Point3::new(10.0, 8.0, -5.0),
         intensity: 1.0,
         color: Vector3::new(1.0, 1.0, 1.0), // white
     };
@@ -154,7 +164,7 @@ fn main() -> GameResult {
     // // Setup a basic test scene
     let mut spheres_boxed: Vec<Box<dyn objects::Object>> = vec![];
 
-    spheres_boxed.push(Box::new(_sphere));
+    //spheres_boxed.push(Box::new(_sphere));
 
     let spacing = 0.3;
     let radius = 0.1;
@@ -205,7 +215,7 @@ fn main() -> GameResult {
     }
 
     let plane = objects::Plane {
-        position: Point3::new(0.0, -7.0, 0.0),
+        position: Point3::new(0.0, 0.0, 0.0),
         normal: Vector3::new(0.0, 1.0, 0.0), // up
         materials: vec![
             // Box::new(materials::Lambert {
@@ -264,7 +274,7 @@ fn main() -> GameResult {
 
     //spheres_boxed.push(Box::new(triangle));
 
-    let (models, materials) = tobj::load_obj("./scene/teapot_normals.obj", true)
+    let (models, materials) = tobj::load_obj("./scene/happy-buddha.obj", true)
         .expect("Failed to load file");
 
     for (i, m) in models.iter().enumerate() {
@@ -288,12 +298,11 @@ fn main() -> GameResult {
         assert!(mesh.indices.len() % 3 == 0);
         //let v = 0;
 
-        //dbg!(mesh.normals);
+        let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
         for v in 0..mesh.indices.len() / 3 {
             let v0 = mesh.indices[3 * v] as usize;
             let v1 = mesh.indices[3 * v + 1] as usize;
             let v2 = mesh.indices[3 * v + 2] as usize;
-
 
             // dbg!(v,v0,v1,v2);
 
@@ -325,10 +334,10 @@ fn main() -> GameResult {
                 p2_normal,
                 vec![
                     Box::new(materials::FresnelReflection {
-                        color: Vector3::new(0.9, 0.2, 0.2),
-                        glossiness: 0.95,
+                        color: Vector3::new(1.0, 0.0, 0.0),
+                        glossiness: 0.97,
                         ior: 1.5,
-                        reflection: 0.8,
+                        reflection: 0.6,
                         refraction: 0.0,
                         weight: 1.0,
                     }),
@@ -336,9 +345,12 @@ fn main() -> GameResult {
             );
 
             spheres_boxed.push(Box::new(triangle));
-        }
-    }
 
+            bar.inc(1);
+        }
+
+        bar.finish();
+    }
 
     let bvh = BVH::build(&mut spheres_boxed);
 
@@ -350,13 +362,6 @@ fn main() -> GameResult {
     );
 
 
-    let settings = renderer::Settings {
-        thread_count: 10,
-        bucket_width: 32,
-        bucket_height: 32,
-        depth_limit: 8,
-        samples: 3,
-    };
 
     // Start the render threads
     let (threads, thread_senders) = renderer::render(camera, Arc::new(scene), settings);
