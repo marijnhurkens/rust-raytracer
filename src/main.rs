@@ -5,15 +5,15 @@ extern crate image;
 extern crate lazy_static;
 extern crate nalgebra;
 extern crate rand;
-extern crate serde;
-extern crate serde_yaml;
 extern crate tobj;
 extern crate indicatif;
+extern crate sobol;
 
 use std::env;
 use std::fs;
 use std::sync::{Arc, RwLock};
 
+use lazy_static::lazy_static;
 use bvh::bvh::BVH;
 use ggez::{Context, GameResult};
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
@@ -23,13 +23,16 @@ use nalgebra::{Point3, Vector3};
 
 use scene::*;
 use indicatif::ProgressBar;
+use renderer::{SETTINGS, Settings};
+use sampler::{Sampler, Method};
 
 mod helpers;
 mod renderer;
 mod scene;
+mod sampler;
 
-const IMAGE_WIDTH: u32 = 2000;
-const IMAGE_HEIGHT: u32 = 1800;
+const IMAGE_WIDTH: u32 = 500;
+const IMAGE_HEIGHT: u32 = 500;
 const OUTPUT: &str = "window";
 const UP_AXIS: &str = "y";
 
@@ -114,167 +117,88 @@ impl event::EventHandler for MainState {
 }
 
 fn main() -> GameResult {
-    let settings = renderer::Settings {
-        thread_count: 10,
-        bucket_width: 16,
-        bucket_height: 16,
-        depth_limit: 10,
-        samples: 200,
-    };
 
-    let camera = camera::Camera::new(
-        Point3::new(7.0, 3.0, -2.0),
-        Point3::new(0.0, 3.5, 0.0),
-        90.0,
-    );
+    // Cornell box
+    let mut objects: Vec<Box<dyn objects::Object>> = vec![];
 
-
-    let _sphere = objects::Sphere {
-        position: Point3::new(0.0, 7.0, 0.0),
-        radius: 3.0,
+    let sphere = objects::Sphere {
+        position: Point3::new(0.3, -0.3, 0.2),
+        radius: 0.4,
         materials: vec![
             Box::new(materials::FresnelReflection {
                 weight: 1.0,
-                glossiness: 0.8,
-                ior: 1.2,
-                reflection: 0.8,
-                refraction: 0.0,
-                color: Vector3::new(0.0, 0.0, 1.0),
-            }),
-            // Box::new(materials::Reflection {
-            //     weight: 1.0,
-            //     glossiness: 1.0,
-            // }),
-        ],
-        node_index: 0,
-    };
-
-    let light = lights::Light {
-        position: Point3::new(100.0, 100.0, 100.0),
-        intensity: 0.7,
-        color: Vector3::new(1.0, 1.0, 1.0), // white
-    };
-
-    let light_1 = lights::Light {
-        position: Point3::new(10.0, 8.0, -5.0),
-        intensity: 1.0,
-        color: Vector3::new(1.0, 1.0, 1.0), // white
-    };
-
-    // // Setup a basic test scene
-    let mut spheres_boxed: Vec<Box<dyn objects::Object>> = vec![];
-
-    //spheres_boxed.push(Box::new(_sphere));
-
-    let spacing = 0.3;
-    let radius = 0.1;
-    let xcount = 3;
-    let ycount = 3;
-    let zcount = 3;
-
-    for x in -xcount / 2..xcount / 2 + 1 {
-        for y in -ycount / 2..ycount / 2 + 1 {
-            for z in -zcount / 2..zcount / 2 + 1 {
-                // skip own position
-                // if x == 0 && y == 0 && z == 0 {
-                //     continue;
-                // }
-
-                let c = Vector3::new(
-                    (x + xcount / 2) as f64 / xcount as f64,
-                    (y + ycount / 2) as f64 / ycount as f64,
-                    (z + zcount / 2) as f64 / zcount as f64,
-                );
-                let sphere = objects::Sphere {
-                    position: Point3::new(
-                        x as f64 * spacing,
-                        y as f64 * spacing,
-                        -z as f64 * spacing,
-                    ),
-                    radius: radius,
-                    materials: vec![
-                        Box::new(materials::FresnelReflection {
-                            weight: 1.0,
-                            glossiness: 0.9,
-                            ior: 1.5,
-                            reflection: 1.0,
-                            refraction: 0.0,
-                            color: c,
-                        }),
-                        // Box::new(materials::Lambert {
-                        //     color: Vector3::new(0.5, 0.5, 0.5),
-                        //     weight: 1.0,
-                        // }),
-                    ],
-                    node_index: 0,
-                };
-
-                //spheres_boxed.push(Box::new(sphere));
-            }
-        }
-    }
-
-    let plane = objects::Plane {
-        position: Point3::new(0.0, 0.0, 0.0),
-        normal: Vector3::new(0.0, 1.0, 0.0), // up
-        materials: vec![
-            // Box::new(materials::Lambert {
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            //     weight: 1.0,
-            // }),
-            Box::new(materials::FresnelReflection {
-                color: Vector3::new(0.9, 0.9, 0.9),
-                glossiness: 1.0,
+                glossiness: 0.98,
                 ior: 1.5,
                 reflection: 0.8,
                 refraction: 0.0,
-                weight: 1.0,
+                color: Vector3::new(0.0, 0.0, 0.8),
             }),
         ],
         node_index: 0,
     };
 
-    let plane2 = objects::Plane {
-        position: Point3::new(-2.0, 0.0, 0.0),
-        normal: Vector3::new(1.0, 0.0, 0.0), // right
+    let sphere_2 = objects::Sphere {
+        position: Point3::new(-0.3, -0.2, -0.2),
+        radius: 0.3,
         materials: vec![
-            Box::new(materials::Lambert {
-                color: Vector3::new(0.5, 0.5, 0.5),
+            Box::new(materials::FresnelReflection {
                 weight: 1.0,
+                glossiness: 0.90,
+                ior: 1.5,
+                reflection: 0.95,
+                refraction: 0.0,
+                color: Vector3::new(0.8, 0.0, 0.2),
             }),
-            // Box::new(materials::FresnelReflection {
-            //     color: Vector3::new(0.9, 0.9, 0.9),
-            //     glossiness: 1.0,
-            //     ior: 1.5,
-            //     reflection: 0.8,
-            //     refraction: 0.0,
-            //     weight: 1.0,
-            // }),
         ],
         node_index: 0,
     };
 
-    spheres_boxed.push(Box::new(plane));
-    //spheres_boxed.push(Box::new(plane2));
+    let sphere_3 = objects::Sphere {
+        position: Point3::new(-0.3, -0.4, 0.7),
+        radius: 0.3,
+        materials: vec![
+            Box::new(materials::FresnelReflection {
+                weight: 1.0,
+                glossiness: 0.98,
+                ior: 1.5,
+                reflection: 0.95,
+                refraction: 0.9,
+                color: Vector3::new(0.8, 0.8, 0.8),
+            }),
+        ],
+        node_index: 0,
+    };
+
+    objects.push(Box::new(sphere));
+    objects.push(Box::new(sphere_2));
+    objects.push(Box::new(sphere_3));
+
+    let sphere_light = objects::Sphere {
+        position: Point3::new(0.0, 1.6, 0.0),
+        radius: 0.8,
+        materials: vec![
+            Box::new(materials::Light {
+                weight: 1.0,
+                intensity: 20.0,
+                color: Vector3::new(0.8, 0.8, 0.8),
+            }),
+        ],
+        node_index: 0,
+    };
+
+    objects.push(Box::new(sphere_light));
+
+
+    let light = lights::Light {
+        position: Point3::new(0.0, 0.8, 0.0),
+        intensity: 0.9,
+        color: Vector3::new(1.0, 1.0, 1.0), // white
+    };
 
 
     ////////// load model
 
-    // let triangle = objects::Triangle::new(
-    //     Point3::new(-60.0, 0.0, 0.0),
-    //     Point3::new(60.0, 0.0, 0.0),
-    //     Point3::new(0.0, 60.0, 0.0),
-    //     vec![
-    //         Box::new(materials::Lambert {
-    //             color: Vector3::new(0.3, 0.3, 0.3),
-    //             weight: 1.0,
-    //         }),
-    //     ],
-    // );
-
-    //spheres_boxed.push(Box::new(triangle));
-
-    let (models, materials) = tobj::load_obj("./scene/happy-buddha.obj", true)
+    let (models, materials) = tobj::load_obj("./scene/box.obj", true)
         .expect("Failed to load file");
 
     for (i, m) in models.iter().enumerate() {
@@ -333,18 +257,15 @@ fn main() -> GameResult {
                 p1_normal,
                 p2_normal,
                 vec![
-                    Box::new(materials::FresnelReflection {
-                        color: Vector3::new(1.0, 0.0, 0.0),
-                        glossiness: 0.97,
-                        ior: 1.5,
-                        reflection: 0.6,
-                        refraction: 0.0,
+                    Box::new(materials::Lambert {
+                        color: Vector3::new(0.5, 0.5, 0.5),
+
                         weight: 1.0,
                     }),
                 ],
             );
 
-            spheres_boxed.push(Box::new(triangle));
+            objects.push(Box::new(triangle));
 
             bar.inc(1);
         }
@@ -352,19 +273,38 @@ fn main() -> GameResult {
         bar.finish();
     }
 
-    let bvh = BVH::build(&mut spheres_boxed);
+    let bvh = BVH::build(&mut objects);
+
+    let camera = camera::Camera::new(
+        Point3::new(0.0, -0.2, 2.8),
+        Point3::new(0.0, -0.2, 0.0),
+        60.0,
+    );
+
+    {
+        let mut settings = SETTINGS.write().unwrap();
+        settings.max_samples = 200;
+        settings.min_samples = 16;
+        settings.depth_limit = 5;
+        settings.thread_count = 8;
+        settings.sampler = Sampler::new(
+            Method::Sobol,
+            camera,
+            IMAGE_WIDTH,
+            IMAGE_HEIGHT,
+        )
+    }
+
 
     let scene = scene::Scene::new(
-        Vector3::new(0.7, 0.7, 0.9),
-        vec![light],
-        spheres_boxed,
+        Vector3::new(0.0, 0.0, 0.0),
+        vec![],
+        objects,
         bvh,
     );
 
-
-
     // Start the render threads
-    let (threads, thread_senders) = renderer::render(camera, Arc::new(scene), settings);
+    let (threads, thread_senders) = renderer::render(Arc::new(scene));
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {

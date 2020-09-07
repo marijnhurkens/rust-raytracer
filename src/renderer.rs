@@ -1,5 +1,4 @@
-use nalgebra::{Point3, Vector3};
-use camera::Camera;
+use nalgebra::{Point3, Vector3, SimdPartialOrd};
 use image;
 use rand::*;
 use scene::Scene;
@@ -15,9 +14,8 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
 use IMAGE_BUFFER;
-
-const MAX_DEPTH: u32 = 10; // todo: get from settings
-const GAMMA: f64 = 1.0; // ??? this would normally decode from srgb to linear space, looks fine though
+use sampler::{Method, Sampler};
+use scene::camera::Camera;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
@@ -25,7 +23,25 @@ pub struct Settings {
     pub bucket_width: u32,
     pub bucket_height: u32,
     pub depth_limit: u32,
-    pub samples: u32,
+    pub max_samples: u32,
+    pub min_samples: u32,
+    pub gamma: f64,
+    pub sampler: Sampler,
+}
+
+lazy_static! {
+pub static ref SETTINGS: RwLock<Settings> = {
+    RwLock::new(Settings {
+        thread_count: 8,
+        bucket_width: 32,
+        bucket_height: 32,
+        depth_limit: 4,
+        max_samples: 32,
+        min_samples: 16,
+        gamma: 1.2,
+        sampler: Sampler::new(Method::Random, Camera::new(Point3::new(0.0,0.0,-1.0), Point3::new(0.0,0.0,0.0), 80.0), ::IMAGE_WIDTH, ::IMAGE_HEIGHT)
+    })
+};
 }
 
 pub struct ThreadMessage {
@@ -60,6 +76,7 @@ pub struct Intersection {
 #[derive(Debug)]
 struct WorkQueue {
     queue: Vec<Work>,
+    buckets: usize,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -69,8 +86,11 @@ struct Work {
 }
 
 impl WorkQueue {
-    fn new(settings: Settings) -> WorkQueue {
+    fn new() -> WorkQueue {
         let mut queue = Vec::new();
+        let mut buckets = 0;
+
+        let settings = SETTINGS.read().unwrap();
 
         for x in 0..(::IMAGE_WIDTH as f32 / settings.bucket_width as f32).ceil() as u32 {
             for y in 0..(::IMAGE_HEIGHT as f32 / settings.bucket_height as f32).ceil() as u32 {
@@ -78,10 +98,11 @@ impl WorkQueue {
                     x: x * settings.bucket_width,
                     y: y * settings.bucket_height,
                 });
+                buckets += 1;
             }
         }
 
-        let work_queue = WorkQueue { queue: queue };
+        let work_queue = WorkQueue { queue, buckets };
 
         work_queue
     }
@@ -98,31 +119,32 @@ impl WorkQueue {
     }
 }
 
-lazy_static! {
-    pub static ref STATS: RwLock<Stats> = {
-        let stats = Stats {
-            rays_done: 0,
-            threads: HashMap::new(),
-        };
 
-        RwLock::new(stats)
+lazy_static! {
+pub static ref STATS: RwLock<Stats> = {
+    let stats = Stats {
+        rays_done: 0,
+        threads: HashMap::new(),
     };
+
+    RwLock::new(stats)
+};
 }
 
+
 pub fn render(
-    camera: Camera,
     scene: Arc<Scene>,
-    settings: Settings,
 ) -> (Vec<JoinHandle<()>>, Vec<Sender<ThreadMessage>>) {
     let image_width = IMAGE_BUFFER.read().unwrap().width();
     let image_height = IMAGE_BUFFER.read().unwrap().height();
     let mut threads: Vec<JoinHandle<()>> = vec![];
     let mut thread_senders: Vec<Sender<ThreadMessage>> = vec![];
+    let settings = SETTINGS.read().unwrap();
 
-    let work_queue = Arc::new(Mutex::new(WorkQueue::new(settings)));
+    let work_queue = Arc::new(Mutex::new(WorkQueue::new()));
 
     println!("Start render, w{} px, h{} px", image_width, image_height);
-    //println!("Camera {:#?}", camera);
+    println!("Settings: {:#?}", settings);
 
     // thread id is used to divide the work
     for thread_id in 0..settings.thread_count {
@@ -142,8 +164,11 @@ pub fn render(
                 },
             );
 
+            let settings = SETTINGS.read().unwrap();
+
+
             // use loop to split getting work and executing work. Else the lock
-            // would be retained during execution.
+            // would be retained during the rendering process.
             loop {
                 let work = work_queue.lock().unwrap().get_work(); // drop lock
                 match work {
@@ -152,55 +177,15 @@ pub fn render(
                         let x_end = cmp::min(work.x + settings.bucket_width, image_width);
                         let y_end = cmp::min(work.y + settings.bucket_height, image_height);
 
-                        for y in work.y..y_end {
-                            for x in work.x..x_end {
-                                match thread_receiver.try_recv() {
-                                    Ok(thread_message) => {
-                                        if thread_message.exit {
-                                            println!("Stopping...");
-                                            return;
-                                        }
-                                    }
-                                    Err(_err) => {}
-                                }
-
-                                let rays = get_rays_at(
-                                    camera,
-                                    image_width,
-                                    image_height,
-                                    x,
-                                    y,
-                                    settings.samples,
-                                )
-                                .unwrap();
-                                let rays_len = rays.len();
-
-                                let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
-
-                                // Get the average pixel color using the samples.
-                                for ray in rays {
-                                    pixel_color += trace(ray, &thread_scene, 1, 1.0).unwrap();
-                                }
-
-                                pixel_color /= rays_len as f64;
-
-                                let pixel_color_rgba = image::Rgba([
-                                    ((pixel_color.x.powf(1.0 / GAMMA)) * 255.0) as u8,
-                                    ((pixel_color.y.powf(1.0 / GAMMA)) * 255.0) as u8,
-                                    ((pixel_color.z.powf(1.0 / GAMMA)) * 255.0) as u8,
-                                    255,
-                                ]);
-
-                                IMAGE_BUFFER
-                                    .write()
-                                    .unwrap()
-                                    .put_pixel(x, y, pixel_color_rgba);
-                            }
+                        // returns false if thread was requested to stop
+                        if !render_work(work.x, x_end, work.y, y_end, &thread_scene, &thread_receiver)
+                        {
+                            return;
                         }
 
                         let mut stats = STATS.write().unwrap();
 
-                        let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.samples;
+                        let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.max_samples;
 
                         stats.rays_done += rays_done;
 
@@ -227,62 +212,71 @@ pub fn render(
     (threads, thread_senders)
 }
 
-fn get_rays_at(
-    camera: Camera,
-    width: u32,
-    height: u32,
-    pos_x: u32,
-    pos_y: u32,
-    samples: u32,
-) -> Result<Vec<Ray>, &'static str> {
-    use std::f64::consts::PI;
-    let mut rng = thread_rng();
+fn render_work(x: u32, x_end: u32, y: u32, y_end: u32,
+               scene: &Scene,
+               thread_receiver: &Receiver<ThreadMessage>) -> bool
+{
+    let settings = SETTINGS.read().unwrap();
 
-    if pos_y >= height {
-        return Err("Position exceeds number of pixels.");
+    for y in y..y_end {
+        for x in x..x_end {
+            match thread_receiver.try_recv() {
+                Ok(thread_message) => {
+                    if thread_message.exit {
+                        println!("Stopping...");
+                        return false;
+                    }
+                }
+                Err(_err) => {}
+            }
+
+            let rays = settings.sampler.get_samples(
+                settings.max_samples,
+                x,
+                y,
+            );
+
+            let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
+
+            // Get the average pixel color using the samples.
+            let mut samples = 0;
+            // Get a minimum number of samples to avoid bailing
+            // if the first couple of samples happen to be close to each other
+            let adaptive_sampling = true;
+
+            for ray in rays {
+                samples += 1;
+                let new_pixel_color = trace(ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0,0.0,0.0), Vector3::new(1.0,1.0,1.0));
+
+                // If the new sample is almost exactly the same as the current average we stop
+                // sampling.
+                if adaptive_sampling && samples > settings.min_samples && (pixel_color - new_pixel_color).magnitude().abs() < (1.0 / 2000.0) {
+                    pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
+                    break;
+                } else {
+                    pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
+                }
+            }
+
+            let pixel_color_rgba = image::Rgba([
+                ((pixel_color.x.powf(1.0 / settings.gamma)) * 255.0) as u8,
+                ((pixel_color.y.powf(1.0 / settings.gamma)) * 255.0) as u8,
+                ((pixel_color.z.powf(1.0 / settings.gamma)) * 255.0) as u8,
+                255,
+            ]);
+
+            IMAGE_BUFFER
+                .write()
+                .unwrap()
+                .put_pixel(x, y, pixel_color_rgba);
+        }
     }
-
-    let aspect_ratio = width as f64 / height as f64;
-
-    // fov = horizontal
-    let fov_radians = PI * (camera.fov / 180.0); // for 60 degs: 60deg / 180deg = 0.33 * PI = 1.036 radians
-    let half_width = (fov_radians / 2.0).tan();
-    let half_height = half_width * (1.0 / aspect_ratio);
-
-    let plane_width = half_width * 2.0;
-    let plane_height = half_height * 2.0;
-
-    let pixel_width = plane_width / (width - 1) as f64;
-    let pixel_height = plane_height / (height - 1) as f64;
-
-    let half_pixel_width = pixel_width / 2.0;
-    let half_pixel_height = pixel_height / 2.0;
-
-    let mut rays = Vec::new();
-
-    for _w in 0..samples {
-        let sub_pixel_horizontal_offset = rng.gen_range(-half_pixel_width, half_pixel_width);
-        let sub_pixel_vertical_offset = rng.gen_range(-half_pixel_height, half_pixel_height);
-
-        let horizontal_offset = camera.right
-            * ((pos_x as f64 * pixel_width) + sub_pixel_horizontal_offset - half_width);
-        // pos_y needs to be negated because in the image the upper row is row 0,
-        // in the 3d world the y axis descends when going down.
-        let vertical_offset = camera.up
-            * ((-(pos_y as f64) * pixel_height) + sub_pixel_vertical_offset + half_height);
-
-        let ray = Ray {
-            point: camera.position,
-            direction: (camera.forward + horizontal_offset + vertical_offset).normalize(),
-        };
-
-        rays.push(ray);
-    }
-
-    Ok(rays)
+    true
 }
 
 pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<Vector3<f64>> {
+    let settings = SETTINGS.read().unwrap();
+
     // Early exit when max depth is reach or the contribution factor is too low.
     //
     // The contribution factor is checked here to force the user to provide one.
@@ -290,7 +284,7 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
         return None;
     }
 
-    if depth > MAX_DEPTH {
+    if depth > settings.depth_limit {
         return None;
     }
 
@@ -328,7 +322,7 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<
 
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32)
+        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32),
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
@@ -354,7 +348,7 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<
 fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32)
+        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32),
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);

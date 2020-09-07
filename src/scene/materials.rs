@@ -6,6 +6,7 @@ use std::fmt::Debug;
 use crate::renderer;
 
 use super::*;
+use renderer::Ray;
 
 pub trait Material: Debug + Send + Sync {
     fn get_surface_color(
@@ -22,16 +23,31 @@ pub trait Material: Debug + Send + Sync {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct Light {
+    pub color: Vector3<f64>,
+    pub intensity: f64,
+    pub weight: f64,
+}
+
+impl Material for Light {
+    fn get_surface_color(&self, ray: Ray, _: &Scene, _: Point3<f64>, normal: Vector3<f64>, _: u32, _: f64) -> Option<Vector3<f64>> {
+        let color = ray.direction.dot(&normal).abs() * self.intensity;
+
+        Some(Vector3::new(color, color, color))
+    }
+
+    fn get_weight(&self) -> f64 {
+        self.weight
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Lambert {
     pub color: Vector3<f64>,
     pub weight: f64,
 }
 
 impl Material for Lambert {
-    fn get_weight(&self) -> f64 {
-        self.weight
-    }
-
     fn get_surface_color(
         &self,
         _ray: renderer::Ray,
@@ -48,14 +64,14 @@ impl Material for Lambert {
         // the cross product of the normal and the vector to the light
         // to calculate the lambert contribution.
         for light in &scene.lights {
-            let test_point = point_of_intersection + (normal * 1e-4);
-          
+            let test_point = &point_of_intersection + (&normal * 1e-4);
+
             if !renderer::check_light_visible(test_point, &scene, *light)
             {
                 continue;
             }
 
-            let contribution = (light.position - point_of_intersection)
+            let contribution = (&light.position - &point_of_intersection)
                 .normalize()
                 .dot(&normal)
                 * light.intensity;
@@ -70,8 +86,8 @@ impl Material for Lambert {
         }
 
         // throw random ray
-        let ray_point = point_of_intersection + normal * 1e-4;
-        let target = ray_point + normal + get_random_in_unit_sphere();
+        let ray_point = point_of_intersection + &normal * 1e-4;
+        let target = ray_point + &normal + get_random_in_unit_sphere();
 
         let reflect_ray = renderer::Ray {
             point: ray_point,
@@ -85,7 +101,11 @@ impl Material for Lambert {
             lambert_color += lambert_surface_color * 0.5;
         }
 
-        Some(((self.color * lights_contribution) + lambert_color) / 2.0 * self.weight)
+        Some(((&self.color * lights_contribution) + lambert_color) / 2.0 * self.weight)
+    }
+
+    fn get_weight(&self) -> f64 {
+        self.weight
     }
 }
 
@@ -96,14 +116,10 @@ pub struct Reflection {
 }
 
 impl Material for Reflection {
-    fn get_weight(&self) -> f64 {
-        self.weight
-    }
-
     // Normal reflections reflect the same amount
-    // independant of the angle of intersection of the ray.
+    // independent of the angle of intersection of the ray.
     //
-    // A random angle is added when glosiness < 1
+    // A random angle is added when glossiness < 1
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
@@ -128,6 +144,10 @@ impl Material for Reflection {
 
         None
     }
+
+    fn get_weight(&self) -> f64 {
+        self.weight
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -137,10 +157,6 @@ pub struct Refraction {
 }
 
 impl Material for Refraction {
-    fn get_weight(&self) -> f64 {
-        self.weight
-    }
-
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
@@ -169,6 +185,10 @@ impl Material for Refraction {
 
         Some(refract_ray_color * self.weight)
     }
+
+    fn get_weight(&self) -> f64 {
+        self.weight
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -182,10 +202,6 @@ pub struct FresnelReflection {
 }
 
 impl Material for FresnelReflection {
-    fn get_weight(&self) -> f64 {
-        self.weight
-    }
-
     fn get_surface_color(
         &self,
         ray: renderer::Ray,
@@ -203,7 +219,7 @@ impl Material for FresnelReflection {
 
         let outside = ray.direction.dot(&normal) < 0.0;
 
-        let bias = 0.001 * normal;
+        let bias = 0.001 * &normal;
 
         // REFRACTION
         if self.refraction > 0.0 && fresnel_ratio < 1.0 {
@@ -231,9 +247,9 @@ impl Material for FresnelReflection {
         // REFLECTION
         if self.reflection > 0.0 && fresnel_ratio > 0.0 {
             let reflect_ray_start = if outside {
-                point_of_intersection + bias
+                &point_of_intersection + &bias
             } else {
-                point_of_intersection - bias
+                &point_of_intersection - &bias
             };
 
             let reflect_ray = renderer::Ray {
@@ -263,7 +279,7 @@ impl Material for FresnelReflection {
                     continue;
                 }
 
-                let contribution = (light.position - point_of_intersection)
+                let contribution = (light.position - &point_of_intersection)
                     .normalize()
                     .dot(&normal)
                     * light.intensity;
@@ -278,8 +294,8 @@ impl Material for FresnelReflection {
             }
 
             // throw random ray
-            let ray_point = point_of_intersection + normal * 1e-4;
-            let target = ray_point + normal + get_random_in_unit_sphere();
+            let ray_point = &point_of_intersection + &normal * 1e-4;
+            let target = ray_point + &normal + get_random_in_unit_sphere();
 
             let reflect_ray = renderer::Ray {
                 point: ray_point,
@@ -317,6 +333,10 @@ impl Material for FresnelReflection {
 
         Some(color)
     }
+
+    fn get_weight(&self) -> f64 {
+        self.weight
+    }
 }
 
 
@@ -328,12 +348,12 @@ pub struct DebugNormal {
 impl Material for DebugNormal {
     fn get_surface_color(
         &self,
-        ray: renderer::Ray,
-        scene: &Scene,
-        point_of_intersection: Point3<f64>,
+        _: renderer::Ray,
+        _: &Scene,
+        _: Point3<f64>,
         normal: Vector3<f64>,
-        depth: u32,
-        contribution: f64,
+        _: u32,
+        _: f64,
     ) -> Option<Vector3<f64>> {
         Some(normal)
     }
