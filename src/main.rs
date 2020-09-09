@@ -9,68 +9,61 @@ extern crate tobj;
 extern crate indicatif;
 extern crate sobol;
 
-use std::env;
-use std::fs;
 use std::sync::{Arc, RwLock};
-
-use lazy_static::lazy_static;
 use bvh::bvh::BVH;
 use ggez::{Context, GameResult};
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event;
-use ggez::graphics::{self, Color, Drawable, DrawParam};
-use nalgebra::{Point3, Vector3};
-
+use ggez::graphics::{self, Color, DrawParam};
+use nalgebra::{Point3, Vector3, Vector2};
 use scene::*;
 use indicatif::ProgressBar;
-use renderer::{SETTINGS, Settings};
+use renderer::{SETTINGS};
 use sampler::{Sampler, Method};
+use film::{Film, FilterMethod};
 
 mod helpers;
 mod renderer;
+mod film;
 mod scene;
 mod sampler;
+mod photon_mapper;
 
-const IMAGE_WIDTH: u32 = 500;
-const IMAGE_HEIGHT: u32 = 500;
 const OUTPUT: &str = "window";
 const UP_AXIS: &str = "y";
 
-lazy_static! {
-    static ref IMAGE_BUFFER: Arc<RwLock<image::RgbaImage>> = Arc::new(RwLock::new(
-        image::ImageBuffer::new(IMAGE_WIDTH, IMAGE_HEIGHT)
-    ));
-}
-
 struct MainState {
     canvas: graphics::Canvas,
-    text: graphics::Text,
+    film: Arc<RwLock<Film>>,
 }
 
 impl MainState {
-    fn new(ctx: &mut Context) -> GameResult<MainState> {
+    fn new(ctx: &mut Context, film: Arc<RwLock<Film>>) -> GameResult<MainState> {
         let canvas = graphics::Canvas::with_window_size(ctx)?;
-        let font = graphics::Font::default();
-        let text = graphics::Text::new(("Hello world!", font, 24.0));
-        Ok(MainState { canvas, text })
+
+        Ok(MainState { canvas, film })
     }
 }
 
 impl event::EventHandler for MainState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        //dbg!(ggez::timer::fps(_ctx));
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let image = ggez::graphics::Image::from_rgba8(ctx, IMAGE_WIDTH as u16, IMAGE_HEIGHT as u16, &IMAGE_BUFFER.read().unwrap().clone().into_raw())?;
+        if !ggez::timer::check_update_time(ctx, 1) {
+            return Ok(());
+        }
 
-        // //now lets render our scene once in the top left and in the bottom
-        // // right
+        let film = self.film.read().unwrap();
+        let image_width = film.image_size.x;
+        let image_height = film.image_size.y;
+        let image = ggez::graphics::Image::from_rgba8(ctx, image_width as u16, image_height as u16, &film.image_buffer.clone().into_raw())?;
+
+        // now lets render our scene once in the top left and in the bottom right
         let window_size = graphics::size(ctx);
-        let image_ratio = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
+        let image_ratio = image_width as f32 / image_height as f32;
         let window_ratio = window_size.0 as f32 / window_size.1 as f32;
-
 
         let scale = if window_ratio > image_ratio {
             // window is wider, use max height
@@ -98,13 +91,6 @@ impl event::EventHandler for MainState {
                 .dest(ggez::mint::Point2 { x: 0.0, y: 0.0 })
                 .scale(scale),
         )?;
-        // graphics::draw(
-        //     ctx,
-        //     &self.canvas,
-        //     DrawParam::default()
-        //         .dest(Point2::new(400.0, 300.0))
-        //         .scale(scale),
-        // )?;
         graphics::present(ctx)?;
 
         Ok(())
@@ -117,7 +103,6 @@ impl event::EventHandler for MainState {
 }
 
 fn main() -> GameResult {
-
     // Cornell box
     let mut objects: Vec<Box<dyn objects::Object>> = vec![];
 
@@ -276,22 +261,34 @@ fn main() -> GameResult {
     let bvh = BVH::build(&mut objects);
 
     let camera = camera::Camera::new(
-        Point3::new(0.0, -0.2, 2.8),
-        Point3::new(0.0, -0.2, 0.0),
+        Point3::new(0.0, 0.0, 2.8),
+        Point3::new(0.0, 0.0, 0.0),
         60.0,
     );
+
+    let image_width = 1200;
+    let image_height = 1200;
+
+    let film = Arc::new(RwLock::new(Film::new(
+        Vector2::new(image_width, image_height),
+        Vector2::new(32, 32),
+        16,
+        None,
+        None,
+        FilterMethod::Box,
+    )));
 
     {
         let mut settings = SETTINGS.write().unwrap();
         settings.max_samples = 200;
-        settings.min_samples = 16;
-        settings.depth_limit = 5;
+        settings.min_samples = 4;
+        settings.depth_limit = 12;
         settings.thread_count = 8;
         settings.sampler = Sampler::new(
             Method::Sobol,
             camera,
-            IMAGE_WIDTH,
-            IMAGE_HEIGHT,
+            image_width,
+            image_height,
         )
     }
 
@@ -304,7 +301,7 @@ fn main() -> GameResult {
     );
 
     // Start the render threads
-    let (threads, thread_senders) = renderer::render(Arc::new(scene));
+    let (threads, thread_senders) = renderer::render(Arc::new(scene), film.clone());
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {
@@ -315,8 +312,8 @@ fn main() -> GameResult {
             srgb: false,
         })
         .window_mode(WindowMode {
-            width: IMAGE_WIDTH as f32,
-            height: IMAGE_HEIGHT as f32,
+            width: image_width as f32,
+            height: image_height as f32,
             maximized: false,
             fullscreen_type: FullscreenType::Windowed,
             borderless: false,
@@ -327,6 +324,6 @@ fn main() -> GameResult {
             resizable: true,
         });
     let (ctx, event_loop) = &mut cb.build()?;
-    let state = &mut MainState::new(ctx)?;
+    let state = &mut MainState::new(ctx, film.clone())?;
     event::run(ctx, event_loop, state)
 }

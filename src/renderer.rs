@@ -1,27 +1,22 @@
-use nalgebra::{Point3, Vector3, SimdPartialOrd};
-use image;
+use nalgebra::{Point3, Vector3, Point2, SimdPartialOrd};
 use rand::*;
 use scene::Scene;
 use scene::lights::Light;
 use scene::objects::Object;
-
-use std::cmp;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
-use IMAGE_BUFFER;
 use sampler::{Method, Sampler};
 use scene::camera::Camera;
+use film::{Film, Bucket};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
     pub thread_count: u32,
-    pub bucket_width: u32,
-    pub bucket_height: u32,
     pub depth_limit: u32,
     pub max_samples: u32,
     pub min_samples: u32,
@@ -33,13 +28,11 @@ lazy_static! {
 pub static ref SETTINGS: RwLock<Settings> = {
     RwLock::new(Settings {
         thread_count: 8,
-        bucket_width: 32,
-        bucket_height: 32,
         depth_limit: 4,
         max_samples: 32,
         min_samples: 16,
         gamma: 1.2,
-        sampler: Sampler::new(Method::Random, Camera::new(Point3::new(0.0,0.0,-1.0), Point3::new(0.0,0.0,0.0), 80.0), ::IMAGE_WIDTH, ::IMAGE_HEIGHT)
+        sampler: Sampler::new(Method::Random, Camera::new(Point3::new(0.0,0.0,-1.0), Point3::new(0.0,0.0,0.0), 80.0), 80, 80)
     })
 };
 }
@@ -73,52 +66,11 @@ pub struct Intersection {
     pub normal: Vector3<f64>,
 }
 
-#[derive(Debug)]
-struct WorkQueue {
-    queue: Vec<Work>,
-    buckets: usize,
-}
-
 #[derive(Debug, Copy, Clone)]
-struct Work {
-    x: u32,
-    y: u32,
+pub struct SampleResult {
+    pub radiance: Vector3<f64>,
+    pub pixel_location: Point2<f64>,
 }
-
-impl WorkQueue {
-    fn new() -> WorkQueue {
-        let mut queue = Vec::new();
-        let mut buckets = 0;
-
-        let settings = SETTINGS.read().unwrap();
-
-        for x in 0..(::IMAGE_WIDTH as f32 / settings.bucket_width as f32).ceil() as u32 {
-            for y in 0..(::IMAGE_HEIGHT as f32 / settings.bucket_height as f32).ceil() as u32 {
-                queue.push(Work {
-                    x: x * settings.bucket_width,
-                    y: y * settings.bucket_height,
-                });
-                buckets += 1;
-            }
-        }
-
-        let work_queue = WorkQueue { queue, buckets };
-
-        work_queue
-    }
-
-    fn get_work(&mut self) -> Option<Work> {
-        let mut rng = thread_rng();
-        let len = self.queue.len();
-
-        if len == 0 {
-            return None;
-        }
-
-        Some(self.queue.remove(rng.gen_range(0, len)))
-    }
-}
-
 
 lazy_static! {
 pub static ref STATS: RwLock<Stats> = {
@@ -134,22 +86,18 @@ pub static ref STATS: RwLock<Stats> = {
 
 pub fn render(
     scene: Arc<Scene>,
+    film: Arc<RwLock<Film>>,
 ) -> (Vec<JoinHandle<()>>, Vec<Sender<ThreadMessage>>) {
-    let image_width = IMAGE_BUFFER.read().unwrap().width();
-    let image_height = IMAGE_BUFFER.read().unwrap().height();
     let mut threads: Vec<JoinHandle<()>> = vec![];
     let mut thread_senders: Vec<Sender<ThreadMessage>> = vec![];
     let settings = SETTINGS.read().unwrap();
 
-    let work_queue = Arc::new(Mutex::new(WorkQueue::new()));
-
-    println!("Start render, w{} px, h{} px", image_width, image_height);
     println!("Settings: {:#?}", settings);
 
     // thread id is used to divide the work
     for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
-        let work_queue = work_queue.clone();
+        let thread_film = film.clone();
 
         let (thread_sender, thread_receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) =
             mpsc::channel();
@@ -164,43 +112,45 @@ pub fn render(
                 },
             );
 
-            let settings = SETTINGS.read().unwrap();
-
-
-            // use loop to split getting work and executing work. Else the lock
-            // would be retained during the rendering process.
             loop {
-                let work = work_queue.lock().unwrap().get_work(); // drop lock
-                match work {
-                    Some(work) => {
-                        // prevent rounding error, cap at image size
-                        let x_end = cmp::min(work.x + settings.bucket_width, image_width);
-                        let y_end = cmp::min(work.y + settings.bucket_height, image_height);
+                let bucket = thread_film.write().unwrap().get_bucket();
+
+                match bucket {
+                    Some(mut bucket) => {
+
+                        // this lock should always work so do try_lock
+                        let mut bucket_lock = bucket.try_lock().unwrap();
 
                         // returns false if thread was requested to stop
-                        if !render_work(work.x, x_end, work.y, y_end, &thread_scene, &thread_receiver)
+                        if !render_work( &mut bucket_lock, &thread_scene, &thread_film, &thread_receiver)
                         {
                             return;
                         }
 
-                        let mut stats = STATS.write().unwrap();
 
-                        let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.max_samples;
+                        thread_film.write().unwrap().update_image_buffer(&bucket_lock);
 
-                        stats.rays_done += rays_done;
 
-                        if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
-                            let duration =
-                                stats_thread.start_time.elapsed().expect("Duration failed!");
-                            let secs = duration.as_secs();
-                            let sub_nanos = duration.subsec_nanos();
-                            let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+                        // let mut stats = STATS.write().unwrap();
+                        //
+                        // let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.max_samples;
+                        //
+                        // stats.rays_done += rays_done;
 
-                            stats_thread.rays_done += rays_done;
-                            stats_thread.ns_per_ray = nanos as f64 / stats_thread.rays_done as f64;
-                        }
+                        // if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
+                        //     let duration =
+                        //         stats_thread.start_time.elapsed().expect("Duration failed!");
+                        //     let secs = duration.as_secs();
+                        //     let sub_nanos = duration.subsec_nanos();
+                        //     let nanos = secs * 1_000_000_000 + sub_nanos as u64;
+                        //
+                        //     stats_thread.rays_done += rays_done;
+                        //     stats_thread.ns_per_ray = nanos as f64 / stats_thread.rays_done as f64;
+                        // }
                     }
-                    None => break,
+                    None => {
+                        break;
+                    },
                 }
             } // end of loop
         }); // end of thread
@@ -212,14 +162,12 @@ pub fn render(
     (threads, thread_senders)
 }
 
-fn render_work(x: u32, x_end: u32, y: u32, y_end: u32,
-               scene: &Scene,
-               thread_receiver: &Receiver<ThreadMessage>) -> bool
+fn render_work(bucket: &mut Bucket, scene: &Scene, film: &Arc<RwLock<Film>>, thread_receiver: &Receiver<ThreadMessage>) -> bool
 {
     let settings = SETTINGS.read().unwrap();
 
-    for y in y..y_end {
-        for x in x..x_end {
+    for y in bucket.start.y..bucket.end.y {
+        for x in bucket.start.x..bucket.end.x {
             match thread_receiver.try_recv() {
                 Ok(thread_message) => {
                     if thread_message.exit {
@@ -230,47 +178,52 @@ fn render_work(x: u32, x_end: u32, y: u32, y_end: u32,
                 Err(_err) => {}
             }
 
-            let rays = settings.sampler.get_samples(
+            let samples = settings.sampler.get_samples(
                 settings.max_samples,
                 x,
                 y,
             );
 
-            let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
+
 
             // Get the average pixel color using the samples.
-            let mut samples = 0;
+            let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
             // Get a minimum number of samples to avoid bailing
             // if the first couple of samples happen to be close to each other
-            let adaptive_sampling = true;
+            //let adaptive_sampling = true;
 
-            for ray in rays {
-                samples += 1;
-                let new_pixel_color = trace(ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0,0.0,0.0), Vector3::new(1.0,1.0,1.0));
+            for sample in samples {
 
-                // If the new sample is almost exactly the same as the current average we stop
-                // sampling.
-                if adaptive_sampling && samples > settings.min_samples && (pixel_color - new_pixel_color).magnitude().abs() < (1.0 / 2000.0) {
-                    pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
-                    break;
-                } else {
-                    pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
-                }
+                // todo: remove clamp?
+                let new_pixel_color = trace(sample.ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+
+                sample_results.push(SampleResult {
+                    radiance: new_pixel_color,
+                    pixel_location: sample.pixel_position,
+                });
+                // // If the new sample is almost exactly the same as the current average we stop
+                // // sampling.
+                // if adaptive_sampling && samples > settings.min_samples && (pixel_color - new_pixel_color).magnitude().abs() < (1.0 / 2000.0) {
+                //     pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
+                //     break;
+                // } else {
+                //     pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
+                // }
             }
 
-            let pixel_color_rgba = image::Rgba([
-                ((pixel_color.x.powf(1.0 / settings.gamma)) * 255.0) as u8,
-                ((pixel_color.y.powf(1.0 / settings.gamma)) * 255.0) as u8,
-                ((pixel_color.z.powf(1.0 / settings.gamma)) * 255.0) as u8,
-                255,
-            ]);
+            // let pixel_color_rgba = image::Rgba([
+            //     ((pixel_color.x.powf(1.0 / settings.gamma)) * 255.0) as u8,
+            //     ((pixel_color.y.powf(1.0 / settings.gamma)) * 255.0) as u8,
+            //     ((pixel_color.z.powf(1.0 / settings.gamma)) * 255.0) as u8,
+            //     255,
+            // ]);
 
-            IMAGE_BUFFER
-                .write()
-                .unwrap()
-                .put_pixel(x, y, pixel_color_rgba);
+            bucket.add_samples(sample_results);
         }
+
     }
+    bucket.finish();
+
     true
 }
 

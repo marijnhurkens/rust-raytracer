@@ -15,6 +15,7 @@ indicatif = "0.15"
 sobol = "1.0.1"
 
 [profile.release]
-opt-level = 3
-lto = "fat"
-rustflags = "-C target-cpu=native"
+#opt-level = 3
+#lto = "fat"
+#rustflags = "-C target-cpu=native"
+debug = true

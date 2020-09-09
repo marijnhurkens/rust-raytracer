@@ -4,10 +4,7 @@ use rand::*;
 use sobol::Sobol;
 use sobol::params::JoeKuoD6;
 use std::f64::consts::PI;
-use std::rc::Rc;
-use std::iter::Take;
-use std::borrow::Borrow;
-use std::sync::Arc;
+use nalgebra::Point2;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Method {
@@ -16,9 +13,9 @@ pub enum Method {
 }
 
 #[derive(Debug, Copy, Clone)]
-struct Sample {
-    pub offset_x: f64,
-    pub offset_y: f64,
+pub struct Sample {
+    pub pixel_position: Point2<f64>,
+    pub ray: Ray,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -78,7 +75,7 @@ impl Sampler {
         samples: u32,
         x: u32,
         y: u32,
-    ) -> Vec<Ray>
+    ) -> Vec<Sample>
     {
         match &self.method {
             Method::Random => self.get_random_samples(x, y, samples),
@@ -91,66 +88,74 @@ impl Sampler {
         &self,
         x: u32,
         y: u32,
-        samples: u32,
-    ) -> Vec<Ray>
+        sample_num: u32,
+    ) -> Vec<Sample>
     {
         let mut rng = thread_rng();
 
-        let mut rays = Vec::new();
+        let mut samples = Vec::new();
 
         let half_pixel_width = &self.pixel_width_radians / 2.0;
         let half_pixel_height = &self.pixel_height_radians / 2.0;
 
-        for _w in 0..samples {
-            let sub_pixel_horizontal_offset = rng.gen_range(-half_pixel_width, half_pixel_width);
-            let sub_pixel_vertical_offset = rng.gen_range(-half_pixel_height, half_pixel_height);
+        for _w in 0..sample_num {
+            let sub_pixel_horizontal_offset = rng.gen_range(0.0, 1.0);
+            let sub_pixel_vertical_offset = rng.gen_range(0.0, 1.0);
+            let sub_pixel_horizontal_offset_radians = sub_pixel_horizontal_offset - 0.5 * &self.pixel_width_radians;
+            let sub_pixel_vertical_offset_radians = sub_pixel_vertical_offset - 0.5 * &self.pixel_height_radians;
 
             let horizontal_offset = &self.camera.right
-                * ((x as f64 * &self.pixel_width_radians) + sub_pixel_horizontal_offset - &self.half_width_radians);
+                * ((x as f64 * &self.pixel_width_radians) + sub_pixel_horizontal_offset_radians - &self.half_width_radians);
             // pos_y needs to be negated because in the image the upper row is row 0,
             // in the 3d world the y axis descends when going down.
             let vertical_offset = &self.camera.up
-                * ((-(y as f64) * &self.pixel_height_radians) + sub_pixel_vertical_offset + &self.half_height_radians);
+                * ((-(y as f64) * &self.pixel_height_radians) + sub_pixel_vertical_offset_radians + &self.half_height_radians);
 
-            let ray = Ray {
-                point: self.camera.position,
-                direction: (&self.camera.forward + horizontal_offset + vertical_offset).normalize(),
+            let sample = Sample {
+                ray: Ray {
+                    point: self.camera.position,
+                    direction: (&self.camera.forward + horizontal_offset + vertical_offset).normalize(),
+                },
+                pixel_position: Point2::new(x as f64 + sub_pixel_horizontal_offset - 0.5, y as f64 + sub_pixel_vertical_offset - 0.5),
             };
 
-            rays.push(ray);
+            samples.push(sample);
         }
 
-        rays
+        samples
     }
 
     fn get_sobol_samples(
         &self,
         x: u32,
         y: u32,
-        samples: u32,
-    ) -> Vec<Ray>
+        sample_num: u32,
+    ) -> Vec<Sample>
     {
-        let mut rays = Vec::new();
+        let mut samples = Vec::new();
 
-        for point in SOBOL.iter().take(samples as usize) {
+        for point in SOBOL.iter().take(sample_num as usize) {
             let sub_pixel_horizontal_offset = (point[0] - 0.5) * &self.pixel_width_radians;
-            let sub_pixel_vertical_offset = (point[1]- 0.5) * &self.pixel_height_radians;
+            let sub_pixel_vertical_offset = (point[1] - 0.5) * &self.pixel_height_radians;
 
             let horizontal_offset = &self.camera.right
                 * ((x as f64 * &self.pixel_width_radians) + sub_pixel_horizontal_offset - &self.half_width_radians);
-            // pos_y needs to be negated because in the image the upper row is row 0,
+            // y needs to be negated because in the image the upper row is row 0,
             // in the 3d world the y axis descends when going down.
             let vertical_offset = &self.camera.up
                 * ((-(y as f64) * &self.pixel_height_radians) + sub_pixel_vertical_offset + &self.half_height_radians);
 
-            let ray = Ray {
-                point: self.camera.position,
-                direction: (&self.camera.forward + horizontal_offset + vertical_offset).normalize(),
+            let sample = Sample {
+                ray: Ray {
+                    point: self.camera.position,
+                    direction: (&self.camera.forward + horizontal_offset + vertical_offset).normalize(),
+                },
+                pixel_position: Point2::new(x as f64 + point[0] - 0.5, y as f64 + point[1] - 0.5),
             };
 
-            rays.push(ray);
+            samples.push(sample);
         }
 
-        rays
+        samples
     }
 }
