@@ -1,0 +1,17 @@
+film:
+  image_width: 600
+  image_height: 600
+  film_size: 16
+  bucket_width: 32
+  bucket_height: 32
+camera:
+  position: [0.0,0.0,2.7]
+  target: [0.0,0.0,0.0]
+  fov: 60.0
+sampler:
+  max_samples: 320
+  min_samples: 16
+  method: sobol
+renderer:
+  depth_limit: 6
+  threads: 8

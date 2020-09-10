@@ -1,5 +1,7 @@
-use nalgebra::Vector3;
+use nalgebra::{Vector3, Point3, Scalar};
 use rand::{thread_rng, Rng};
+use yaml_rust::yaml::Array;
+use yaml_rust::Yaml;
 
 pub fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
     vec - 2.0 * vec.dot(&normal) * normal
@@ -89,6 +91,30 @@ pub fn get_refract_ray(
     } else {
         return Some(eta * angle_of_incidence + (eta * cosi - k.sqrt()) * n);
     }
+}
+
+
+pub fn yaml_array_into_point3(array: &Yaml) -> Point3<f64>
+{
+    Point3::new(
+        array[0].as_f64().unwrap(),
+        array[1].as_f64().unwrap(),
+        array[2].as_f64().unwrap(),
+    )
+}
+
+pub fn yaml_array_into_vector3(array: &Yaml) -> Vector3<f64>
+{
+    Vector3::new(
+        array[0].as_f64().unwrap(),
+        array[1].as_f64().unwrap(),
+        array[2].as_f64().unwrap(),
+    )
+}
+
+pub fn yaml_into_u32(yaml: &Yaml) -> u32
+{
+    yaml.as_i64().unwrap() as u32
 }
 
 #[cfg(test)]

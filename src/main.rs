@@ -8,6 +8,7 @@ extern crate rand;
 extern crate tobj;
 extern crate indicatif;
 extern crate sobol;
+extern crate yaml_rust;
 
 use std::sync::{Arc, RwLock};
 use bvh::bvh::BVH;
@@ -21,6 +22,12 @@ use indicatif::ProgressBar;
 use renderer::{SETTINGS};
 use sampler::{Sampler, Method};
 use film::{Film, FilterMethod};
+use std::time::Instant;
+use std::thread::JoinHandle;
+use yaml_rust::YamlLoader;
+use std::fs::File;
+use std::io::Read;
+use helpers::{yaml_array_into_point3, yaml_into_u32};
 
 mod helpers;
 mod renderer;
@@ -258,40 +265,9 @@ fn main() -> GameResult {
         bar.finish();
     }
 
+
+    // Build scene
     let bvh = BVH::build(&mut objects);
-
-    let camera = camera::Camera::new(
-        Point3::new(0.0, 0.0, 2.8),
-        Point3::new(0.0, 0.0, 0.0),
-        60.0,
-    );
-
-    let image_width = 1200;
-    let image_height = 1200;
-
-    let film = Arc::new(RwLock::new(Film::new(
-        Vector2::new(image_width, image_height),
-        Vector2::new(32, 32),
-        16,
-        None,
-        None,
-        FilterMethod::Box,
-    )));
-
-    {
-        let mut settings = SETTINGS.write().unwrap();
-        settings.max_samples = 200;
-        settings.min_samples = 4;
-        settings.depth_limit = 12;
-        settings.thread_count = 8;
-        settings.sampler = Sampler::new(
-            Method::Sobol,
-            camera,
-            image_width,
-            image_height,
-        )
-    }
-
 
     let scene = scene::Scene::new(
         Vector3::new(0.0, 0.0, 0.0),
@@ -299,6 +275,49 @@ fn main() -> GameResult {
         objects,
         bvh,
     );
+
+    // Get settings
+    let mut file = File::open("settings.yaml").expect("Unable to open file");
+    let mut contents = String::new();
+
+    file.read_to_string(&mut contents)
+        .expect("Unable to read file");
+    let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
+
+    let camera = camera::Camera::new(
+        yaml_array_into_point3(&settings_yaml["camera"]["position"]),
+        yaml_array_into_point3(&settings_yaml["camera"]["target"]),
+        settings_yaml["camera"]["fov"].as_f64().unwrap(),
+    );
+
+    let image_width = settings_yaml["film"]["image_width"].as_i64().unwrap() as u32;
+    let image_height = settings_yaml["film"]["image_height"].as_i64().unwrap() as u32;
+
+    let film = Arc::new(RwLock::new(Film::new(
+        Vector2::new(image_width, image_height),
+        Vector2::new(
+            settings_yaml["film"]["bucket_width"].as_i64().unwrap() as u32,
+            settings_yaml["film"]["bucket_height"].as_i64().unwrap() as u32,
+        ),
+        settings_yaml["film"]["film_size"].as_i64().unwrap() as u32,
+        None,
+        None,
+        FilterMethod::Box,
+    )));
+
+    {
+        let mut settings = SETTINGS.write().unwrap();
+        settings.max_samples = yaml_into_u32(&settings_yaml["sampler"]["max_samples"]);
+        settings.min_samples = yaml_into_u32(&settings_yaml["sampler"]["min_samples"]);
+        settings.depth_limit = yaml_into_u32(&settings_yaml["renderer"]["depth_limit"]);
+        settings.thread_count = yaml_into_u32(&settings_yaml["renderer"]["threads"]);
+        settings.sampler = Sampler::new(
+            Method::Sobol,
+            camera,
+            image_width,
+            image_height,
+        )
+    }
 
     // Start the render threads
     let (threads, thread_senders) = renderer::render(Arc::new(scene), film.clone());

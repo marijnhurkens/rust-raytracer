@@ -92,8 +92,6 @@ pub fn render(
     let mut thread_senders: Vec<Sender<ThreadMessage>> = vec![];
     let settings = SETTINGS.read().unwrap();
 
-    println!("Settings: {:#?}", settings);
-
     // thread id is used to divide the work
     for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
@@ -167,24 +165,23 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, film: &Arc<RwLock<Film>>, thr
     let settings = SETTINGS.read().unwrap();
 
     for y in bucket.start.y..bucket.end.y {
-        for x in bucket.start.x..bucket.end.x {
-            match thread_receiver.try_recv() {
-                Ok(thread_message) => {
-                    if thread_message.exit {
-                        println!("Stopping...");
-                        return false;
-                    }
+        match thread_receiver.try_recv() {
+            Ok(thread_message) => {
+                if thread_message.exit {
+                    println!("Stopping...");
+                    return false;
                 }
-                Err(_err) => {}
             }
+            Err(_err) => {}
+        }
+
+        for x in bucket.start.x..bucket.end.x {
 
             let samples = settings.sampler.get_samples(
                 settings.max_samples,
                 x,
                 y,
             );
-
-
 
             // Get the average pixel color using the samples.
             let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
@@ -195,7 +192,7 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, film: &Arc<RwLock<Film>>, thr
             for sample in samples {
 
                 // todo: remove clamp?
-                let new_pixel_color = trace(sample.ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+                let new_pixel_color = trace(&settings, sample.ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
                 sample_results.push(SampleResult {
                     radiance: new_pixel_color,
@@ -211,24 +208,16 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, film: &Arc<RwLock<Film>>, thr
                 // }
             }
 
-            // let pixel_color_rgba = image::Rgba([
-            //     ((pixel_color.x.powf(1.0 / settings.gamma)) * 255.0) as u8,
-            //     ((pixel_color.y.powf(1.0 / settings.gamma)) * 255.0) as u8,
-            //     ((pixel_color.z.powf(1.0 / settings.gamma)) * 255.0) as u8,
-            //     255,
-            // ]);
-
-            bucket.add_samples(sample_results);
+            bucket.add_samples(&sample_results);
         }
 
     }
-    bucket.finish();
+    // bucket.finish();
 
     true
 }
 
-pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<Vector3<f64>> {
-    let settings = SETTINGS.read().unwrap();
+pub fn trace(settings: &Settings, ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<Vector3<f64>> {
 
     // Early exit when max depth is reach or the contribution factor is too low.
     //
@@ -254,6 +243,7 @@ pub fn trace(ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<V
 
             for material in object.get_materials() {
                 if let Some(calculated_color) = material.get_surface_color(
+                    settings,
                     ray,
                     &scene,
                     point_of_intersection,

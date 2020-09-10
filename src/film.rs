@@ -3,7 +3,8 @@ use nalgebra::{Point2, Vector2, Vector3};
 use rand::*;
 use renderer::{SampleResult};
 use std::cmp;
-use std::sync::{Mutex, Arc, RwLock, RwLockReadGuard};
+use std::sync::{Mutex, Arc};
+use std::f64::EPSILON;
 
 pub enum FilterMethod {
     Box,
@@ -17,7 +18,7 @@ pub struct Bucket {
 }
 
 impl Bucket {
-    pub fn add_samples(&mut self, samples: Vec<SampleResult>) {
+    pub fn add_samples(&mut self, samples: &Vec<SampleResult>) {
         self.samples.extend(samples);
     }
 
@@ -40,8 +41,10 @@ pub struct Film {
     crop_end: Option<Point2<u32>>,
     pixels: Vec<Pixel>,
     pub image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    filter_radius: f64,
     filter_method: FilterMethod,
-    filter_map: Vec<Vec<f64>>,
+    filter_table: Vec<f64>,
+    filter_table_size: usize,
     current_bucket: u32,
     buckets: Vec<Arc<Mutex<Bucket>>>,
 }
@@ -62,11 +65,20 @@ impl Film {
             });
         }
 
-        let filter_map = vec!(
-          vec!(0.1,0.2,0.1),
-          vec!(0.2,1.0,0.2),
-          vec!(0.1,0.2,0.1),
-        );
+        let mut filter_table = vec!();
+        let filter_table_size: usize = 16;
+        let filter_radius = 1.2;
+        let alpha = 0.5;
+
+        for y in 0..filter_table_size {
+            for x in 0..filter_table_size {
+                let x_pos = (x as f64 + 0.5) * filter_radius / filter_table_size as f64;
+                let y_pos = (y as f64 + 0.5) * filter_radius / filter_table_size as f64;
+                let evaluate_point = Point2::new(x_pos, y_pos);
+
+                filter_table.push(evaluate_gaussian(evaluate_point, filter_radius, alpha));
+            }
+        }
 
         Film {
             image_size,
@@ -75,8 +87,10 @@ impl Film {
             crop_end,
             pixels,
             image_buffer: ImageBuffer::new(image_size.x, image_size.y),
+            filter_radius,
             filter_method,
-            filter_map,
+            filter_table,
+            filter_table_size,
             current_bucket: 0,
             buckets: init_buckets(image_size, bucket_size),
         }
@@ -102,28 +116,40 @@ impl Film {
 
         for sample in samples.iter()
         {
-            let x = (sample.pixel_location.x + 0.5).floor() as u32;
-            let y = (sample.pixel_location.y + 0.5).floor() as u32;
+            // compute pixel influence raster
+            let pixel_discrete = sample.pixel_location - Point2::new(0.5, 0.5);
+            let x_min = (pixel_discrete.x - self.filter_radius).ceil() as i32;
+            let y_min = (pixel_discrete.y - self.filter_radius).ceil() as i32;
+            let x_max = (pixel_discrete.x + self.filter_radius).floor() as i32;
+            let y_max = (pixel_discrete.y + self.filter_radius).floor() as i32;
 
-            for (filter_y, filter_row) in self.filter_map.iter().enumerate()
+            for x in x_min..=x_max
             {
-                for (filter_x, filter_weight) in filter_row.iter().enumerate()
+                for y in y_min..=y_max
                 {
-                    let diff_x = (filter_x as i32 - 1);
-                    let diff_y = (filter_y as i32 - 1);
-
-                    let new_x = x as i32 + diff_x;
-                    let new_y = y as i32 + diff_y;
-
-                    if new_x < 0 || new_y < 0 || new_x >= self.image_size.x as i32 || new_y >= self.image_size.y as i32 {
+                    if x < 0 || y < 0 || x >= self.image_size.x as i32 || y >= self.image_size.y as i32 {
                         continue;
                     }
 
-                    let pixel_index = self.get_pixel_index(new_x as u32, new_y as u32);
+
+                    // Float fx = std::abs((x - pFilmDiscrete.x) *
+                    // invFilterRadius.x * filterTableSize);
+                    // ifx[x - p0.x] = std::min((int)std::floor(fx), filterTableSize - 1);
+
+                    let filter_index_x = ((x as f64 - pixel_discrete.x) * (1.0 / self.filter_radius) * self.filter_table_size as f64).abs().floor().min(self.filter_table_size as f64 - 1.0) as usize;
+                    let filter_index_y = ((y as f64 - pixel_discrete.y) * (1.0 / self.filter_radius) * self.filter_table_size as f64).abs().floor().min(self.filter_table_size as f64 - 1.0) as usize;
 
 
-                    self.pixels[pixel_index].sum_radiance += sample.radiance * *filter_weight;
+                    let index = filter_index_y * self.filter_table_size + filter_index_x;
+
+                    let filter_weight = self.filter_table[index];
+
+
+                    let pixel_index = self.get_pixel_index(x as u32, y as u32);
+
+                    self.pixels[pixel_index].sum_radiance += sample.radiance * filter_weight;
                     self.pixels[pixel_index].sum_weight += filter_weight;
+
                 }
             }
         }
@@ -132,14 +158,31 @@ impl Film {
             let y = index as u32 / self.image_size.x;
             let x = index as u32 % self.image_size.x;
 
+            if pixel.sum_weight < EPSILON {
+                self.image_buffer.put_pixel(x as u32, y as u32, image::Rgba([
+                    0,
+                    0,
+                    0,
+                    255,
+                ]));
+            }
+
             let radiance = pixel.sum_radiance / pixel.sum_weight;
+            //
+            // let pixel_color_rgba = image::Rgba([
+            //     ((radiance.x.powf(1.0 / 1.2)) * 255.0) as u8,
+            //     ((radiance.y.powf(1.0 / 1.2)) * 255.0) as u8,
+            //     ((radiance.z.powf(1.0 / 1.2)) * 255.0) as u8,
+            //     255,
+            // ]);
 
             let pixel_color_rgba = image::Rgba([
-                ((radiance.x.powf(1.0 / 1.2)) * 255.0) as u8,
-                ((radiance.y.powf(1.0 / 1.2)) * 255.0) as u8,
-                ((radiance.z.powf(1.0 / 1.2)) * 255.0) as u8,
+                (radiance.x * 255.0) as u8,
+                (radiance.y * 255.0) as u8,
+                (radiance.z * 255.0) as u8,
                 255,
             ]);
+
             self.image_buffer.put_pixel(x as u32, y as u32, pixel_color_rgba);
         }
 
@@ -202,3 +245,12 @@ fn init_buckets(image_size: Vector2<u32>, bucket_size: Vector2<u32>) -> Vec<Arc<
     buckets
 }
 
+fn evaluate_gaussian(point: Point2<f64>, radius: f64, alpha: f64) -> f64
+{
+    let expv = (-alpha * radius * radius).exp();
+
+    let x = ((-alpha * point.x * point.x).exp() - expv).max(0.0);
+    let y = ((-alpha * point.y * point.y).exp() - expv).max(0.0);
+
+    x * y
+}

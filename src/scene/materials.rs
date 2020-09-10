@@ -6,11 +6,12 @@ use std::fmt::Debug;
 use crate::renderer;
 
 use super::*;
-use renderer::Ray;
+use renderer::{Ray, Settings};
 
 pub trait Material: Debug + Send + Sync {
     fn get_surface_color(
         &self,
+        settings: &Settings,
         ray: renderer::Ray,
         scene: &Scene,
         point_of_intersection: Point3<f64>,
@@ -30,7 +31,7 @@ pub struct Light {
 }
 
 impl Material for Light {
-    fn get_surface_color(&self, ray: Ray, _: &Scene, _: Point3<f64>, normal: Vector3<f64>, _: u32, _: f64) -> Option<Vector3<f64>> {
+    fn get_surface_color(&self, _: &Settings, ray: Ray, _: &Scene, _: Point3<f64>, normal: Vector3<f64>, _: u32, _: f64) -> Option<Vector3<f64>> {
         let color = ray.direction.dot(&normal).abs() * self.intensity;
 
         Some(Vector3::new(color, color, color))
@@ -50,6 +51,7 @@ pub struct Lambert {
 impl Material for Lambert {
     fn get_surface_color(
         &self,
+        settings: &Settings,
         _ray: renderer::Ray,
         scene: &Scene,
         point_of_intersection: Point3<f64>,
@@ -96,7 +98,7 @@ impl Material for Lambert {
 
         let lambert_contribution = contribution * 0.5 * self.weight; // contribution is half of the final color times the weight
         if let Some(lambert_surface_color) =
-            renderer::trace(reflect_ray, scene, depth + 1, lambert_contribution)
+            renderer::trace(settings, reflect_ray, scene, depth + 1, lambert_contribution)
         {
             lambert_color += lambert_surface_color * 0.5;
         }
@@ -122,6 +124,7 @@ impl Material for Reflection {
     // A random angle is added when glossiness < 1
     fn get_surface_color(
         &self,
+        settings: &Settings,
         ray: renderer::Ray,
         scene: &Scene,
         point_of_intersection: Point3<f64>,
@@ -137,7 +140,7 @@ impl Material for Reflection {
 
         let reflection_contribution = contribution * self.weight;
         if let Some(reflect_surface_color) =
-            renderer::trace(reflect_ray, scene, depth + 1, reflection_contribution)
+            renderer::trace(settings, reflect_ray, scene, depth + 1, reflection_contribution)
         {
             return Some(reflect_surface_color * self.weight);
         }
@@ -159,6 +162,7 @@ pub struct Refraction {
 impl Material for Refraction {
     fn get_surface_color(
         &self,
+        settings: &Settings,
         ray: renderer::Ray,
         scene: &Scene,
         point_of_intersection: Point3<f64>,
@@ -177,7 +181,7 @@ impl Material for Refraction {
             let refraction_contribution = contribution * self.weight; // contribution is half of the final color times the weight
 
             if let Some(refract_surface_color) =
-                renderer::trace(refract_ray, scene, depth + 1, refraction_contribution)
+                renderer::trace(settings, refract_ray, scene, depth + 1, refraction_contribution)
             {
                 refract_ray_color = refract_surface_color;
             }
@@ -204,6 +208,7 @@ pub struct FresnelReflection {
 impl Material for FresnelReflection {
     fn get_surface_color(
         &self,
+        settings: &Settings,
         ray: renderer::Ray,
         scene: &Scene,
         point_of_intersection: Point3<f64>,
@@ -237,7 +242,7 @@ impl Material for FresnelReflection {
 
                 let refract_contribution = contribution * (1.0 - fresnel_ratio) * self.refraction; // contribution is half of the final color times the weight
                 if let Some(refract_surface_color) =
-                    renderer::trace(refract_ray, scene, depth + 1, refract_contribution)
+                    renderer::trace(settings, refract_ray, scene, depth + 1, refract_contribution)
                 {
                     refract_ray_color = refract_surface_color;
                 }
@@ -260,7 +265,7 @@ impl Material for FresnelReflection {
 
             let reflect_contribution = contribution * fresnel_ratio * self.reflection; // contribution is half of the final color times the weight
             if let Some(reflect_surface_color) =
-                renderer::trace(reflect_ray, scene, depth + 1, reflect_contribution)
+                renderer::trace(settings, reflect_ray, scene, depth + 1, reflect_contribution)
             {
                 reflect_ray_color = reflect_surface_color;
             }
@@ -305,7 +310,7 @@ impl Material for FresnelReflection {
             let lambert_contribution =
                 contribution * (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.weight; // contribution is half of the final color times the weight
             if let Some(lambert_surface_color) =
-                renderer::trace(reflect_ray, scene, depth + 1, lambert_contribution)
+                renderer::trace(settings, reflect_ray, scene, depth + 1, lambert_contribution)
             {
                 lambert_ray_color += lambert_surface_color * 0.5;
             }
@@ -348,6 +353,7 @@ pub struct DebugNormal {
 impl Material for DebugNormal {
     fn get_surface_color(
         &self,
+        _: &Settings,
         _: renderer::Ray,
         _: &Scene,
         _: Point3<f64>,
