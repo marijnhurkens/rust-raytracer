@@ -5,16 +5,19 @@ use renderer::{SampleResult};
 use std::cmp;
 use std::sync::{Mutex, Arc};
 use std::f64::EPSILON;
+use helpers::Bounds;
 
 pub enum FilterMethod {
     Box,
 }
 
+#[derive(Debug)]
 pub struct Bucket {
-    pub start: Point2<u32>,
-    pub end: Point2<u32>,
+    pub sample_bounds: Bounds<u32>,
+    pub pixel_bounds: Bounds<u32>,
     pub samples: Vec<SampleResult>,
     pub finished: bool,
+    pixels: Vec<Pixel>,
 }
 
 impl Bucket {
@@ -29,7 +32,7 @@ impl Bucket {
 
 
 #[derive(Debug, Copy, Clone)]
-struct Pixel {
+pub struct Pixel {
     pub sum_weight: f64,
     pub sum_radiance: Vector3<f64>,
 }
@@ -39,7 +42,7 @@ pub struct Film {
     film_size: u32,
     crop_start: Option<Point2<u32>>,
     crop_end: Option<Point2<u32>>,
-    pixels: Vec<Pixel>,
+    pub pixels: Vec<Pixel>,
     pub image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
     filter_radius: f64,
     filter_method: FilterMethod,
@@ -58,7 +61,7 @@ impl Film {
     {
         let mut pixels = vec!();
 
-        for i in 0..(image_size.x * image_size.y) {
+        for _ in 0..(image_size.x * image_size.y) {
             pixels.push(Pixel {
                 sum_weight: 0.0,
                 sum_radiance: Vector3::new(0.0, 0.0, 0.0),
@@ -67,8 +70,7 @@ impl Film {
 
         let mut filter_table = vec!();
         let filter_table_size: usize = 16;
-        let filter_radius = 1.2;
-        let alpha = 0.5;
+        let filter_radius = 2.0;
 
         for y in 0..filter_table_size {
             for x in 0..filter_table_size {
@@ -76,7 +78,8 @@ impl Film {
                 let y_pos = (y as f64 + 0.5) * filter_radius / filter_table_size as f64;
                 let evaluate_point = Point2::new(x_pos, y_pos);
 
-                filter_table.push(evaluate_gaussian(evaluate_point, filter_radius, alpha));
+                //filter_table.push(evaluate_gaussian(evaluate_point, filter_radius, alpha));
+                filter_table.push(evaluate_mitchell(evaluate_point, filter_radius));
             }
         }
 
@@ -92,7 +95,7 @@ impl Film {
             filter_table,
             filter_table_size,
             current_bucket: 0,
-            buckets: init_buckets(image_size, bucket_size),
+            buckets: init_buckets(image_size, bucket_size, filter_radius),
         }
     }
 
@@ -110,7 +113,7 @@ impl Film {
         Some(bucket)
     }
 
-    pub fn update_image_buffer(&mut self, bucket: &Bucket)
+    pub fn write_bucket_pixels(&self, bucket: &mut Bucket)
     {
         let samples = &bucket.samples;
 
@@ -131,34 +134,40 @@ impl Film {
                         continue;
                     }
 
-
-                    // Float fx = std::abs((x - pFilmDiscrete.x) *
-                    // invFilterRadius.x * filterTableSize);
-                    // ifx[x - p0.x] = std::min((int)std::floor(fx), filterTableSize - 1);
-
                     let filter_index_x = ((x as f64 - pixel_discrete.x) * (1.0 / self.filter_radius) * self.filter_table_size as f64).abs().floor().min(self.filter_table_size as f64 - 1.0) as usize;
                     let filter_index_y = ((y as f64 - pixel_discrete.y) * (1.0 / self.filter_radius) * self.filter_table_size as f64).abs().floor().min(self.filter_table_size as f64 - 1.0) as usize;
 
+                    let filter_index = filter_index_y * self.filter_table_size + filter_index_x;
 
-                    let index = filter_index_y * self.filter_table_size + filter_index_x;
+                    let filter_weight = self.filter_table[filter_index];
 
-                    let filter_weight = self.filter_table[index];
+                    // convert to local bucket coordinates
+                    let bucket_x = x as u32 - bucket.pixel_bounds.p_min.x;
+                    let bucket_y = y as u32 - bucket.pixel_bounds.p_min.y;
+                    let pixel_index = (bucket_x as u32 + bucket.pixel_bounds.vector().x * bucket_y as u32) as usize;
 
-
-                    let pixel_index = self.get_pixel_index(x as u32, y as u32);
-
-                    self.pixels[pixel_index].sum_radiance += sample.radiance * filter_weight;
-                    self.pixels[pixel_index].sum_weight += filter_weight;
-
+                    bucket.pixels[pixel_index].sum_radiance += sample.radiance * filter_weight;
+                    bucket.pixels[pixel_index].sum_weight += filter_weight;
                 }
             }
         }
 
-        for (index, pixel) in self.pixels.iter().enumerate() {
-            let y = index as u32 / self.image_size.x;
-            let x = index as u32 % self.image_size.x;
+        bucket.samples = vec!();
+    }
 
-            if pixel.sum_weight < EPSILON {
+    pub fn merge_bucket_pixels_to_image_buffer(&mut self, bucket: &mut Bucket)
+    {
+        for (index, pixel) in bucket.pixels.iter().enumerate() {
+            let x = (index as u32 % bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.x;
+            let y = (index as u32 / bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.y;
+
+            let film_pixel_index = self.get_pixel_index(x, y);
+
+            self.pixels[film_pixel_index].sum_weight += pixel.sum_weight;
+            self.pixels[film_pixel_index].sum_radiance += pixel.sum_radiance;
+
+
+            if self.pixels[film_pixel_index].sum_weight < EPSILON {
                 self.image_buffer.put_pixel(x as u32, y as u32, image::Rgba([
                     0,
                     0,
@@ -167,51 +176,17 @@ impl Film {
                 ]));
             }
 
-            let radiance = pixel.sum_radiance / pixel.sum_weight;
-            //
-            // let pixel_color_rgba = image::Rgba([
-            //     ((radiance.x.powf(1.0 / 1.2)) * 255.0) as u8,
-            //     ((radiance.y.powf(1.0 / 1.2)) * 255.0) as u8,
-            //     ((radiance.z.powf(1.0 / 1.2)) * 255.0) as u8,
-            //     255,
-            // ]);
+            let radiance = self.pixels[film_pixel_index].sum_radiance / self.pixels[film_pixel_index].sum_weight;
 
             let pixel_color_rgba = image::Rgba([
-                (radiance.x * 255.0) as u8,
-                (radiance.y * 255.0) as u8,
-                (radiance.z * 255.0) as u8,
+                ((radiance.x.sqrt()) * 255.0) as u8,
+                ((radiance.y.sqrt()) * 255.0) as u8,
+                ((radiance.z.sqrt()) * 255.0) as u8,
                 255,
             ]);
 
             self.image_buffer.put_pixel(x as u32, y as u32, pixel_color_rgba);
         }
-
-        // let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
-        //
-        // for sample in &sample_results {
-        //     pixel_color += sample.radiance;
-        // }
-        //
-        // pixel_color /= sample_results.len() as f64;
-
-        // // If the new sample is almost exactly the same as the current average we stop
-        // // sampling.
-        // if adaptive_sampling && samples > settings.min_samples && (pixel_color - new_pixel_color).magnitude().abs() < (1.0 / 2000.0) {
-        //     pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
-        //     break;
-        // } else {
-        //     pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
-        // }
-
-
-        // let pixel_color_rgba = image::Rgba([
-        //     ((pixel_color.x.powf(1.0 / 1.2)) * 255.0) as u8,
-        //     ((pixel_color.y.powf(1.0 / 1.2)) * 255.0) as u8,
-        //     ((pixel_color.z.powf(1.0 / 1.2)) * 255.0) as u8,
-        //     255,
-        // ]);
-        //
-        // self.image_buffer.put_pixel(sample_results[0].pixel_location.x as u32, sample_results[0].pixel_location.y as u32, pixel_color_rgba);
     }
 
     fn get_pixel_index(&self, x: u32, y: u32) -> usize
@@ -220,12 +195,12 @@ impl Film {
     }
 }
 
-fn init_buckets(image_size: Vector2<u32>, bucket_size: Vector2<u32>) -> Vec<Arc<Mutex<Bucket>>>
+fn init_buckets(image_size: Vector2<u32>, bucket_size: Vector2<u32>, filter_radius: f64) -> Vec<Arc<Mutex<Bucket>>>
 {
     let mut buckets = Vec::new();
 
-    for x in 0..(image_size.x as f32 / bucket_size.x as f32).ceil() as u32 {
-        for y in 0..(image_size.y as f32 / bucket_size.y as f32).ceil() as u32 {
+    for x in 0..(image_size.x as f64 / bucket_size.x as f64).ceil() as u32 {
+        for y in 0..(image_size.y as f64 / bucket_size.y as f64).ceil() as u32 {
             let start = Point2::new(x * bucket_size.x, y * bucket_size.y);
 
             // prevent rounding error, cap at image size
@@ -233,11 +208,38 @@ fn init_buckets(image_size: Vector2<u32>, bucket_size: Vector2<u32>) -> Vec<Arc<
             let y_end = cmp::min(start.y + bucket_size.y, image_size.y);
 
             let end = Point2::new(x_end, y_end);
+
+            let sample_bounds = Bounds {
+                p_min: start,
+                p_max: end,
+            };
+
+            let pixel_bounds_start_x = (start.x as f64 - 0.5 - filter_radius).floor() as u32;
+            let pixel_bounds_start_y = (start.y as f64 - 0.5 - filter_radius).floor() as u32;
+
+            let pixel_bounds_end_x = ((end.x as f64 + 0.5 + filter_radius).ceil() as u32).min(image_size.x);
+            let pixel_bounds_end_y = ((end.y as f64 + 0.5 + filter_radius).ceil() as u32).min(image_size.y);
+
+            let pixel_bounds = Bounds {
+                p_min: Point2::new(pixel_bounds_start_x, pixel_bounds_start_y),
+                p_max: Point2::new(pixel_bounds_end_x, pixel_bounds_end_y),
+            };
+
+            let mut pixels = vec!();
+
+            for _ in 0..pixel_bounds.area() {
+                pixels.push(Pixel {
+                    sum_weight: 0.0,
+                    sum_radiance: Vector3::new(0.0, 0.0, 0.0),
+                });
+            }
+
             buckets.push(Arc::new(Mutex::new(Bucket {
-                start,
-                end,
+                sample_bounds,
+                pixel_bounds,
                 samples: vec!(),
                 finished: false,
+                pixels,
             })));
         }
     }
@@ -253,4 +255,28 @@ fn evaluate_gaussian(point: Point2<f64>, radius: f64, alpha: f64) -> f64
     let y = ((-alpha * point.y * point.y).exp() - expv).max(0.0);
 
     x * y
+}
+
+fn evaluate_mitchell(point: Point2<f64>, filter_radius: f64) -> f64
+{
+    let inv_radius = 1.0 / filter_radius;
+    evaluate_mitchell_1d(point.x * inv_radius) * evaluate_mitchell_1d(point.y * inv_radius)
+}
+
+fn evaluate_mitchell_1d(input: f64) -> f64
+{
+    let _b = 0.33;
+    let _c = 0.33;
+
+    let x = (2.0 * input).abs();
+
+    if x > 1.0
+    {
+        return ((-_b - 6.0 * _c) * x * x * x + (6.0 * _b + 30.0 * _c) * x * x +
+            (-12.0 * _b - 48.0 * _c) * x + (8.0 * _b + 24.0 * _c)) * (1.0 / 6.0);
+    }
+
+    ((12.0 - 9.0 * _b - 6.0 * _c) * x * x * x +
+        (-18.0 + 12.0 * _b + 6.0 * _c) * x * x +
+        (6.0 - 2.0 * _b)) * (1.0 / 6.0)
 }

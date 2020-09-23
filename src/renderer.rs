@@ -114,19 +114,20 @@ pub fn render(
                 let bucket = thread_film.write().unwrap().get_bucket();
 
                 match bucket {
-                    Some(mut bucket) => {
+                    Some(bucket) => {
 
                         // this lock should always work so do try_lock
                         let mut bucket_lock = bucket.try_lock().unwrap();
 
                         // returns false if thread was requested to stop
-                        if !render_work( &mut bucket_lock, &thread_scene, &thread_film, &thread_receiver)
+                        if !render_work( &mut bucket_lock, &thread_scene, &thread_receiver)
                         {
                             return;
                         }
 
 
-                        thread_film.write().unwrap().update_image_buffer(&bucket_lock);
+                        thread_film.read().unwrap().write_bucket_pixels(&mut bucket_lock);
+                        thread_film.write().unwrap().merge_bucket_pixels_to_image_buffer(&mut bucket_lock);
 
 
                         // let mut stats = STATS.write().unwrap();
@@ -160,11 +161,11 @@ pub fn render(
     (threads, thread_senders)
 }
 
-fn render_work(bucket: &mut Bucket, scene: &Scene, film: &Arc<RwLock<Film>>, thread_receiver: &Receiver<ThreadMessage>) -> bool
+fn render_work(bucket: &mut Bucket, scene: &Scene, thread_receiver: &Receiver<ThreadMessage>) -> bool
 {
     let settings = SETTINGS.read().unwrap();
 
-    for y in bucket.start.y..bucket.end.y {
+    for y in bucket.sample_bounds.p_min.y..bucket.sample_bounds.p_max.y {
         match thread_receiver.try_recv() {
             Ok(thread_message) => {
                 if thread_message.exit {
@@ -175,7 +176,7 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, film: &Arc<RwLock<Film>>, thr
             Err(_err) => {}
         }
 
-        for x in bucket.start.x..bucket.end.x {
+        for x in bucket.sample_bounds.p_min.x..bucket.sample_bounds.p_max.x {
 
             let samples = settings.sampler.get_samples(
                 settings.max_samples,
@@ -309,7 +310,7 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
     false
 }
 
-pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: Light) -> bool {
+pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: &Light) -> bool {
     let ray = Ray {
         point: position,
         direction: (light.position - position).try_normalize(1.0e-6).unwrap(),

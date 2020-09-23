@@ -1,7 +1,29 @@
-use nalgebra::{Vector3, Point3, Scalar};
+use nalgebra::{Vector3, Point3, Scalar, Point2, ClosedSub, Vector2};
 use rand::{thread_rng, Rng};
-use yaml_rust::yaml::Array;
 use yaml_rust::Yaml;
+use std::ops::{Mul};
+
+
+#[derive(Debug)]
+pub struct Bounds<T: Copy + Scalar + ClosedSub + Mul> {
+    pub p_min: Point2<T>,
+    pub p_max: Point2<T>
+}
+
+impl <T: Copy + Scalar + ClosedSub + Mul<Output = T>> Bounds<T> {
+    pub fn area(&self) -> T
+    {
+        let area_vector = &self.vector();
+
+        area_vector.x * area_vector.y
+    }
+
+    pub fn vector(&self) -> Vector2<T>
+    {
+        &self.p_max - &self.p_min
+    }
+}
+
 
 pub fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
     vec - 2.0 * vec.dot(&normal) * normal

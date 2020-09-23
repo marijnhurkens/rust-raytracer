@@ -22,8 +22,6 @@ use indicatif::ProgressBar;
 use renderer::{SETTINGS};
 use sampler::{Sampler, Method};
 use film::{Film, FilterMethod};
-use std::time::Instant;
-use std::thread::JoinHandle;
 use yaml_rust::YamlLoader;
 use std::fs::File;
 use std::io::Read;
@@ -36,19 +34,15 @@ mod scene;
 mod sampler;
 mod photon_mapper;
 
-const OUTPUT: &str = "window";
 const UP_AXIS: &str = "y";
 
 struct MainState {
-    canvas: graphics::Canvas,
     film: Arc<RwLock<Film>>,
 }
 
 impl MainState {
     fn new(ctx: &mut Context, film: Arc<RwLock<Film>>) -> GameResult<MainState> {
-        let canvas = graphics::Canvas::with_window_size(ctx)?;
-
-        Ok(MainState { canvas, film })
+        Ok(MainState { film })
     }
 }
 
@@ -88,7 +82,6 @@ impl event::EventHandler for MainState {
             }
         };
 
-        // let scale = Vector2::new(1.0, 1.0);
         graphics::set_canvas(ctx, None);
         graphics::clear(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
         graphics::draw(
@@ -165,9 +158,10 @@ fn main() -> GameResult {
     objects.push(Box::new(sphere_2));
     objects.push(Box::new(sphere_3));
 
-    let sphere_light = objects::Sphere {
-        position: Point3::new(0.0, 1.6, 0.0),
-        radius: 0.8,
+    let light = objects::Sphere {
+        position: Point3::new(0.0, 1.4, 0.0),
+        //normal: Vector3::new(0.0,-1.0,0.0),
+        radius: 0.45,
         materials: vec![
             Box::new(materials::Light {
                 weight: 1.0,
@@ -178,10 +172,10 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    objects.push(Box::new(sphere_light));
+    //objects.push(Box::new(light));
 
 
-    let light = lights::Light {
+    let light_1 = lights::Light {
         position: Point3::new(0.0, 0.8, 0.0),
         intensity: 0.9,
         color: Vector3::new(1.0, 1.0, 1.0), // white
@@ -250,7 +244,7 @@ fn main() -> GameResult {
                 p2_normal,
                 vec![
                     Box::new(materials::Lambert {
-                        color: Vector3::new(0.5, 0.5, 0.5),
+                        color: Vector3::new(1.0, 1.0, 1.0),
 
                         weight: 1.0,
                     }),
@@ -271,7 +265,7 @@ fn main() -> GameResult {
 
     let scene = scene::Scene::new(
         Vector3::new(0.0, 0.0, 0.0),
-        vec![],
+        vec![light_1],
         objects,
         bvh,
     );
@@ -322,6 +316,7 @@ fn main() -> GameResult {
     // Start the render threads
     let (threads, thread_senders) = renderer::render(Arc::new(scene), film.clone());
 
+
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {
             title: "Test".to_string(),
@@ -331,8 +326,8 @@ fn main() -> GameResult {
             srgb: false,
         })
         .window_mode(WindowMode {
-            width: image_width as f32,
-            height: image_height as f32,
+            width: image_width as f32 / 1.5,
+            height: image_height as f32 / 1.5,
             maximized: false,
             fullscreen_type: FullscreenType::Windowed,
             borderless: false,

@@ -92,11 +92,7 @@ impl Sampler {
     ) -> Vec<Sample>
     {
         let mut rng = thread_rng();
-
         let mut samples = Vec::new();
-
-        let half_pixel_width = &self.pixel_width_radians / 2.0;
-        let half_pixel_height = &self.pixel_height_radians / 2.0;
 
         for _w in 0..sample_num {
             let sub_pixel_horizontal_offset = rng.gen_range(0.0, 1.0);
