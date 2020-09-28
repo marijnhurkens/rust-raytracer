@@ -9,6 +9,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Dependencies
+      run: apt-get install libsdl2-dev
     - name: Build
       run: cargo build --verbose
     - name: Fmt
