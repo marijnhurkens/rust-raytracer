@@ -56,7 +56,7 @@ pub struct Film {
 impl Film {
     pub fn new(image_size: Vector2<u32>, bucket_size: Vector2<u32>, film_size: u32,
                crop_start: Option<Point2<u32>>, crop_end: Option<Point2<u32>>,
-               filter_method: FilterMethod,
+               filter_method: FilterMethod, filter_radius: f64
     ) -> Film
     {
         let mut pixels = vec!();
@@ -70,7 +70,7 @@ impl Film {
 
         let mut filter_table = vec!();
         let filter_table_size: usize = 16;
-        let filter_radius = 2.0;
+
 
         for y in 0..filter_table_size {
             for x in 0..filter_table_size {
@@ -179,9 +179,9 @@ impl Film {
             let radiance = self.pixels[film_pixel_index].sum_radiance / self.pixels[film_pixel_index].sum_weight;
 
             let pixel_color_rgba = image::Rgba([
-                ((radiance.x.sqrt()) * 255.0) as u8,
-                ((radiance.y.sqrt()) * 255.0) as u8,
-                ((radiance.z.sqrt()) * 255.0) as u8,
+                ((radiance.x) * 255.0) as u8,
+                ((radiance.y) * 255.0) as u8,
+                ((radiance.z) * 255.0) as u8,
                 255,
             ]);
 

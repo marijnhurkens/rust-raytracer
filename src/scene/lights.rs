@@ -1,5 +1,7 @@
 use nalgebra::{Point3, Vector3};
 
+
+
 // LIGHT
 #[derive(Debug, Copy, Clone)]
 pub struct Light {

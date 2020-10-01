@@ -4,14 +4,17 @@ film:
   film_size: 16
   bucket_width: 64
   bucket_height: 64
+  filter_radius: 2.0
 camera:
-  position: [0.0,-0.1,2.5]
-  target: [0.0,-0.1,0.0]
+  position: [0.0,0.0,2.0]
+  target: [0.0,0.0,0.0]
   fov: 60.0
 sampler:
-  max_samples: 64
+  max_samples: 1
   min_samples: 1
   method: sobol
 renderer:
   depth_limit: 12
   threads: 7
+scene:
+  background_color: [1.0,1.0,1.0]

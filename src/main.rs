@@ -25,7 +25,8 @@ use film::{Film, FilterMethod};
 use yaml_rust::YamlLoader;
 use std::fs::File;
 use std::io::Read;
-use helpers::{yaml_array_into_point3, yaml_into_u32};
+use helpers::{yaml_array_into_point3, yaml_into_u32, yaml_array_into_vector3};
+use tobj::Model;
 
 mod helpers;
 mod renderer;
@@ -107,70 +108,37 @@ fn main() -> GameResult {
     let mut objects: Vec<Box<dyn objects::Object>> = vec![];
 
     let sphere = objects::Sphere {
-        position: Point3::new(0.3, -0.3, 0.2),
-        radius: 0.4,
+        position: Point3::new(0.0, 0.0, 0.0),
+        radius: 1.0,
         materials: vec![
             Box::new(materials::FresnelReflection {
                 weight: 1.0,
                 glossiness: 0.98,
                 ior: 1.5,
-                reflection: 0.8,
+                reflection: 0.0,
                 refraction: 0.0,
-                color: Vector3::new(0.0, 0.0, 0.8),
+                color: Vector3::new(0.0, 0.0, 0.0),
             }),
         ],
         node_index: 0,
     };
 
-    let sphere_2 = objects::Sphere {
-        position: Point3::new(-0.3, -0.2, -0.2),
-        radius: 0.3,
-        materials: vec![
-            Box::new(materials::FresnelReflection {
-                weight: 1.0,
-                glossiness: 0.90,
-                ior: 1.5,
-                reflection: 0.95,
-                refraction: 0.0,
-                color: Vector3::new(0.8, 0.0, 0.2),
-            }),
-        ],
-        node_index: 0,
-    };
+     objects.push(Box::new(sphere));
 
-    let sphere_3 = objects::Sphere {
-        position: Point3::new(-0.3, -0.4, 0.7),
-        radius: 0.3,
-        materials: vec![
-            Box::new(materials::FresnelReflection {
-                weight: 1.0,
-                glossiness: 0.98,
-                ior: 1.5,
-                reflection: 0.95,
-                refraction: 0.9,
-                color: Vector3::new(0.8, 0.8, 0.8),
-            }),
-        ],
-        node_index: 0,
-    };
 
-    objects.push(Box::new(sphere));
-    objects.push(Box::new(sphere_2));
-    objects.push(Box::new(sphere_3));
-
-    let light = objects::Sphere {
-        position: Point3::new(0.0, 1.4, 0.0),
-        //normal: Vector3::new(0.0,-1.0,0.0),
-        radius: 0.45,
-        materials: vec![
-            Box::new(materials::Light {
-                weight: 1.0,
-                intensity: 20.0,
-                color: Vector3::new(0.8, 0.8, 0.8),
-            }),
-        ],
-        node_index: 0,
-    };
+    // let light = objects::Sphere {
+    //     position: Point3::new(0.0, 1.4, 0.0),
+    //     //normal: Vector3::new(0.0,-1.0,0.0),
+    //     radius: 0.45,
+    //     materials: vec![
+    //         Box::new(materials::Light {
+    //             weight: 1.0,
+    //             intensity: 20.0,
+    //             color: Vector3::new(0.8, 0.8, 0.8),
+    //         }),
+    //     ],
+    //     node_index: 0,
+    // };
 
     //objects.push(Box::new(light));
 
@@ -184,8 +152,9 @@ fn main() -> GameResult {
 
     ////////// load model
 
-    let (models, materials) = tobj::load_obj("./scene/box.obj", true)
-        .expect("Failed to load file");
+    //let (models, materials) = tobj::load_obj("./scene/lamp.obj", true).expect("Failed to load file");
+
+    let models: Vec<Model> = vec!();
 
     for (i, m) in models.iter().enumerate() {
         let mesh = &m.mesh;
@@ -259,17 +228,6 @@ fn main() -> GameResult {
         bar.finish();
     }
 
-
-    // Build scene
-    let bvh = BVH::build(&mut objects);
-
-    let scene = scene::Scene::new(
-        Vector3::new(0.0, 0.0, 0.0),
-        vec![light_1],
-        objects,
-        bvh,
-    );
-
     // Get settings
     let mut file = File::open("settings.yaml").expect("Unable to open file");
     let mut contents = String::new();
@@ -277,6 +235,19 @@ fn main() -> GameResult {
     file.read_to_string(&mut contents)
         .expect("Unable to read file");
     let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
+
+
+    // Build scene
+    let bvh = BVH::build(&mut objects);
+
+    let scene = scene::Scene::new(
+        yaml_array_into_vector3(&settings_yaml["scene"]["background_color"]),
+        vec![],
+        objects,
+        bvh,
+    );
+
+
 
     let camera = camera::Camera::new(
         yaml_array_into_point3(&settings_yaml["camera"]["position"]),
@@ -297,6 +268,7 @@ fn main() -> GameResult {
         None,
         None,
         FilterMethod::Box,
+        settings_yaml["film"]["filter_radius"].as_f64().unwrap()
     )));
 
     {
