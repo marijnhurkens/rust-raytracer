@@ -1,31 +1,31 @@
-use std::f64::EPSILON;
+use std::boxed::Box as RustBox;
 use std::fmt::Debug;
 
 use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Matrix3, Point3, Vector3};
 
-use renderer::Intersection;
+use materials::Material;
+use renderer::{Intersection, Ray};
 
 use crate::renderer;
 
 use super::*;
 
 pub trait Object: Debug + Send + Sync + Bounded + BHShape {
-    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
+    fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>>;
     fn test_intersect(&self, renderer: renderer::Ray) -> Option<Intersection>;
-    fn get_normal(&self, point: Point3<f64>) -> Vector3<f64>;
 }
 
 
 // BOX
-impl Bounded for Box<dyn Object> {
+impl Bounded for RustBox<dyn Object> {
     fn aabb(&self) -> AABB {
         (**self).aabb()
     }
 }
 
-impl BHShape for Box<dyn Object> {
+impl BHShape for RustBox<dyn Object> {
     fn set_bh_node_index(&mut self, index: usize) {
         (**self).set_bh_node_index(index);
     }
@@ -41,23 +41,29 @@ pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
 
-    pub materials: Vec<Box<dyn materials::Material>>,
+    pub materials: Vec<RustBox<dyn materials::Material>>,
 
     pub node_index: usize,
 }
 
+impl Sphere {
+    fn get_normal(&self, point: Point3<f64>) -> Vector3<f64> {
+        (point - &self.position).normalize()
+    }
+}
+
 impl Object for Sphere {
-    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
+    fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }
 
     fn test_intersect(&self, ray: crate::renderer::Ray) -> Option<Intersection> {
         use std::f64;
 
-        let camera_to_sphere_center = ray.point - &self.position;
+        let ray_to_sphere_center = ray.point - &self.position;
         let a = ray.direction.dot(&ray.direction); // camera_to_sphere length squared
-        let b = camera_to_sphere_center.dot(&ray.direction);
-        let c = camera_to_sphere_center.dot(&camera_to_sphere_center) - self.radius * self.radius;
+        let b = ray_to_sphere_center.dot(&ray.direction);
+        let c = ray_to_sphere_center.dot(&ray_to_sphere_center) - self.radius * self.radius;
         let discriminant = b * b - a * c;
 
         // let v = camera_to_sphere_center.dot(ray.direction);
@@ -102,10 +108,6 @@ impl Object for Sphere {
 
         None
     }
-
-    fn get_normal(&self, point: Point3<f64>) -> Vector3<f64> {
-        (point - &self.position).normalize()
-    }
 }
 
 impl Bounded for Sphere {
@@ -131,19 +133,53 @@ impl BHShape for Sphere {
 }
 
 
+// BOX
+#[derive(Debug)]
+pub struct Box {
+    pub position: Point3<f64>,
+    pub width: f64,
+    pub height: f64,
+    pub rotation: Vector3<f64>,
+    pub node_index: usize,
+    pub materials: Vec<RustBox<dyn materials::Material>>,
+}
+
+impl Object for Box {
+    fn get_materials(&self) -> &Vec<RustBox<dyn Material>> { &self.materials }
+
+    fn test_intersect(&self, _renderer: Ray) -> Option<Intersection> {
+        todo!()
+    }
+}
+
+impl Bounded for Box {
+    fn aabb(&self) -> AABB { todo!() }
+}
+
+impl BHShape for Box {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}
+
+
 // PLANE
 #[derive(Debug)]
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
 
-    pub materials: Vec<Box<dyn materials::Material>>,
+    pub materials: Vec<RustBox<dyn materials::Material>>,
 
     pub node_index: usize,
 }
 
 impl Object for Plane {
-    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
+    fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }
 
@@ -161,10 +197,6 @@ impl Object for Plane {
         }
 
         None
-    }
-
-    fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
-        self.normal.clone()
     }
 }
 
@@ -196,6 +228,103 @@ impl BHShape for Plane {
 }
 
 
+// RECTANGLE
+#[derive(Debug)]
+pub struct Rectangle {
+    pub position: Point3<f64>,
+    pub side_a: Vector3<f64>,
+    pub side_b: Vector3<f64>,
+
+    pub materials: Vec<RustBox<dyn materials::Material>>,
+
+    pub node_index: usize,
+}
+
+impl Rectangle {
+    fn get_normal(&self) -> Vector3<f64>
+    {
+        self.side_a.cross(&self.side_b)
+    }
+}
+
+impl Object for Rectangle {
+    fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
+        &self.materials
+    }
+
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection> {
+        let normal = self.get_normal();
+        let denom = normal.dot(&ray.direction);
+
+        if denom.abs() < 1e-4 {
+            return None;
+        }
+
+        let v = self.position - ray.point;
+
+        let distance = v.dot(&normal) / denom;
+
+        if distance < 0.0001 {
+            return None;
+        }
+
+        //println!("test");
+        // point on intersection plane
+        let p = ray.point + (ray.direction * distance);
+
+        let a = self.position;
+        let b = self.position + self.side_a;
+        let c = self.position + self.side_a + self.side_b;
+        let d = self.position + self.side_b;
+
+        let m1 = a - b;
+        let m2 = c - b;
+        let m3 = m1.cross(&m2);
+        let m = Matrix3::from_columns(&[m1, m2, m3]).try_inverse().unwrap();
+
+        let x_transformed = m * (d - b);
+        let p_transformed = m * (p - b);
+
+        if p_transformed.x > 0.0 &&
+            p_transformed.y > 0.0 &&
+            p_transformed.x < x_transformed.x &&
+            p_transformed.y < x_transformed.y
+        {
+            //dbg!(self.get_normal());
+            return Some(Intersection { distance, normal });
+        }
+
+        None
+    }
+}
+
+impl Bounded for Rectangle {
+    fn aabb(&self) -> AABB {
+        let pos_opposite = self.position + self.side_a + self.side_b;
+        let min_x = self.position.x.min(pos_opposite.x);
+        let min_y = self.position.y.min(pos_opposite.y);
+        let min_z = self.position.z.min(pos_opposite.z);
+        let max_x = self.position.x.max(pos_opposite.x);
+        let max_y = self.position.y.max(pos_opposite.y);
+        let max_z = self.position.z.max(pos_opposite.z);
+
+        AABB::with_bounds(
+            bvh::nalgebra::Point3::new(min_x as f32, min_y as f32, min_z as f32),
+            bvh::nalgebra::Point3::new(max_x as f32, max_y as f32, max_z as f32),
+        )
+    }
+}
+
+impl BHShape for Rectangle {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.node_index = index;
+    }
+
+    fn bh_node_index(&self) -> usize {
+        self.node_index
+    }
+}
+
 // Triangle
 #[derive(Debug)]
 pub struct Triangle {
@@ -206,14 +335,14 @@ pub struct Triangle {
     v1_normal: Vector3<f64>,
     v2_normal: Vector3<f64>,
     n: Vector3<f64>,
-    pub materials: Vec<Box<dyn materials::Material>>,
+    pub materials: Vec<RustBox<dyn materials::Material>>,
     pub node_index: usize,
 }
 
 impl Triangle {
     pub fn new(v0: Point3<f64>, v1: Point3<f64>, v2: Point3<f64>,
                v0_normal: Vector3<f64>, v1_normal: Vector3<f64>, v2_normal: Vector3<f64>,
-               materials: Vec<Box<dyn materials::Material>>,
+               materials: Vec<RustBox<dyn materials::Material>>,
     ) -> Triangle {
         // pre-compute normal
         let a = &v1 - &v0;
@@ -236,7 +365,7 @@ impl Triangle {
 }
 
 impl Object for Triangle {
-    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
+    fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }
     fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection> {
@@ -246,7 +375,7 @@ impl Object for Triangle {
         let u_vec = ray.direction.cross(&v0v2);
         let det = v0v1.dot(&u_vec);
 
-        if det < EPSILON {
+        if det < f64::EPSILON {
             return None;
         }
 
@@ -268,16 +397,13 @@ impl Object for Triangle {
 
         let t = v0v2.dot(&v_vec) * inv_det;
 
-        if t > EPSILON {
+        if t > f64::EPSILON {
             let normal = u * &self.v1_normal + v * &self.v2_normal + (1.0 - u - v) * &self.v0_normal;
 
             return Some(Intersection { distance: t, normal });
         }
 
         None
-    }
-    fn get_normal(&self, _: Point3<f64>) -> Vector3<f64> {
-        self.n.clone()
     }
 }
 

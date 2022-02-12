@@ -42,7 +42,7 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context, film: Arc<RwLock<Film>>) -> GameResult<MainState> {
+    fn new(_ctx: &mut Context, film: Arc<RwLock<Film>>) -> GameResult<MainState> {
         Ok(MainState { film })
     }
 }
@@ -108,53 +108,155 @@ fn main() -> GameResult {
     let mut objects: Vec<Box<dyn objects::Object>> = vec![];
 
     let sphere = objects::Sphere {
-        position: Point3::new(0.0, 0.0, 0.0),
-        radius: 1.0,
+        position: Point3::new(0.0, -0.3, 0.0),
+        radius: 0.4,
         materials: vec![
             Box::new(materials::FresnelReflection {
                 weight: 1.0,
                 glossiness: 0.98,
                 ior: 1.5,
                 reflection: 0.0,
-                refraction: 0.0,
-                color: Vector3::new(0.0, 0.0, 0.0),
+                refraction: 0.7,
+                color: Vector3::new(0.5, 0.5, 0.5),
             }),
+            // Box::new(materials::Lambert {
+            //     weight: 1.0,
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            // }),
         ],
         node_index: 0,
     };
 
-     objects.push(Box::new(sphere));
+    objects.push(Box::new(sphere));
 
-
-    // let light = objects::Sphere {
-    //     position: Point3::new(0.0, 1.4, 0.0),
-    //     //normal: Vector3::new(0.0,-1.0,0.0),
-    //     radius: 0.45,
-    //     materials: vec![
-    //         Box::new(materials::Light {
-    //             weight: 1.0,
-    //             intensity: 20.0,
-    //             color: Vector3::new(0.8, 0.8, 0.8),
-    //         }),
-    //     ],
-    //     node_index: 0,
-    // };
-
-    //objects.push(Box::new(light));
-
-
-    let light_1 = lights::Light {
-        position: Point3::new(0.0, 0.8, 0.0),
-        intensity: 0.9,
-        color: Vector3::new(1.0, 1.0, 1.0), // white
+    // add a light
+    let light = objects::Rectangle {
+        position: Point3::new(-0.3, 0.99, -0.3),
+        side_a: Vector3::new(0.6,0.0,0.0),
+        side_b: Vector3::new(0.0,0.0,0.6),
+        materials: vec![
+            Box::new(materials::Light {
+                weight: 1.0,
+                intensity: 190.0,
+                color: Vector3::new(1.0, 1.0, 1.0),
+            }),
+        ],
+        node_index: 0,
     };
+    objects.push(Box::new(light));
+
+    // add a mirror
+    let mirror = objects::Rectangle {
+        position: Point3::new(-1.4, -1.4, 0.0),
+        side_a: Vector3::new(3.0,0.0,-0.8),
+        side_b: Vector3::new(0.0,3.0,0.4),
+        materials: vec![
+            Box::new(materials::FresnelReflection {
+                weight: 1.0,
+                glossiness: 1.0,
+                ior: 1.5,
+                reflection: 1.0,
+                refraction: 0.0,
+                color: Vector3::new(0.5, 0.5, 0.5),
+            }),
+        ],
+        node_index: 0,
+    };
+    objects.push(Box::new(mirror));
+
+
+    let light_sphere = objects::Sphere {
+        position: Point3::new(0.8, -0.8, 0.9),
+        radius: 0.12,
+        materials: vec![
+            Box::new(materials::Light {
+                weight: 1.0,
+                intensity: 20.0,
+                color: Vector3::new(1.0, 0.0, 0.0),
+            }),
+            // Box::new(materials::Lambert {
+            //     weight: 1.0,
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            // }),
+        ],
+        node_index: 0,
+    };
+
+    objects.push(Box::new(light_sphere));
+
+    let light_sphere2 = objects::Sphere {
+        position: Point3::new(0.8, -0.8, -0.3),
+        radius: 0.12,
+        materials: vec![
+            Box::new(materials::Light {
+                weight: 1.0,
+                intensity: 20.0,
+                color: Vector3::new(0.0, 0.0, 1.0),
+            }),
+            // Box::new(materials::Lambert {
+            //     weight: 1.0,
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            // }),
+        ],
+        node_index: 0,
+    };
+
+    objects.push(Box::new(light_sphere2));
+
+    let light_sphere3 = objects::Sphere {
+        position: Point3::new(-0.8, -0.8,  -0.1),
+        radius: 0.12,
+        materials: vec![
+            Box::new(materials::Light {
+                weight: 1.0,
+                intensity: 30.0,
+                color: Vector3::new(1.0, 1.0, 1.0),
+            }),
+            // Box::new(materials::Lambert {
+            //     weight: 1.0,
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            // }),
+        ],
+        node_index: 0,
+    };
+
+    objects.push(Box::new(light_sphere3));
+
+    let light_sphere4 = objects::Sphere {
+        position: Point3::new(-0.8, -0.8, 0.5),
+        radius: 0.22,
+        materials: vec![
+            Box::new(materials::FresnelReflection {
+                weight: 1.0,
+                glossiness: 0.99,
+                ior: 1.5,
+                reflection: 0.4,
+                refraction: 0.2,
+                color: Vector3::new(0.7, 0.7, 0.7),
+            }),
+            // Box::new(materials::Lambert {
+            //     weight: 1.0,
+            //     color: Vector3::new(0.5, 0.5, 0.5),
+            // }),
+        ],
+        node_index: 0,
+    };
+
+    objects.push(Box::new(light_sphere4));
+
+    //
+    // let light_1 = lights::Light {
+    //     position: Point3::new(0.0, 0.8, 0.0),
+    //     intensity: 0.9,
+    //     color: Vector3::new(1.0, 1.0, 1.0), // white
+    // };
 
 
     ////////// load model
 
-    //let (models, materials) = tobj::load_obj("./scene/lamp.obj", true).expect("Failed to load file");
+    let (models, _) = tobj::load_obj("./scene/box.obj", true).expect("Failed to load file");
 
-    let models: Vec<Model> = vec!();
+    //let models: Vec<Model> = vec!();
 
     for (i, m) in models.iter().enumerate() {
         let mesh = &m.mesh;
@@ -183,7 +285,6 @@ fn main() -> GameResult {
             let v1 = mesh.indices[3 * v + 1] as usize;
             let v2 = mesh.indices[3 * v + 2] as usize;
 
-            // dbg!(v,v0,v1,v2);
 
             let (p0, p1, p2) = match UP_AXIS {
                 // stored as x y z, where y is up
@@ -213,9 +314,8 @@ fn main() -> GameResult {
                 p2_normal,
                 vec![
                     Box::new(materials::Lambert {
-                        color: Vector3::new(1.0, 1.0, 1.0),
-
                         weight: 1.0,
+                        color: Vector3::new(0.5, 0.5, 0.5),
                     }),
                 ],
             );
@@ -238,7 +338,9 @@ fn main() -> GameResult {
 
 
     // Build scene
+    println!("Building BHV...");
     let bvh = BVH::build(&mut objects);
+    println!("Done!");
 
     let scene = scene::Scene::new(
         yaml_array_into_vector3(&settings_yaml["scene"]["background_color"]),
@@ -286,7 +388,8 @@ fn main() -> GameResult {
     }
 
     // Start the render threads
-    let (threads, thread_senders) = renderer::render(Arc::new(scene), film.clone());
+    println!("Start rendering...");
+    renderer::render(Arc::new(scene), film.clone());
 
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")

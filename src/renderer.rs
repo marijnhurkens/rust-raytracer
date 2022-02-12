@@ -1,5 +1,4 @@
 use nalgebra::{Point3, Vector3, Point2, SimdPartialOrd};
-use rand::*;
 use scene::Scene;
 use scene::lights::Light;
 use scene::objects::Object;
