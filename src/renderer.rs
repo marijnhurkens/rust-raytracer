@@ -236,9 +236,7 @@ pub fn trace(
     let intersect = check_intersect_scene(ray, scene);
 
     match intersect {
-        None => {
-            Some(scene.bg_color)
-        }
+        None => Some(scene.bg_color),
         Some((intersection, object)) => {
             let point_of_intersection = ray.point + (ray.direction * intersection.distance);
 

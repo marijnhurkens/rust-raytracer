@@ -1,7 +1,7 @@
 use std::boxed::Box as RustBox;
 use std::fmt::Debug;
 
-use bvh::aabb::{AABB, Bounded};
+use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Matrix3, Point3, Vector3};
 
@@ -16,7 +16,6 @@ pub trait Object: Debug + Send + Sync + Bounded + BHShape {
     fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>>;
     fn test_intersect(&self, renderer: renderer::Ray) -> Option<Intersection>;
 }
-
 
 // BOX
 impl Bounded for RustBox<dyn Object> {
@@ -94,7 +93,10 @@ impl Object for Sphere {
             let contact_point = ray.point + ray.direction * temp_dist;
             let n = &self.get_normal(contact_point);
 
-            return Some(Intersection { distance: temp_dist, normal: *n });
+            return Some(Intersection {
+                distance: temp_dist,
+                normal: *n,
+            });
         }
 
         let temp_dist = (-b + (b * b - a * c).sqrt()) / a;
@@ -103,7 +105,10 @@ impl Object for Sphere {
             let contact_point = ray.point + ray.direction * temp_dist;
             let n = &self.get_normal(contact_point);
 
-            return Some(Intersection { distance: temp_dist, normal: *n });
+            return Some(Intersection {
+                distance: temp_dist,
+                normal: *n,
+            });
         }
 
         None
@@ -132,7 +137,6 @@ impl BHShape for Sphere {
     }
 }
 
-
 // BOX
 #[derive(Debug)]
 pub struct Box {
@@ -145,7 +149,9 @@ pub struct Box {
 }
 
 impl Object for Box {
-    fn get_materials(&self) -> &Vec<RustBox<dyn Material>> { &self.materials }
+    fn get_materials(&self) -> &Vec<RustBox<dyn Material>> {
+        &self.materials
+    }
 
     fn test_intersect(&self, _renderer: Ray) -> Option<Intersection> {
         todo!()
@@ -153,7 +159,9 @@ impl Object for Box {
 }
 
 impl Bounded for Box {
-    fn aabb(&self) -> AABB { todo!() }
+    fn aabb(&self) -> AABB {
+        todo!()
+    }
 }
 
 impl BHShape for Box {
@@ -165,7 +173,6 @@ impl BHShape for Box {
         self.node_index
     }
 }
-
 
 // PLANE
 #[derive(Debug)]
@@ -192,7 +199,10 @@ impl Object for Plane {
             let distance = v.dot(&self.normal) / denom;
 
             if distance > 0.0001 {
-                return Some(Intersection { distance, normal: self.normal });
+                return Some(Intersection {
+                    distance,
+                    normal: self.normal,
+                });
             }
         }
 
@@ -227,7 +237,6 @@ impl BHShape for Plane {
     }
 }
 
-
 // RECTANGLE
 #[derive(Debug)]
 pub struct Rectangle {
@@ -241,8 +250,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-    fn get_normal(&self) -> Vector3<f64>
-    {
+    fn get_normal(&self) -> Vector3<f64> {
         self.side_a.cross(&self.side_b)
     }
 }
@@ -285,10 +293,10 @@ impl Object for Rectangle {
         let x_transformed = m * (d - b);
         let p_transformed = m * (p - b);
 
-        if p_transformed.x > 0.0 &&
-            p_transformed.y > 0.0 &&
-            p_transformed.x < x_transformed.x &&
-            p_transformed.y < x_transformed.y
+        if p_transformed.x > 0.0
+            && p_transformed.y > 0.0
+            && p_transformed.x < x_transformed.x
+            && p_transformed.y < x_transformed.y
         {
             //dbg!(self.get_normal());
             return Some(Intersection { distance, normal });
@@ -339,9 +347,14 @@ pub struct Triangle {
 }
 
 impl Triangle {
-    pub fn new(v0: Point3<f64>, v1: Point3<f64>, v2: Point3<f64>,
-               v0_normal: Vector3<f64>, v1_normal: Vector3<f64>, v2_normal: Vector3<f64>,
-               materials: Vec<RustBox<dyn materials::Material>>,
+    pub fn new(
+        v0: Point3<f64>,
+        v1: Point3<f64>,
+        v2: Point3<f64>,
+        v0_normal: Vector3<f64>,
+        v1_normal: Vector3<f64>,
+        v2_normal: Vector3<f64>,
+        materials: Vec<RustBox<dyn materials::Material>>,
     ) -> Triangle {
         Triangle {
             v0,
@@ -382,8 +395,7 @@ impl Object for Triangle {
 
         let v_vec = a_to_origin.cross(&v0v1);
         let v = ray.direction.dot(&v_vec) * inv_det;
-        if v < 0.0 || (u + v) > 1.0
-        {
+        if v < 0.0 || (u + v) > 1.0 {
             return None;
         }
 
@@ -392,7 +404,10 @@ impl Object for Triangle {
         if t > f64::EPSILON {
             let normal = u * self.v1_normal + v * self.v2_normal + (1.0 - u - v) * self.v0_normal;
 
-            return Some(Intersection { distance: t, normal });
+            return Some(Intersection {
+                distance: t,
+                normal,
+            });
         }
 
         None

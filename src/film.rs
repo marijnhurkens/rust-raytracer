@@ -96,7 +96,7 @@ impl Film {
                     )),
                     FilterMethod::Mitchell => {
                         filter_table.push(evaluate_mitchell(evaluate_point, filter_radius))
-                    },
+                    }
                     FilterMethod::None => {}
                 }
             }
@@ -148,9 +148,8 @@ impl Film {
             if self.filter_method == FilterMethod::None {
                 let bucket_x = pixel_discrete.x as u32 - bucket.pixel_bounds.p_min.x;
                 let bucket_y = pixel_discrete.y as u32 - bucket.pixel_bounds.p_min.y;
-                let pixel_index = (bucket_x as u32
-                    + bucket.pixel_bounds.vector().x * bucket_y as u32)
-                    as usize;
+                let pixel_index =
+                    (bucket_x as u32 + bucket.pixel_bounds.vector().x * bucket_y as u32) as usize;
                 bucket.pixels[pixel_index].sum_radiance += sample.radiance;
                 bucket.pixels[pixel_index].sum_weight += 1.0;
                 continue;

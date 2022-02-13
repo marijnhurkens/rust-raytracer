@@ -112,9 +112,11 @@ pub fn get_refract_ray(
     }
 }
 
-pub fn yaml_array_into_point2(array: &Yaml) -> Point2<u32>
-{
-    Point2::new(array[0].as_i64().unwrap() as u32, array[1].as_i64().unwrap() as u32)
+pub fn yaml_array_into_point2(array: &Yaml) -> Point2<u32> {
+    Point2::new(
+        array[0].as_i64().unwrap() as u32,
+        array[1].as_i64().unwrap() as u32,
+    )
 }
 
 pub fn yaml_array_into_point3(array: &Yaml) -> Point3<f64> {
