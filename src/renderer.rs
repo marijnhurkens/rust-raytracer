@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
+use ggez::graphics::pipe::new;
 
 use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 
@@ -81,6 +82,7 @@ pub struct Intersection {
 pub struct SampleResult {
     pub radiance: Vector3<f64>,
     pub pixel_location: Point2<f64>,
+    pub normal: Vector3<f64>,
 }
 
 lazy_static! {
@@ -198,13 +200,15 @@ fn render_work(
 
             for sample in samples {
                 // todo: remove clamp?
-                let new_pixel_color = trace(&settings, sample.ray, scene, 1, 1.0)
-                    .unwrap()
-                    .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+                let (mut new_pixel_color, normal) = trace(&settings, sample.ray, scene, 1, 1.0)
+                    .unwrap();
+
+                new_pixel_color = new_pixel_color.simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
                 sample_results.push(SampleResult {
                     radiance: new_pixel_color,
                     pixel_location: sample.pixel_position,
+                    normal,
                 });
             }
 
@@ -221,7 +225,7 @@ pub fn trace(
     scene: &Scene,
     depth: u32,
     contribution: f64,
-) -> Option<Vector3<f64>> {
+) -> Option<(Vector3<f64>,Vector3<f64>)> {
     // Early exit when max depth is reach or the contribution factor is too low.
     //
     // The contribution factor is checked here to force the user to provide one.
@@ -236,7 +240,7 @@ pub fn trace(
     let intersect = check_intersect_scene(ray, scene);
 
     match intersect {
-        None => Some(scene.bg_color),
+        None => Some((scene.bg_color, Vector3::new(0.0,0.0,0.0))),
         Some((intersection, object)) => {
             let point_of_intersection = ray.point + (ray.direction * intersection.distance);
 
@@ -256,7 +260,7 @@ pub fn trace(
                 }
             }
 
-            Some(color)
+            Some((color, intersection.normal))
         }
     }
 }

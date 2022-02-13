@@ -103,7 +103,7 @@ impl Material for Lambert {
         };
 
         let lambert_contribution = contribution * 0.5 * self.weight; // contribution is half of the final color times the weight
-        if let Some(lambert_surface_color) = renderer::trace(
+        if let Some((lambert_surface_color, _)) = renderer::trace(
             settings,
             reflect_ray,
             scene,
@@ -149,7 +149,7 @@ impl Material for Reflection {
         };
 
         let reflection_contribution = contribution * self.weight;
-        if let Some(reflect_surface_color) = renderer::trace(
+        if let Some((reflect_surface_color,_)) = renderer::trace(
             settings,
             reflect_ray,
             scene,
@@ -194,7 +194,7 @@ impl Material for Refraction {
 
             let refraction_contribution = contribution * self.weight; // contribution is half of the final color times the weight
 
-            if let Some(refract_surface_color) = renderer::trace(
+            if let Some((refract_surface_color, _)) = renderer::trace(
                 settings,
                 refract_ray,
                 scene,
@@ -258,7 +258,7 @@ impl Material for FresnelReflection {
                 };
 
                 let refract_contribution = contribution * (1.0 - fresnel_ratio) * self.refraction; // contribution is half of the final color times the weight
-                if let Some(refract_surface_color) = renderer::trace(
+                if let Some((refract_surface_color,_)) = renderer::trace(
                     settings,
                     refract_ray,
                     scene,
@@ -285,7 +285,7 @@ impl Material for FresnelReflection {
             };
 
             let reflect_contribution = contribution * fresnel_ratio * self.reflection; // contribution is half of the final color times the weight
-            if let Some(reflect_surface_color) = renderer::trace(
+            if let Some((reflect_surface_color, _)) = renderer::trace(
                 settings,
                 reflect_ray,
                 scene,
@@ -335,7 +335,7 @@ impl Material for FresnelReflection {
 
             //let lambert_contribution =
             //    contribution * (1.0 - ((self.reflection + self.refraction) / 2.0)) * self.weight; // contribution is half of the final color times the weight
-            if let Some(lambert_surface_color) = renderer::trace(
+            if let Some((lambert_surface_color, _)) = renderer::trace(
                 settings,
                 reflect_ray,
                 scene,

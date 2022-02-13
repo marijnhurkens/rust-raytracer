@@ -14,6 +14,7 @@ tobj = "2.0"
 indicatif = "0.15"
 sobol = "1.0.1"
 yaml-rust = "0.4"
+oidn = "1.4.1"
 
 [profile.release]
 #opt-level = 3

@@ -1,7 +1,7 @@
 use std::cmp;
 use std::sync::{Arc, Mutex};
 
-use image::{ImageBuffer, Rgba};
+use image::{ImageBuffer, Rgb, Rgba};
 use nalgebra::{Point2, Vector2, Vector3};
 
 use helpers::Bounds;
@@ -44,6 +44,7 @@ impl Bucket {
 pub struct Pixel {
     pub sum_weight: f64,
     pub sum_radiance: Vector3<f64>,
+    pub normal: Vector3<f64>,
 }
 
 pub struct Film {
@@ -51,7 +52,7 @@ pub struct Film {
     crop_start: Option<Point2<u32>>,
     crop_end: Option<Point2<u32>>,
     pub pixels: Vec<Pixel>,
-    pub image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    pub image_buffer: ImageBuffer<Rgb<u8>, Vec<u8>>,
     filter_radius: f64,
     filter_method: FilterMethod,
     filter_table: Vec<f64>,
@@ -76,6 +77,7 @@ impl Film {
             pixels.push(Pixel {
                 sum_weight: 0.0,
                 sum_radiance: Vector3::new(0.0, 0.0, 0.0),
+                normal: Vector3::new(0.0, 0.0, 0.0),
             });
         }
 
@@ -152,6 +154,8 @@ impl Film {
                     (bucket_x as u32 + bucket.pixel_bounds.vector().x * bucket_y as u32) as usize;
                 bucket.pixels[pixel_index].sum_radiance += sample.radiance;
                 bucket.pixels[pixel_index].sum_weight += 1.0;
+                // todo: average or throw away?
+                bucket.pixels[pixel_index].normal = sample.normal;
                 continue;
             }
 
@@ -198,6 +202,9 @@ impl Film {
 
                     bucket.pixels[pixel_index].sum_radiance += sample.radiance * filter_weight;
                     bucket.pixels[pixel_index].sum_weight += filter_weight;
+                    // todo: average or throw away?
+                    bucket.pixels[pixel_index].normal = sample.normal;
+
                 }
             }
         }
@@ -214,24 +221,25 @@ impl Film {
 
             self.pixels[film_pixel_index].sum_weight += pixel.sum_weight;
             self.pixels[film_pixel_index].sum_radiance += pixel.sum_radiance;
+            self.pixels[film_pixel_index].normal = pixel.normal;
 
             if self.pixels[film_pixel_index].sum_weight < f64::EPSILON {
                 self.image_buffer
-                    .put_pixel(x as u32, y as u32, image::Rgba([0, 0, 0, 255]));
+                    .put_pixel(x as u32, y as u32, image::Rgb([0, 0, 0]));
+                continue;
             }
 
             let radiance = self.pixels[film_pixel_index].sum_radiance
                 / self.pixels[film_pixel_index].sum_weight;
 
-            let pixel_color_rgba = image::Rgba([
+            let pixel_color_rgb = image::Rgb([
                 ((radiance.x) * 255.0) as u8,
                 ((radiance.y) * 255.0) as u8,
                 ((radiance.z) * 255.0) as u8,
-                255,
             ]);
 
             self.image_buffer
-                .put_pixel(x as u32, y as u32, pixel_color_rgba);
+                .put_pixel(x as u32, y as u32, pixel_color_rgb);
         }
     }
 
@@ -290,6 +298,7 @@ impl Film {
                     pixels.push(Pixel {
                         sum_weight: 0.0,
                         sum_radiance: Vector3::new(0.0, 0.0, 0.0),
+                        normal: Vector3::new(0.0, 0.0, 0.0),
                     });
                 }
 

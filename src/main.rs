@@ -17,6 +17,7 @@ use std::sync::{Arc, RwLock};
 use bvh::bvh::BVH;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event;
+use ggez::event::KeyCode;
 use ggez::graphics::{self, Color, DrawParam};
 use ggez::{Context, GameResult};
 use indicatif::ProgressBar;
@@ -63,11 +64,78 @@ impl event::EventHandler for MainState {
         let film = self.film.read().unwrap();
         let image_width = film.image_size.x;
         let image_height = film.image_size.y;
+
+        let denoise = true;
+
+        let mut output = vec![0u8; image_width as usize * image_height as usize * 4];
+
+        if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::N) {
+            let mut i = 0;
+            film.pixels.clone().iter().for_each(|pixel| {
+                output[i] = (pixel.normal.x * 255.0) as u8;
+                output[i + 1] = (pixel.normal.y * 255.0) as u8;
+                output[i + 2] = (pixel.normal.z * 255.0) as u8;
+                output[i + 3] = 255;
+                i += 4;
+            });
+        } else if denoise && ggez::input::keyboard::is_key_pressed(ctx, KeyCode::D) {
+            println!("denoise");
+
+            let mut normal_map = vec![0f32; image_width as usize * image_height as usize * 3];
+            let mut i = 0;
+            film.pixels.clone().iter().for_each(|pixel| {
+                normal_map[i] = pixel.normal.x as f32;
+                normal_map[i + 1] = pixel.normal.y as f32;
+                normal_map[i + 2] = pixel.normal.z as f32;
+                i += 3;
+            });
+
+            let temp = film.image_buffer.clone();
+            let input_img: Vec<f32> = temp
+                .into_raw()
+                .iter()
+                .map(|val| (*val as f32) / 255.0)
+                .collect();
+            let mut filter_output = vec![0.0f32; input_img.len()];
+
+            let device = oidn::Device::new();
+
+            oidn::RayTracing::new(&device)
+                .srgb(false)
+                //.albedo_normal(&input_img[..], &normal_map[..])
+                //.clean_aux(true)
+                .image_dimensions(image_width as usize, image_height as usize)
+                .filter(&input_img[..], &mut filter_output[..])
+                .expect("Filter config error!");
+
+            if let Err(e) = device.get_error() {
+                println!("Error denosing image: {}", e.1);
+            }
+
+            let mut i = 0;
+            for chunk in filter_output.chunks(3) {
+                output[i] = (chunk[0] * 255.0) as u8;
+                output[i + 1] = (chunk[1] * 255.0) as u8;
+                output[i + 2] = (chunk[2] * 255.0) as u8;
+                output[i + 3] = 255;
+                i += 4;
+            }
+        } else {
+            let mut i = 0;
+            for chunk in film.image_buffer.clone().into_raw().chunks(3) {
+                output[i] = chunk[0];
+                output[i + 1] = chunk[1];
+                output[i + 2] = chunk[2];
+                output[i + 3] = 255;
+                i += 4;
+            }
+        }
+
         let image = ggez::graphics::Image::from_rgba8(
             ctx,
             image_width as u16,
             image_height as u16,
-            &film.image_buffer.clone().into_raw(),
+            &output,
         )?;
 
         // now lets render our scene once in the top left and in the bottom right
@@ -150,13 +218,9 @@ fn main() -> GameResult {
         position: Point3::new(-1.4, -1.4, 0.0),
         side_a: Vector3::new(3.0, 0.0, -0.8),
         side_b: Vector3::new(0.0, 3.0, 0.4),
-        materials: vec![Box::new(materials::FresnelReflection {
+        materials: vec![Box::new(materials::Reflection {
             weight: 1.0,
             glossiness: 1.0,
-            ior: 1.5,
-            reflection: 1.0,
-            refraction: 0.0,
-            color: Vector3::new(0.5, 0.5, 0.5),
         })],
         node_index: 0,
     };
