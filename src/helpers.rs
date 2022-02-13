@@ -1,29 +1,26 @@
-use nalgebra::{Vector3, Point3, Scalar, Point2, ClosedSub, Vector2};
+use std::ops::Mul;
+
+use nalgebra::{ClosedSub, Point2, Point3, Scalar, Vector2, Vector3};
 use rand::{thread_rng, Rng};
 use yaml_rust::Yaml;
-use std::ops::{Mul};
-
 
 #[derive(Debug)]
 pub struct Bounds<T: Copy + Scalar + ClosedSub + Mul> {
     pub p_min: Point2<T>,
-    pub p_max: Point2<T>
+    pub p_max: Point2<T>,
 }
 
-impl <T: Copy + Scalar + ClosedSub + Mul<Output = T>> Bounds<T> {
-    pub fn area(&self) -> T
-    {
+impl<T: Copy + Scalar + ClosedSub + Mul<Output = T>> Bounds<T> {
+    pub fn area(&self) -> T {
         let area_vector = &self.vector();
 
         area_vector.x * area_vector.y
     }
 
-    pub fn vector(&self) -> Vector2<T>
-    {
-        &self.p_max - &self.p_min
+    pub fn vector(&self) -> Vector2<T> {
+        self.p_max - self.p_min
     }
 }
-
 
 pub fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
     vec - 2.0 * vec.dot(&normal) * normal
@@ -109,15 +106,18 @@ pub fn get_refract_ray(
     let k = 1.0 - eta * eta * (1.0 - cosi * cosi);
     if k < 0.0 {
         // no refraction
-        return None;
+        None
     } else {
-        return Some(eta * angle_of_incidence + (eta * cosi - k.sqrt()) * n);
+        Some(eta * angle_of_incidence + (eta * cosi - k.sqrt()) * n)
     }
 }
 
-
-pub fn yaml_array_into_point3(array: &Yaml) -> Point3<f64>
+pub fn yaml_array_into_point2(array: &Yaml) -> Point2<u32>
 {
+    Point2::new(array[0].as_i64().unwrap() as u32, array[1].as_i64().unwrap() as u32)
+}
+
+pub fn yaml_array_into_point3(array: &Yaml) -> Point3<f64> {
     Point3::new(
         array[0].as_f64().unwrap(),
         array[1].as_f64().unwrap(),
@@ -125,8 +125,7 @@ pub fn yaml_array_into_point3(array: &Yaml) -> Point3<f64>
     )
 }
 
-pub fn yaml_array_into_vector3(array: &Yaml) -> Vector3<f64>
-{
+pub fn yaml_array_into_vector3(array: &Yaml) -> Vector3<f64> {
     Vector3::new(
         array[0].as_f64().unwrap(),
         array[1].as_f64().unwrap(),
@@ -134,8 +133,7 @@ pub fn yaml_array_into_vector3(array: &Yaml) -> Vector3<f64>
     )
 }
 
-pub fn yaml_into_u32(yaml: &Yaml) -> u32
-{
+pub fn yaml_into_u32(yaml: &Yaml) -> u32 {
     yaml.as_i64().unwrap() as u32
 }
 

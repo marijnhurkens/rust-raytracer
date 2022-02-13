@@ -1,11 +1,10 @@
 use bvh::bvh::BVH;
-use nalgebra::{Vector3};
+use nalgebra::Vector3;
 
-
-pub mod objects;
+pub mod camera;
 pub mod lights;
 pub mod materials;
-pub mod camera;
+pub mod objects;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -15,13 +14,17 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn new(bg_color: Vector3<f64>,  lights: Vec<lights::Light>, objects: Vec<Box<dyn objects::Object>>, bvh: BVH)->Scene {
-       
+    pub fn new(
+        bg_color: Vector3<f64>,
+        lights: Vec<lights::Light>,
+        objects: Vec<Box<dyn objects::Object>>,
+        bvh: BVH,
+    ) -> Scene {
         Scene {
             bg_color: bg_color,
             objects: objects,
             lights: lights,
-            bvh: bvh
+            bvh: bvh,
         }
     }
 

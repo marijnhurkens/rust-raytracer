@@ -31,7 +31,8 @@ pub static ref SETTINGS: RwLock<Settings> = {
         max_samples: 32,
         min_samples: 16,
         gamma: 1.2,
-        sampler: Sampler::new(Method::Random, Camera::new(Point3::new(0.0,0.0,-1.0), Point3::new(0.0,0.0,0.0), 80.0), 80, 80)
+        sampler: Sampler::
+            new(Method::Random, Camera::new(Point3::new(0.0,0.0,-1.0), Point3::new(0.0,0.0,0.0), 80.0), 80, 80)
     })
 };
 }
@@ -134,7 +135,7 @@ pub fn render(
                         // let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.max_samples;
                         //
                         // stats.rays_done += rays_done;
-
+                        //
                         // if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
                         //     let duration =
                         //         stats_thread.start_time.elapsed().expect("Duration failed!");
@@ -183,14 +184,9 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, thread_receiver: &Receiver<Th
                 y,
             );
 
-            // Get the average pixel color using the samples.
             let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
-            // Get a minimum number of samples to avoid bailing
-            // if the first couple of samples happen to be close to each other
-            //let adaptive_sampling = true;
 
             for sample in samples {
-
                 // todo: remove clamp?
                 let new_pixel_color = trace(&settings, sample.ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
@@ -198,14 +194,6 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, thread_receiver: &Receiver<Th
                     radiance: new_pixel_color,
                     pixel_location: sample.pixel_position,
                 });
-                // // If the new sample is almost exactly the same as the current average we stop
-                // // sampling.
-                // if adaptive_sampling && samples > settings.min_samples && (pixel_color - new_pixel_color).magnitude().abs() < (1.0 / 2000.0) {
-                //     pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
-                //     break;
-                // } else {
-                //     pixel_color = pixel_color + ((new_pixel_color - pixel_color) / samples as f64);
-                // }
             }
 
             bucket.add_samples(&sample_results);

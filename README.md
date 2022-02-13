@@ -18,6 +18,9 @@ Features done:
 
 Todo:
 
+- fix random sampler
+- static dispatch for materials
+- BxDF
 - Textures
 - Vertex normal interpolation
 

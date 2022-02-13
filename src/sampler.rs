@@ -99,7 +99,7 @@ impl Sampler {
             let sub_pixel_vertical_offset = rng.gen_range(0.0, 1.0);
             let sub_pixel_horizontal_offset_radians = sub_pixel_horizontal_offset - 0.5 * &self.pixel_width_radians;
             let sub_pixel_vertical_offset_radians = sub_pixel_vertical_offset - 0.5 * &self.pixel_height_radians;
-
+            
             let horizontal_offset = &self.camera.right
                 * ((x as f64 * &self.pixel_width_radians) + sub_pixel_horizontal_offset_radians - &self.half_width_radians);
             // pos_y needs to be negated because in the image the upper row is row 0,
@@ -114,6 +114,8 @@ impl Sampler {
                 },
                 pixel_position: Point2::new(x as f64 + sub_pixel_horizontal_offset - 0.5, y as f64 + sub_pixel_vertical_offset - 0.5),
             };
+
+            dbg!(sample);
 
             samples.push(sample);
         }

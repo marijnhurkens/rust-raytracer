@@ -1,32 +1,34 @@
 extern crate bvh;
 extern crate ggez;
 extern crate image;
+extern crate indicatif;
 #[macro_use]
 extern crate lazy_static;
 extern crate nalgebra;
 extern crate rand;
-extern crate tobj;
-extern crate indicatif;
 extern crate sobol;
+extern crate tobj;
 extern crate yaml_rust;
 
+use std::fs::File;
+use std::io::Read;
 use std::sync::{Arc, RwLock};
+
 use bvh::bvh::BVH;
 use ggez::{Context, GameResult};
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event;
 use ggez::graphics::{self, Color, DrawParam};
-use nalgebra::{Point3, Vector3, Vector2};
-use scene::*;
 use indicatif::ProgressBar;
-use renderer::{SETTINGS};
-use sampler::{Sampler, Method};
-use film::{Film, FilterMethod};
-use yaml_rust::YamlLoader;
-use std::fs::File;
-use std::io::Read;
-use helpers::{yaml_array_into_point3, yaml_into_u32, yaml_array_into_vector3};
+use nalgebra::{Point3, Vector2, Vector3};
 use tobj::Model;
+use yaml_rust::YamlLoader;
+
+use film::{Film, FilterMethod};
+use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_array_into_vector3, yaml_into_u32};
+use renderer::SETTINGS;
+use sampler::{Method, Sampler};
+use scene::*;
 
 mod helpers;
 mod renderer;
@@ -360,6 +362,20 @@ fn main() -> GameResult {
     let image_width = settings_yaml["film"]["image_width"].as_i64().unwrap() as u32;
     let image_height = settings_yaml["film"]["image_height"].as_i64().unwrap() as u32;
 
+    let crop_start = if !settings_yaml["film"]["crop"]["start"].is_badvalue() {
+        Some(yaml_array_into_point2(&settings_yaml["film"]["crop"]["start"]))
+    }
+    else {
+        None
+    };
+
+    let crop_end = if !settings_yaml["film"]["crop"]["end"].is_badvalue() {
+        Some(yaml_array_into_point2(&settings_yaml["film"]["crop"]["end"]))
+    }
+    else {
+        None
+    };
+
     let film = Arc::new(RwLock::new(Film::new(
         Vector2::new(image_width, image_height),
         Vector2::new(
@@ -367,11 +383,12 @@ fn main() -> GameResult {
             settings_yaml["film"]["bucket_height"].as_i64().unwrap() as u32,
         ),
         settings_yaml["film"]["film_size"].as_i64().unwrap() as u32,
-        None,
-        None,
-        FilterMethod::Box,
+        crop_start,
+        crop_end,
+        FilterMethod::from_str(settings_yaml["film"]["filter_method"].as_str().unwrap()).unwrap(),
         settings_yaml["film"]["filter_radius"].as_f64().unwrap()
     )));
+
 
     {
         let mut settings = SETTINGS.write().unwrap();

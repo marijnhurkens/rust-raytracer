@@ -1,20 +1,24 @@
 film:
-  image_width: 2000
-  image_height: 2000
+  image_width: 1000
+  image_height: 1000
   film_size: 16
-  bucket_width: 64
-  bucket_height: 64
-  filter_radius: 2.0
+  bucket_width: 128
+  bucket_height: 128
+  filter_radius: 1.5
+  filter_method: box
+#  crop:
+#    start: [900,900]
+#    end: [1100,1100]
 camera:
   position: [0.0,0.0,3.0]
   target: [0.0,0.0,0.0]
   fov: 60.0
 sampler:
-  max_samples: 1024
-  min_samples: 32
+  max_samples: 8
+  min_samples: 1
   method: sobol
 renderer:
   depth_limit: 8
-  threads: 10
+  threads: 1
 scene:
   background_color: [0.0,0.0,0.0]
