@@ -1,7 +1,3 @@
-use nalgebra::{Point3, Vector3, Point2, SimdPartialOrd};
-use scene::Scene;
-use scene::lights::Light;
-use scene::objects::Object;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -9,9 +5,16 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
-use sampler::{Method, Sampler};
+
+use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
+
+use film::{Bucket, Film};
+use sampler::Sampler;
 use scene::camera::Camera;
-use film::{Film, Bucket};
+use scene::lights::Light;
+use scene::objects::Object;
+use scene::Scene;
+use SamplerMethod;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
@@ -24,17 +27,25 @@ pub struct Settings {
 }
 
 lazy_static! {
-pub static ref SETTINGS: RwLock<Settings> = {
-    RwLock::new(Settings {
-        thread_count: 8,
-        depth_limit: 4,
-        max_samples: 32,
-        min_samples: 16,
-        gamma: 1.2,
-        sampler: Sampler::
-            new(Method::Random, Camera::new(Point3::new(0.0,0.0,-1.0), Point3::new(0.0,0.0,0.0), 80.0), 80, 80)
-    })
-};
+    pub static ref SETTINGS: RwLock<Settings> = {
+        RwLock::new(Settings {
+            thread_count: 8,
+            depth_limit: 4,
+            max_samples: 32,
+            min_samples: 16,
+            gamma: 1.2,
+            sampler: Sampler::new(
+                SamplerMethod::Random,
+                Camera::new(
+                    Point3::new(0.0, 0.0, -1.0),
+                    Point3::new(0.0, 0.0, 0.0),
+                    80.0,
+                ),
+                80,
+                80,
+            ),
+        })
+    };
 }
 
 pub struct ThreadMessage {
@@ -73,16 +84,15 @@ pub struct SampleResult {
 }
 
 lazy_static! {
-pub static ref STATS: RwLock<Stats> = {
-    let stats = Stats {
-        rays_done: 0,
-        threads: HashMap::new(),
+    pub static ref STATS: RwLock<Stats> = {
+        let stats = Stats {
+            rays_done: 0,
+            threads: HashMap::new(),
+        };
+
+        RwLock::new(stats)
     };
-
-    RwLock::new(stats)
-};
 }
-
 
 pub fn render(
     scene: Arc<Scene>,
@@ -115,20 +125,22 @@ pub fn render(
 
                 match bucket {
                     Some(bucket) => {
-
                         // this lock should always work so do try_lock
                         let mut bucket_lock = bucket.try_lock().unwrap();
 
                         // returns false if thread was requested to stop
-                        if !render_work( &mut bucket_lock, &thread_scene, &thread_receiver)
-                        {
+                        if !render_work(&mut bucket_lock, &thread_scene, &thread_receiver) {
                             return;
                         }
 
-
-                        thread_film.read().unwrap().write_bucket_pixels(&mut bucket_lock);
-                        thread_film.write().unwrap().merge_bucket_pixels_to_image_buffer(&mut bucket_lock);
-
+                        thread_film
+                            .read()
+                            .unwrap()
+                            .write_bucket_pixels(&mut bucket_lock);
+                        thread_film
+                            .write()
+                            .unwrap()
+                            .merge_bucket_pixels_to_image_buffer(&mut bucket_lock);
 
                         // let mut stats = STATS.write().unwrap();
                         //
@@ -149,7 +161,7 @@ pub fn render(
                     }
                     None => {
                         break;
-                    },
+                    }
                 }
             } // end of loop
         }); // end of thread
@@ -161,8 +173,11 @@ pub fn render(
     (threads, thread_senders)
 }
 
-fn render_work(bucket: &mut Bucket, scene: &Scene, thread_receiver: &Receiver<ThreadMessage>) -> bool
-{
+fn render_work(
+    bucket: &mut Bucket,
+    scene: &Scene,
+    thread_receiver: &Receiver<ThreadMessage>,
+) -> bool {
     let settings = SETTINGS.read().unwrap();
 
     for y in bucket.sample_bounds.p_min.y..bucket.sample_bounds.p_max.y {
@@ -177,18 +192,15 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, thread_receiver: &Receiver<Th
         }
 
         for x in bucket.sample_bounds.p_min.x..bucket.sample_bounds.p_max.x {
-
-            let samples = settings.sampler.get_samples(
-                settings.max_samples,
-                x,
-                y,
-            );
+            let samples = settings.sampler.get_samples(settings.max_samples, x, y);
 
             let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
 
             for sample in samples {
                 // todo: remove clamp?
-                let new_pixel_color = trace(&settings, sample.ray, &scene, 1, 1.0).unwrap().simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+                let new_pixel_color = trace(&settings, sample.ray, &scene, 1, 1.0)
+                    .unwrap()
+                    .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
                 sample_results.push(SampleResult {
                     radiance: new_pixel_color,
@@ -198,15 +210,19 @@ fn render_work(bucket: &mut Bucket, scene: &Scene, thread_receiver: &Receiver<Th
 
             bucket.add_samples(&sample_results);
         }
-
     }
     // bucket.finish();
 
     true
 }
 
-pub fn trace(settings: &Settings, ray: Ray, scene: &Scene, depth: u32, contribution: f64) -> Option<Vector3<f64>> {
-
+pub fn trace(
+    settings: &Settings,
+    ray: Ray,
+    scene: &Scene,
+    depth: u32,
+    contribution: f64,
+) -> Option<Vector3<f64>> {
     // Early exit when max depth is reach or the contribution factor is too low.
     //
     // The contribution factor is checked here to force the user to provide one.
@@ -235,7 +251,7 @@ pub fn trace(settings: &Settings, ray: Ray, scene: &Scene, depth: u32, contribut
                     ray,
                     &scene,
                     point_of_intersection,
-                    intersection.normal,//object.get_normal(point_of_intersection),
+                    intersection.normal, //object.get_normal(point_of_intersection),
                     depth,
                     contribution,
                 ) {
@@ -253,7 +269,11 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<
 
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32),
+        bvh::nalgebra::Vector3::new(
+            ray.direction.x as f32,
+            ray.direction.y as f32,
+            ray.direction.z as f32,
+        ),
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
@@ -279,7 +299,11 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<
 fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::nalgebra::Vector3::new(ray.direction.x as f32, ray.direction.y as f32, ray.direction.z as f32),
+        bvh::nalgebra::Vector3::new(
+            ray.direction.x as f32,
+            ray.direction.y as f32,
+            ray.direction.z as f32,
+        ),
     );
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);

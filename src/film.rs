@@ -3,20 +3,25 @@ use std::sync::{Arc, Mutex};
 
 use image::{ImageBuffer, Rgba};
 use nalgebra::{Point2, Vector2, Vector3};
-use rand::*;
 
 use helpers::Bounds;
 use renderer::SampleResult;
 
+#[derive(PartialEq)]
 pub enum FilterMethod {
-    Box,
+    None,
+    Gaussian,
+    Mitchell,
 }
+
+const GAUSSIAN_ALPHA: f64 = 1.5;
 
 impl FilterMethod {
     pub fn from_str(str: &str) -> Option<FilterMethod> {
         match str {
-            "box" => Some(FilterMethod::Box),
-            _ => None,
+            "gaussian" => Some(FilterMethod::Gaussian),
+            "mitchell" => Some(FilterMethod::Mitchell),
+            _ => Some(FilterMethod::None),
         }
     }
 }
@@ -90,8 +95,17 @@ impl Film {
                 let y_pos = (y as f64 + 0.5) * filter_radius / filter_table_size as f64;
                 let evaluate_point = Point2::new(x_pos, y_pos);
 
-                //filter_table.push(evaluate_gaussian(evaluate_point, filter_radius, alpha));
-                filter_table.push(evaluate_mitchell(evaluate_point, filter_radius));
+                match filter_method {
+                    FilterMethod::Gaussian => filter_table.push(evaluate_gaussian(
+                        evaluate_point,
+                        filter_radius,
+                        GAUSSIAN_ALPHA,
+                    )),
+                    FilterMethod::Mitchell => {
+                        filter_table.push(evaluate_mitchell(evaluate_point, filter_radius))
+                    },
+                    FilterMethod::None => {}
+                }
             }
         }
 
@@ -138,6 +152,18 @@ impl Film {
         for sample in samples.iter() {
             // compute pixel influence raster
             let pixel_discrete = sample.pixel_location - Point2::new(0.5, 0.5);
+
+            if self.filter_method == FilterMethod::None {
+                let bucket_x = pixel_discrete.x as u32 - bucket.pixel_bounds.p_min.x;
+                let bucket_y = pixel_discrete.y as u32 - bucket.pixel_bounds.p_min.y;
+                let pixel_index = (bucket_x as u32
+                    + bucket.pixel_bounds.vector().x * bucket_y as u32)
+                    as usize;
+                bucket.pixels[pixel_index].sum_radiance += sample.radiance;
+                bucket.pixels[pixel_index].sum_weight += 1.0;
+                continue;
+            }
+
             let x_min = (pixel_discrete.x - self.filter_radius).ceil() as i32;
             let y_min = (pixel_discrete.y - self.filter_radius).ceil() as i32;
             let x_max = (pixel_discrete.x + self.filter_radius).floor() as i32;
@@ -230,7 +256,6 @@ impl Film {
 
         let (render_width, render_height) =
             if let (Some(crop_start), Some(crop_end)) = (self.crop_start, self.crop_end) {
-
                 (crop_end.x - crop_start.x, crop_end.y - crop_start.y)
             } else {
                 (image_size.x, image_size.y)
@@ -238,11 +263,10 @@ impl Film {
 
         for x in 0..(render_width as f64 / bucket_size.x as f64).ceil() as u32 {
             for y in 0..(render_height as f64 / bucket_size.y as f64).ceil() as u32 {
-
                 let start = if let Some(crop_start) = self.crop_start {
-                     Point2::new(x * bucket_size.x, y * bucket_size.y) + crop_start.coords
+                    Point2::new(x * bucket_size.x, y * bucket_size.y) + crop_start.coords
                 } else {
-                     Point2::new(x * bucket_size.x, y * bucket_size.y)
+                    Point2::new(x * bucket_size.x, y * bucket_size.y)
                 };
 
                 // prevent rounding error, cap at image size

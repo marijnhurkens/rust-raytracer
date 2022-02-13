@@ -15,27 +15,28 @@ use std::io::Read;
 use std::sync::{Arc, RwLock};
 
 use bvh::bvh::BVH;
-use ggez::{Context, GameResult};
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event;
 use ggez::graphics::{self, Color, DrawParam};
+use ggez::{Context, GameResult};
 use indicatif::ProgressBar;
 use nalgebra::{Point3, Vector2, Vector3};
-use tobj::Model;
 use yaml_rust::YamlLoader;
 
 use film::{Film, FilterMethod};
-use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_array_into_vector3, yaml_into_u32};
+use helpers::{
+    yaml_array_into_point2, yaml_array_into_point3, yaml_array_into_vector3, yaml_into_u32,
+};
 use renderer::SETTINGS;
-use sampler::{Method, Sampler};
+use sampler::{Sampler, SamplerMethod};
 use scene::*;
 
-mod helpers;
-mod renderer;
 mod film;
-mod scene;
-mod sampler;
+mod helpers;
 mod photon_mapper;
+mod renderer;
+mod sampler;
+mod scene;
 
 const UP_AXIS: &str = "y";
 
@@ -62,7 +63,12 @@ impl event::EventHandler for MainState {
         let film = self.film.read().unwrap();
         let image_width = film.image_size.x;
         let image_height = film.image_size.y;
-        let image = ggez::graphics::Image::from_rgba8(ctx, image_width as u16, image_height as u16, &film.image_buffer.clone().into_raw())?;
+        let image = ggez::graphics::Image::from_rgba8(
+            ctx,
+            image_width as u16,
+            image_height as u16,
+            &film.image_buffer.clone().into_raw(),
+        )?;
 
         // now lets render our scene once in the top left and in the bottom right
         let window_size = graphics::size(ctx);
@@ -72,17 +78,11 @@ impl event::EventHandler for MainState {
         let scale = if window_ratio > image_ratio {
             // window is wider, use max height
             let scale = window_size.1 as f32 / image.height() as f32;
-            ggez::mint::Vector2 {
-                x: scale,
-                y: scale,
-            }
+            ggez::mint::Vector2 { x: scale, y: scale }
         } else {
             // window is narrower, use max width
             let scale = window_size.0 as f32 / image.width() as f32;
-            ggez::mint::Vector2 {
-                x: scale,
-                y: scale,
-            }
+            ggez::mint::Vector2 { x: scale, y: scale }
         };
 
         graphics::set_canvas(ctx, None);
@@ -133,16 +133,14 @@ fn main() -> GameResult {
 
     // add a light
     let light = objects::Rectangle {
-        position: Point3::new(-0.3, 0.99, -0.3),
-        side_a: Vector3::new(0.6,0.0,0.0),
-        side_b: Vector3::new(0.0,0.0,0.6),
-        materials: vec![
-            Box::new(materials::Light {
-                weight: 1.0,
-                intensity: 190.0,
-                color: Vector3::new(1.0, 1.0, 1.0),
-            }),
-        ],
+        position: Point3::new(-0.3, 0.99, 0.7),
+        side_a: Vector3::new(0.6, 0.0, 0.0),
+        side_b: Vector3::new(0.0, 0.0, 0.6),
+        materials: vec![Box::new(materials::Light {
+            weight: 1.0,
+            intensity: 190.0,
+            color: Vector3::new(1.0, 1.0, 1.0),
+        })],
         node_index: 0,
     };
     objects.push(Box::new(light));
@@ -150,22 +148,19 @@ fn main() -> GameResult {
     // add a mirror
     let mirror = objects::Rectangle {
         position: Point3::new(-1.4, -1.4, 0.0),
-        side_a: Vector3::new(3.0,0.0,-0.8),
-        side_b: Vector3::new(0.0,3.0,0.4),
-        materials: vec![
-            Box::new(materials::FresnelReflection {
-                weight: 1.0,
-                glossiness: 1.0,
-                ior: 1.5,
-                reflection: 1.0,
-                refraction: 0.0,
-                color: Vector3::new(0.5, 0.5, 0.5),
-            }),
-        ],
+        side_a: Vector3::new(3.0, 0.0, -0.8),
+        side_b: Vector3::new(0.0, 3.0, 0.4),
+        materials: vec![Box::new(materials::FresnelReflection {
+            weight: 1.0,
+            glossiness: 1.0,
+            ior: 1.5,
+            reflection: 1.0,
+            refraction: 0.0,
+            color: Vector3::new(0.5, 0.5, 0.5),
+        })],
         node_index: 0,
     };
     objects.push(Box::new(mirror));
-
 
     let light_sphere = objects::Sphere {
         position: Point3::new(0.8, -0.8, 0.9),
@@ -206,7 +201,7 @@ fn main() -> GameResult {
     objects.push(Box::new(light_sphere2));
 
     let light_sphere3 = objects::Sphere {
-        position: Point3::new(-0.8, -0.8,  -0.1),
+        position: Point3::new(-0.8, -0.8, -0.1),
         radius: 0.12,
         materials: vec![
             Box::new(materials::Light {
@@ -253,7 +248,6 @@ fn main() -> GameResult {
     //     color: Vector3::new(1.0, 1.0, 1.0), // white
     // };
 
-
     ////////// load model
 
     let (models, _) = tobj::load_obj("./scene/box.obj", true).expect("Failed to load file");
@@ -274,12 +268,15 @@ fn main() -> GameResult {
         // Normals and texture coordinates are also loaded, but not printed in this example
         println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
         println!("model[{}].indices: {}", i, mesh.indices.len());
-        println!("model[{}].expected_triangles: {}", i, mesh.indices.len() / 3);
+        println!(
+            "model[{}].expected_triangles: {}",
+            i,
+            mesh.indices.len() / 3
+        );
         println!("model[{}].faces: {}", i, mesh.num_face_indices.len());
         println!("model[{}].normals: {}", i, mesh.normals.len() / 3);
 
-        assert!(mesh.indices.len() % 3 == 0);
-        //let v = 0;
+        assert_eq!(mesh.indices.len() % 3, 0);
 
         let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
         for v in 0..mesh.indices.len() / 3 {
@@ -287,25 +284,60 @@ fn main() -> GameResult {
             let v1 = mesh.indices[3 * v + 1] as usize;
             let v2 = mesh.indices[3 * v + 2] as usize;
 
-
             let (p0, p1, p2) = match UP_AXIS {
                 // stored as x y z, where y is up
                 "y" => (
-                    Point3::new(mesh.positions[3 * v0] as f64, mesh.positions[3 * v0 + 1] as f64, mesh.positions[3 * v0 + 2] as f64),
-                    Point3::new(mesh.positions[3 * v1] as f64, mesh.positions[3 * v1 + 1] as f64, mesh.positions[3 * v1 + 2] as f64),
-                    Point3::new(mesh.positions[3 * v2] as f64, mesh.positions[3 * v2 + 1] as f64, mesh.positions[3 * v2 + 2] as f64)
+                    Point3::new(
+                        mesh.positions[3 * v0] as f64,
+                        mesh.positions[3 * v0 + 1] as f64,
+                        mesh.positions[3 * v0 + 2] as f64,
+                    ),
+                    Point3::new(
+                        mesh.positions[3 * v1] as f64,
+                        mesh.positions[3 * v1 + 1] as f64,
+                        mesh.positions[3 * v1 + 2] as f64,
+                    ),
+                    Point3::new(
+                        mesh.positions[3 * v2] as f64,
+                        mesh.positions[3 * v2 + 1] as f64,
+                        mesh.positions[3 * v2 + 2] as f64,
+                    ),
                 ),
                 // stored as x z y, where z is up
                 _ => (
-                    Point3::new(mesh.positions[3 * v0] as f64, mesh.positions[3 * v0 + 2] as f64, mesh.positions[3 * v0 + 1] as f64),
-                    Point3::new(mesh.positions[3 * v1] as f64, mesh.positions[3 * v1 + 2] as f64, mesh.positions[3 * v1 + 1] as f64),
-                    Point3::new(mesh.positions[3 * v2] as f64, mesh.positions[3 * v2 + 2] as f64, mesh.positions[3 * v2 + 1] as f64)
-                )
+                    Point3::new(
+                        mesh.positions[3 * v0] as f64,
+                        mesh.positions[3 * v0 + 2] as f64,
+                        mesh.positions[3 * v0 + 1] as f64,
+                    ),
+                    Point3::new(
+                        mesh.positions[3 * v1] as f64,
+                        mesh.positions[3 * v1 + 2] as f64,
+                        mesh.positions[3 * v1 + 1] as f64,
+                    ),
+                    Point3::new(
+                        mesh.positions[3 * v2] as f64,
+                        mesh.positions[3 * v2 + 2] as f64,
+                        mesh.positions[3 * v2 + 1] as f64,
+                    ),
+                ),
             };
 
-            let p0_normal = Vector3::new(mesh.normals[3 * v0] as f64, mesh.normals[3 * v0 + 1] as f64, mesh.normals[3 * v0 + 2] as f64);
-            let p1_normal = Vector3::new(mesh.normals[3 * v1] as f64, mesh.normals[3 * v1 + 1] as f64, mesh.normals[3 * v1 + 2] as f64);
-            let p2_normal = Vector3::new(mesh.normals[3 * v2] as f64, mesh.normals[3 * v2 + 1] as f64, mesh.normals[3 * v2 + 2] as f64);
+            let p0_normal = Vector3::new(
+                mesh.normals[3 * v0] as f64,
+                mesh.normals[3 * v0 + 1] as f64,
+                mesh.normals[3 * v0 + 2] as f64,
+            );
+            let p1_normal = Vector3::new(
+                mesh.normals[3 * v1] as f64,
+                mesh.normals[3 * v1 + 1] as f64,
+                mesh.normals[3 * v1 + 2] as f64,
+            );
+            let p2_normal = Vector3::new(
+                mesh.normals[3 * v2] as f64,
+                mesh.normals[3 * v2 + 1] as f64,
+                mesh.normals[3 * v2 + 2] as f64,
+            );
 
             let triangle = objects::Triangle::new(
                 p0,
@@ -314,12 +346,10 @@ fn main() -> GameResult {
                 p0_normal,
                 p1_normal,
                 p2_normal,
-                vec![
-                    Box::new(materials::Lambert {
-                        weight: 1.0,
-                        color: Vector3::new(0.5, 0.5, 0.5),
-                    }),
-                ],
+                vec![Box::new(materials::Lambert {
+                    weight: 1.0,
+                    color: Vector3::new(0.5, 0.5, 0.5),
+                })],
             );
 
             objects.push(Box::new(triangle));
@@ -338,7 +368,6 @@ fn main() -> GameResult {
         .expect("Unable to read file");
     let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
 
-
     // Build scene
     println!("Building BHV...");
     let bvh = BVH::build(&mut objects);
@@ -351,8 +380,6 @@ fn main() -> GameResult {
         bvh,
     );
 
-
-
     let camera = camera::Camera::new(
         yaml_array_into_point3(&settings_yaml["camera"]["position"]),
         yaml_array_into_point3(&settings_yaml["camera"]["target"]),
@@ -363,16 +390,18 @@ fn main() -> GameResult {
     let image_height = settings_yaml["film"]["image_height"].as_i64().unwrap() as u32;
 
     let crop_start = if !settings_yaml["film"]["crop"]["start"].is_badvalue() {
-        Some(yaml_array_into_point2(&settings_yaml["film"]["crop"]["start"]))
-    }
-    else {
+        Some(yaml_array_into_point2(
+            &settings_yaml["film"]["crop"]["start"],
+        ))
+    } else {
         None
     };
 
     let crop_end = if !settings_yaml["film"]["crop"]["end"].is_badvalue() {
-        Some(yaml_array_into_point2(&settings_yaml["film"]["crop"]["end"]))
-    }
-    else {
+        Some(yaml_array_into_point2(
+            &settings_yaml["film"]["crop"]["end"],
+        ))
+    } else {
         None
     };
 
@@ -386,9 +415,8 @@ fn main() -> GameResult {
         crop_start,
         crop_end,
         FilterMethod::from_str(settings_yaml["film"]["filter_method"].as_str().unwrap()).unwrap(),
-        settings_yaml["film"]["filter_radius"].as_f64().unwrap()
+        settings_yaml["film"]["filter_radius"].as_f64().unwrap(),
     )));
-
 
     {
         let mut settings = SETTINGS.write().unwrap();
@@ -397,7 +425,7 @@ fn main() -> GameResult {
         settings.depth_limit = yaml_into_u32(&settings_yaml["renderer"]["depth_limit"]);
         settings.thread_count = yaml_into_u32(&settings_yaml["renderer"]["threads"]);
         settings.sampler = Sampler::new(
-            Method::Sobol,
+            SamplerMethod::from_str(settings_yaml["sampler"]["method"].as_str().unwrap()).unwrap(),
             camera,
             image_width,
             image_height,
@@ -407,7 +435,6 @@ fn main() -> GameResult {
     // Start the render threads
     println!("Start rendering...");
     renderer::render(Arc::new(scene), film.clone());
-
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {

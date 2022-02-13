@@ -7,9 +7,19 @@ use std::f64::consts::PI;
 use nalgebra::Point2;
 
 #[derive(Debug, Copy, Clone)]
-pub enum Method {
+pub enum SamplerMethod {
     Random,
     Sobol,
+}
+
+impl SamplerMethod {
+    pub fn from_str(str: &str) -> Option<SamplerMethod> {
+        match str {
+            "random" => Some(SamplerMethod::Random),
+            "sobol" => Some(SamplerMethod::Sobol),
+            _ => Some(SamplerMethod::Random),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -20,7 +30,7 @@ pub struct Sample {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Sampler {
-    method: Method,
+    method: SamplerMethod,
     camera: Camera,
     image_width: u32,
     image_height: u32,
@@ -41,7 +51,7 @@ lazy_static! {
 
 impl Sampler {
     pub fn new(
-        method: Method,
+        method: SamplerMethod,
         camera: Camera,
         image_width: u32,
         image_height: u32,
@@ -78,8 +88,8 @@ impl Sampler {
     ) -> Vec<Sample>
     {
         match &self.method {
-            Method::Random => self.get_random_samples(x, y, samples),
-            Method::Sobol => self.get_sobol_samples(x, y, samples),
+            SamplerMethod::Random => self.get_random_samples(x, y, samples),
+            SamplerMethod::Sobol => self.get_sobol_samples(x, y, samples),
         }
     }
 

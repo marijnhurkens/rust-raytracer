@@ -334,7 +334,6 @@ pub struct Triangle {
     v0_normal: Vector3<f64>,
     v1_normal: Vector3<f64>,
     v2_normal: Vector3<f64>,
-    n: Vector3<f64>,
     pub materials: Vec<RustBox<dyn materials::Material>>,
     pub node_index: usize,
 }
@@ -344,12 +343,6 @@ impl Triangle {
                v0_normal: Vector3<f64>, v1_normal: Vector3<f64>, v2_normal: Vector3<f64>,
                materials: Vec<RustBox<dyn materials::Material>>,
     ) -> Triangle {
-        // pre-compute normal
-        let a = &v1 - &v0;
-        let b = &v2 - &v0;
-        let c = a.cross(&b);
-        let n = c.normalize();
-
         Triangle {
             v0,
             v1,
@@ -357,7 +350,6 @@ impl Triangle {
             v0_normal,
             v1_normal,
             v2_normal,
-            n,
             materials,
             node_index: 0,
         }
