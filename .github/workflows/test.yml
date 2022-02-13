@@ -3,19 +3,22 @@ name: Rust
 on: [push]
 
 jobs:
-  build:
+    build:
 
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v1
-    - name: Dependencies
-      run: apt-get install libsdl2-dev
-    - name: Build
-      run: cargo build --verbose
-    - name: Fmt
-      run : cargo fmt -- --check
-    - name: Clippy
-      run : cargo clippy -- -Dwarnings
-    - name: Run tests
-      run: cargo test --verbose
+        steps:
+            -   uses: actions/checkout@v1
+            -   uses: actions-rs/toolchain@v1
+                with:
+                    toolchain: stable
+                    components: clippy
+                    override: true
+            -   name: Build
+                run: cargo build --verbose
+            -   name: Fmt
+                run: cargo fmt -- --check
+            -   name: Clippy
+                run: cargo clippy -- -D warnings
+            -   name: Run tests
+                run: cargo test --verbose
