@@ -66,7 +66,7 @@ impl Material for Lambert {
         for light in &scene.lights {
             let test_point = &point_of_intersection + (&normal * 1e-4);
 
-            if !renderer::check_light_visible(test_point, &scene, light)
+            if !renderer::check_light_visible(test_point, scene, light)
             {
                 continue;
             }

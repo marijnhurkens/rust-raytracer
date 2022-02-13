@@ -457,6 +457,6 @@ fn main() -> GameResult {
             resizable: true,
         });
     let (ctx, event_loop) = &mut cb.build()?;
-    let state = &mut MainState::new(ctx, film.clone())?;
+    let state = &mut MainState::new(ctx, film)?;
     event::run(ctx, event_loop, state)
 }

@@ -198,7 +198,7 @@ fn render_work(
 
             for sample in samples {
                 // todo: remove clamp?
-                let new_pixel_color = trace(&settings, sample.ray, &scene, 1, 1.0)
+                let new_pixel_color = trace(&settings, sample.ray, scene, 1, 1.0)
                     .unwrap()
                     .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
@@ -238,7 +238,7 @@ pub fn trace(
 
     match intersect {
         None => {
-            return Some(scene.bg_color);
+            Some(scene.bg_color)
         }
         Some((intersection, object)) => {
             let point_of_intersection = ray.point + (ray.direction * intersection.distance);
@@ -249,7 +249,7 @@ pub fn trace(
                 if let Some(calculated_color) = material.get_surface_color(
                     settings,
                     ray,
-                    &scene,
+                    scene,
                     point_of_intersection,
                     intersection.normal, //object.get_normal(point_of_intersection),
                     depth,
@@ -259,7 +259,7 @@ pub fn trace(
                 }
             }
 
-            return Some(color);
+            Some(color)
         }
     }
 }
@@ -283,10 +283,10 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<
             // closest intersection is farther than the intersection
             // we found.
             match closest {
-                None => closest = Some((intersection, &object)),
+                None => closest = Some((intersection, object)),
                 Some((closest_dist, _)) => {
                     if intersection.distance < closest_dist.distance {
-                        closest = Some((intersection, &object));
+                        closest = Some((intersection, object));
                     }
                 }
             }

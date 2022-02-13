@@ -27,12 +27,12 @@ impl Camera {
         let up = right.cross(&forward).normalize();
 
         Camera {
-            position: position,
-            target: target,
-            forward: forward,
-            right: right,
-            up: up,
-            fov: fov,
+            position,
+            target,
+            forward,
+            right,
+            up,
+            fov,
         }
     }
 }

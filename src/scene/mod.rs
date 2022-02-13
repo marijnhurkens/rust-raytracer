@@ -21,10 +21,10 @@ impl Scene {
         bvh: BVH,
     ) -> Scene {
         Scene {
-            bg_color: bg_color,
-            objects: objects,
-            lights: lights,
-            bvh: bvh,
+            bg_color,
+            objects,
+            lights,
+            bvh,
         }
     }
 

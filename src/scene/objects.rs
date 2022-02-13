@@ -192,7 +192,7 @@ impl Object for Plane {
             let distance = v.dot(&self.normal) / denom;
 
             if distance > 0.0001 {
-                return Some(Intersection { distance: distance, normal: self.normal });
+                return Some(Intersection { distance, normal: self.normal });
             }
         }
 
@@ -376,7 +376,7 @@ impl Object for Triangle {
         let a_to_origin = ray.point - &self.v0;
         let u = a_to_origin.dot(&u_vec) * inv_det;
 
-        if u < 0.0 || u > 1.0 {
+        if !(0.0..=1.0).contains(&u) {
             return None;
         }
 
