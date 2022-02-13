@@ -12,25 +12,68 @@ use crate::renderer;
 
 use super::*;
 
-pub trait Object: Debug + Send + Sync + Bounded + BHShape {
+#[derive(Debug)]
+pub enum Object {
+    Sphere(Sphere),
+    Triangle(Triangle),
+    Rectangle(Rectangle),
+    Box(Box),
+}
+
+pub trait Objectable {
     fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>>;
-    fn test_intersect(&self, renderer: renderer::Ray) -> Option<Intersection>;
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection>;
+}
+
+impl Objectable for Object {
+    fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
+        match self {
+            Object::Sphere(x) => x.get_materials(),
+            Object::Triangle(x) => x.get_materials(),
+            Object::Rectangle(x) => x.get_materials(),
+            Object::Box(x) => x.get_materials(),
+        }
+    }
+
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection> {
+        match self {
+            Object::Sphere(x) => x.test_intersect(ray),
+            Object::Triangle(x) => x.test_intersect(ray),
+            Object::Rectangle(x) => x.test_intersect(ray),
+            Object::Box(x) => x.test_intersect(ray),
+        }
+    }
 }
 
 // BOX
-impl Bounded for RustBox<dyn Object> {
+impl Bounded for Object {
     fn aabb(&self) -> AABB {
-        (**self).aabb()
+        match self {
+            Object::Sphere(x) => x.aabb(),
+            Object::Triangle(x) => x.aabb(),
+            Object::Rectangle(x) => x.aabb(),
+            Object::Box(x) => x.aabb(),
+        }
     }
 }
 
-impl BHShape for RustBox<dyn Object> {
+impl BHShape for Object {
     fn set_bh_node_index(&mut self, index: usize) {
-        (**self).set_bh_node_index(index);
+        match self {
+            Object::Sphere(x) => x.set_bh_node_index(index),
+            Object::Triangle(x) => x.set_bh_node_index(index),
+            Object::Rectangle(x) => x.set_bh_node_index(index),
+            Object::Box(x) => x.set_bh_node_index(index),
+        }
     }
 
     fn bh_node_index(&self) -> usize {
-        (**self).bh_node_index()
+        match self {
+            Object::Sphere(x) => x.bh_node_index(),
+            Object::Triangle(x) => x.bh_node_index(),
+            Object::Rectangle(x) => x.bh_node_index(),
+            Object::Box(x) => x.bh_node_index(),
+        }
     }
 }
 
@@ -39,9 +82,7 @@ impl BHShape for RustBox<dyn Object> {
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
-
     pub materials: Vec<RustBox<dyn materials::Material>>,
-
     pub node_index: usize,
 }
 
@@ -49,9 +90,7 @@ impl Sphere {
     fn get_normal(&self, point: Point3<f64>) -> Vector3<f64> {
         (point - self.position).normalize()
     }
-}
 
-impl Object for Sphere {
     fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }
@@ -148,7 +187,7 @@ pub struct Box {
     pub materials: Vec<RustBox<dyn materials::Material>>,
 }
 
-impl Object for Box {
+impl Box {
     fn get_materials(&self) -> &Vec<RustBox<dyn Material>> {
         &self.materials
     }
@@ -179,13 +218,11 @@ impl BHShape for Box {
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
-
     pub materials: Vec<RustBox<dyn materials::Material>>,
-
     pub node_index: usize,
 }
 
-impl Object for Plane {
+impl Plane {
     fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }
@@ -243,9 +280,7 @@ pub struct Rectangle {
     pub position: Point3<f64>,
     pub side_a: Vector3<f64>,
     pub side_b: Vector3<f64>,
-
     pub materials: Vec<RustBox<dyn materials::Material>>,
-
     pub node_index: usize,
 }
 
@@ -255,7 +290,7 @@ impl Rectangle {
     }
 }
 
-impl Object for Rectangle {
+impl Rectangle {
     fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }
@@ -369,7 +404,7 @@ impl Triangle {
     }
 }
 
-impl Object for Triangle {
+impl Triangle {
     fn get_materials(&self) -> &Vec<RustBox<dyn materials::Material>> {
         &self.materials
     }

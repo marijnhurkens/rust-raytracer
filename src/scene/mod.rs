@@ -8,7 +8,7 @@ pub mod objects;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
-    pub objects: Vec<Box<dyn objects::Object>>,
+    pub objects: Vec<objects::Object>,
     pub bvh: BVH,
     pub lights: Vec<lights::Light>,
 }
@@ -17,7 +17,7 @@ impl Scene {
     pub fn new(
         bg_color: Vector3<f64>,
         lights: Vec<lights::Light>,
-        objects: Vec<Box<dyn objects::Object>>,
+        objects: Vec<objects::Object>,
         bvh: BVH,
     ) -> Scene {
         Scene {
@@ -28,7 +28,7 @@ impl Scene {
         }
     }
 
-    pub fn push_object(&mut self, o: Box<dyn objects::Object>) {
+    pub fn push_object(&mut self, o: objects::Object) {
         self.objects.push(o);
     }
 }

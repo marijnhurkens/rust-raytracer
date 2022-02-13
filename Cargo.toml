@@ -21,3 +21,6 @@ oidn = "1.4.1"
 #lto = "fat"
 #rustflags = "-C target-cpu=native"
 debug = true
+
+[env]
+OIDN_DIR="~/Downloads/oidn/"

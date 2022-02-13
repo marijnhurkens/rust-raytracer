@@ -5,11 +5,11 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
-use ggez::graphics::pipe::new;
 
 use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 
 use film::{Bucket, Film};
+use objects::Objectable;
 use sampler::Sampler;
 use scene::camera::Camera;
 use scene::lights::Light;
@@ -200,10 +200,11 @@ fn render_work(
 
             for sample in samples {
                 // todo: remove clamp?
-                let (mut new_pixel_color, normal) = trace(&settings, sample.ray, scene, 1, 1.0)
-                    .unwrap();
+                let (mut new_pixel_color, normal) =
+                    trace(&settings, sample.ray, scene, 1, 1.0).unwrap();
 
-                new_pixel_color = new_pixel_color.simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+                new_pixel_color = new_pixel_color
+                    .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
                 sample_results.push(SampleResult {
                     radiance: new_pixel_color,
@@ -225,7 +226,7 @@ pub fn trace(
     scene: &Scene,
     depth: u32,
     contribution: f64,
-) -> Option<(Vector3<f64>,Vector3<f64>)> {
+) -> Option<(Vector3<f64>, Vector3<f64>)> {
     // Early exit when max depth is reach or the contribution factor is too low.
     //
     // The contribution factor is checked here to force the user to provide one.
@@ -240,7 +241,7 @@ pub fn trace(
     let intersect = check_intersect_scene(ray, scene);
 
     match intersect {
-        None => Some((scene.bg_color, Vector3::new(0.0,0.0,0.0))),
+        None => Some((scene.bg_color, Vector3::new(0.0, 0.0, 0.0))),
         Some((intersection, object)) => {
             let point_of_intersection = ray.point + (ray.direction * intersection.distance);
 
@@ -265,8 +266,8 @@ pub fn trace(
     }
 }
 
-fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Box<dyn Object>)> {
-    let mut closest: Option<(Intersection, &Box<dyn Object>)> = None;
+fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Object)> {
+    let mut closest: Option<(Intersection, &Object)> = None;
 
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),

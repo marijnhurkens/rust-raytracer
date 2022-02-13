@@ -28,6 +28,7 @@ use film::{Film, FilterMethod};
 use helpers::{
     yaml_array_into_point2, yaml_array_into_point3, yaml_array_into_vector3, yaml_into_u32,
 };
+use objects::Object;
 use renderer::SETTINGS;
 use sampler::{Sampler, SamplerMethod};
 use scene::*;
@@ -175,7 +176,7 @@ impl event::EventHandler for MainState {
 
 fn main() -> GameResult {
     // Cornell box
-    let mut objects: Vec<Box<dyn objects::Object>> = vec![];
+    let mut objects: Vec<objects::Object> = vec![];
 
     let sphere = objects::Sphere {
         position: Point3::new(0.0, -0.3, 0.0),
@@ -197,7 +198,7 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    objects.push(Box::new(sphere));
+    objects.push(Object::Sphere(sphere));
 
     // add a light
     let light = objects::Rectangle {
@@ -211,7 +212,7 @@ fn main() -> GameResult {
         })],
         node_index: 0,
     };
-    objects.push(Box::new(light));
+    objects.push(Object::Rectangle(light));
 
     // add a mirror
     let mirror = objects::Rectangle {
@@ -224,7 +225,7 @@ fn main() -> GameResult {
         })],
         node_index: 0,
     };
-    objects.push(Box::new(mirror));
+    objects.push(Object::Rectangle(mirror));
 
     let light_sphere = objects::Sphere {
         position: Point3::new(0.8, -0.8, 0.9),
@@ -243,7 +244,7 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    objects.push(Box::new(light_sphere));
+    objects.push(Object::Sphere(light_sphere));
 
     let light_sphere2 = objects::Sphere {
         position: Point3::new(0.8, -0.8, -0.3),
@@ -262,7 +263,7 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    objects.push(Box::new(light_sphere2));
+    objects.push(Object::Sphere(light_sphere2));
 
     let light_sphere3 = objects::Sphere {
         position: Point3::new(-0.8, -0.8, -0.1),
@@ -281,7 +282,7 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    objects.push(Box::new(light_sphere3));
+    objects.push(Object::Sphere(light_sphere3));
 
     let light_sphere4 = objects::Sphere {
         position: Point3::new(-0.8, -0.8, 0.5),
@@ -303,7 +304,7 @@ fn main() -> GameResult {
         node_index: 0,
     };
 
-    objects.push(Box::new(light_sphere4));
+    objects.push(Object::Sphere(light_sphere4));
 
     //
     // let light_1 = lights::Light {
@@ -416,7 +417,7 @@ fn main() -> GameResult {
                 })],
             );
 
-            objects.push(Box::new(triangle));
+            objects.push(Object::Triangle(triangle));
 
             bar.inc(1);
         }
