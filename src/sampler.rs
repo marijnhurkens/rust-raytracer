@@ -32,8 +32,6 @@ pub struct Sample {
 pub struct Sampler {
     method: SamplerMethod,
     camera: Camera,
-    image_width: u32,
-    image_height: u32,
     half_width_radians: f64,
     half_height_radians: f64,
     pixel_width_radians: f64,
@@ -72,8 +70,6 @@ impl Sampler {
         Sampler {
             method,
             camera,
-            image_width,
-            image_height,
             half_width_radians,
             half_height_radians,
             pixel_width_radians,
@@ -107,20 +103,20 @@ impl Sampler {
         for _w in 0..sample_num {
             let sub_pixel_horizontal_offset = rng.gen_range(0.0, 1.0);
             let sub_pixel_vertical_offset = rng.gen_range(0.0, 1.0);
-            let sub_pixel_horizontal_offset_radians = sub_pixel_horizontal_offset - 0.5 * &self.pixel_width_radians;
-            let sub_pixel_vertical_offset_radians = sub_pixel_vertical_offset - 0.5 * &self.pixel_height_radians;
+            let sub_pixel_horizontal_offset_radians = sub_pixel_horizontal_offset - 0.5 * self.pixel_width_radians;
+            let sub_pixel_vertical_offset_radians = sub_pixel_vertical_offset - 0.5 * self.pixel_height_radians;
             
-            let horizontal_offset = &self.camera.right
-                * ((x as f64 * &self.pixel_width_radians) + sub_pixel_horizontal_offset_radians - &self.half_width_radians);
+            let horizontal_offset = self.camera.right
+                * ((x as f64 * self.pixel_width_radians) + sub_pixel_horizontal_offset_radians - self.half_width_radians);
             // pos_y needs to be negated because in the image the upper row is row 0,
             // in the 3d world the y axis descends when going down.
-            let vertical_offset = &self.camera.up
-                * ((-(y as f64) * &self.pixel_height_radians) + sub_pixel_vertical_offset_radians + &self.half_height_radians);
+            let vertical_offset = self.camera.up
+                * ((-(y as f64) * self.pixel_height_radians) + sub_pixel_vertical_offset_radians + self.half_height_radians);
 
             let sample = Sample {
                 ray: Ray {
                     point: self.camera.position,
-                    direction: (&self.camera.forward + horizontal_offset + vertical_offset).normalize(),
+                    direction: (self.camera.forward + horizontal_offset + vertical_offset).normalize(),
                 },
                 pixel_position: Point2::new(x as f64 + sub_pixel_horizontal_offset - 0.5, y as f64 + sub_pixel_vertical_offset - 0.5),
             };
@@ -143,20 +139,20 @@ impl Sampler {
         let mut samples = Vec::new();
 
         for point in SOBOL.iter().take(sample_num as usize) {
-            let sub_pixel_horizontal_offset = (point[0] - 0.5) * &self.pixel_width_radians;
-            let sub_pixel_vertical_offset = (point[1] - 0.5) * &self.pixel_height_radians;
+            let sub_pixel_horizontal_offset = (point[0] - 0.5) * self.pixel_width_radians;
+            let sub_pixel_vertical_offset = (point[1] - 0.5) * self.pixel_height_radians;
 
-            let horizontal_offset = &self.camera.right
-                * ((x as f64 * &self.pixel_width_radians) + sub_pixel_horizontal_offset - &self.half_width_radians);
+            let horizontal_offset = self.camera.right
+                * ((x as f64 * self.pixel_width_radians) + sub_pixel_horizontal_offset - self.half_width_radians);
             // y needs to be negated because in the image the upper row is row 0,
             // in the 3d world the y axis descends when going down.
-            let vertical_offset = &self.camera.up
-                * ((-(y as f64) * &self.pixel_height_radians) + sub_pixel_vertical_offset + &self.half_height_radians);
+            let vertical_offset = self.camera.up
+                * ((-(y as f64) * self.pixel_height_radians) + sub_pixel_vertical_offset + self.half_height_radians);
 
             let sample = Sample {
                 ray: Ray {
                     point: self.camera.position,
-                    direction: (&self.camera.forward + horizontal_offset + vertical_offset).normalize(),
+                    direction: (self.camera.forward + horizontal_offset + vertical_offset).normalize(),
                 },
                 pixel_position: Point2::new(x as f64 + point[0] - 0.5, y as f64 + point[1] - 0.5),
             };

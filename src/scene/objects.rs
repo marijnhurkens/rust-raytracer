@@ -48,7 +48,7 @@ pub struct Sphere {
 
 impl Sphere {
     fn get_normal(&self, point: Point3<f64>) -> Vector3<f64> {
-        (point - &self.position).normalize()
+        (point - self.position).normalize()
     }
 }
 
@@ -60,7 +60,7 @@ impl Object for Sphere {
     fn test_intersect(&self, ray: crate::renderer::Ray) -> Option<Intersection> {
         use std::f64;
 
-        let ray_to_sphere_center = ray.point - &self.position;
+        let ray_to_sphere_center = ray.point - self.position;
         let a = ray.direction.dot(&ray.direction); // camera_to_sphere length squared
         let b = ray_to_sphere_center.dot(&ray.direction);
         let c = ray_to_sphere_center.dot(&ray_to_sphere_center) - self.radius * self.radius;
@@ -113,8 +113,8 @@ impl Object for Sphere {
 impl Bounded for Sphere {
     fn aabb(&self) -> AABB {
         let half_size = Vector3::new(self.radius, self.radius, self.radius);
-        let min = &self.position - half_size;
-        let max = &self.position + half_size;
+        let min = self.position - half_size;
+        let max = self.position + half_size;
         AABB::with_bounds(
             bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32),
             bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32),
@@ -187,7 +187,7 @@ impl Object for Plane {
         let denom = self.normal.dot(&ray.direction);
 
         if denom.abs() > 1e-4 {
-            let v = &self.position - ray.point;
+            let v = self.position - ray.point;
 
             let distance = v.dot(&self.normal) / denom;
 
@@ -208,8 +208,8 @@ impl Bounded for Plane {
         const MAX_SIZE: f64 = 1000000000.0;
 
         let half_size = Vector3::new(MAX_SIZE, MAX_SIZE, MAX_SIZE);
-        let min = &self.position - half_size;
-        let max = &self.position + half_size;
+        let min = self.position - half_size;
+        let max = self.position + half_size;
         AABB::with_bounds(
             bvh::nalgebra::Point3::new(min.x as f32, min.y as f32, min.z as f32),
             bvh::nalgebra::Point3::new(max.x as f32, max.y as f32, max.z as f32),
@@ -361,8 +361,8 @@ impl Object for Triangle {
         &self.materials
     }
     fn test_intersect(&self, ray: renderer::Ray) -> Option<Intersection> {
-        let v0v1 = &self.v1 - &self.v0;
-        let v0v2 = &self.v2 - &self.v0;
+        let v0v1 = self.v1 - self.v0;
+        let v0v2 = self.v2 - self.v0;
 
         let u_vec = ray.direction.cross(&v0v2);
         let det = v0v1.dot(&u_vec);
@@ -373,7 +373,7 @@ impl Object for Triangle {
 
         let inv_det = 1.0 / det;
 
-        let a_to_origin = ray.point - &self.v0;
+        let a_to_origin = ray.point - self.v0;
         let u = a_to_origin.dot(&u_vec) * inv_det;
 
         if !(0.0..=1.0).contains(&u) {
@@ -390,7 +390,7 @@ impl Object for Triangle {
         let t = v0v2.dot(&v_vec) * inv_det;
 
         if t > f64::EPSILON {
-            let normal = u * &self.v1_normal + v * &self.v2_normal + (1.0 - u - v) * &self.v0_normal;
+            let normal = u * self.v1_normal + v * self.v2_normal + (1.0 - u - v) * self.v0_normal;
 
             return Some(Intersection { distance: t, normal });
         }

@@ -31,17 +31,12 @@ pub struct Bucket {
     pub sample_bounds: Bounds<u32>,
     pub pixel_bounds: Bounds<u32>,
     pub samples: Vec<SampleResult>,
-    pub finished: bool,
     pixels: Vec<Pixel>,
 }
 
 impl Bucket {
-    pub fn add_samples(&mut self, samples: &Vec<SampleResult>) {
+    pub fn add_samples(&mut self, samples: &[SampleResult]) {
         self.samples.extend(samples);
-    }
-
-    pub fn finish(&mut self) {
-        self.finished = true;
     }
 }
 
@@ -53,7 +48,6 @@ pub struct Pixel {
 
 pub struct Film {
     pub image_size: Vector2<u32>,
-    film_size: u32,
     crop_start: Option<Point2<u32>>,
     crop_end: Option<Point2<u32>>,
     pub pixels: Vec<Pixel>,
@@ -71,7 +65,6 @@ impl Film {
     pub fn new(
         image_size: Vector2<u32>,
         bucket_size: Vector2<u32>,
-        film_size: u32,
         crop_start: Option<Point2<u32>>,
         crop_end: Option<Point2<u32>>,
         filter_method: FilterMethod,
@@ -111,7 +104,6 @@ impl Film {
 
         let mut film = Film {
             image_size,
-            film_size,
             crop_start,
             crop_end,
             pixels,
@@ -306,7 +298,6 @@ impl Film {
                     sample_bounds,
                     pixel_bounds,
                     samples: vec![],
-                    finished: false,
                     pixels,
                 })));
             }

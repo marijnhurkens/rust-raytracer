@@ -64,14 +64,14 @@ impl Material for Lambert {
         // the cross product of the normal and the vector to the light
         // to calculate the lambert contribution.
         for light in &scene.lights {
-            let test_point = &point_of_intersection + (&normal * 1e-4);
+            let test_point = point_of_intersection + (normal * 1e-4);
 
             if !renderer::check_light_visible(test_point, scene, light)
             {
                 continue;
             }
 
-            let contribution = (&light.position - &point_of_intersection)
+            let contribution = (light.position - point_of_intersection)
                 .normalize()
                 .dot(&normal)
                 * light.intensity;
@@ -85,7 +85,7 @@ impl Material for Lambert {
 
         // throw random ray
         let ray_point = point_of_intersection + &normal * 1e-4;
-        let target = ray_point + &normal + get_random_in_unit_sphere();
+        let target = ray_point + normal + get_random_in_unit_sphere();
 
         let reflect_ray = renderer::Ray {
             point: ray_point,
@@ -98,7 +98,7 @@ impl Material for Lambert {
             lambert_color += lambert_surface_color * 0.5;
         }
 
-        Some(((&self.color * lights_contribution) + lambert_color) / 2.0 * self.weight)
+        Some(((self.color * lights_contribution) + lambert_color) / 2.0 * self.weight)
     }
 
     fn get_weight(&self) -> f64 {
@@ -246,9 +246,9 @@ impl Material for FresnelReflection {
         // REFLECTION
         if self.reflection > 0.0 && fresnel_ratio > 0.0 {
             let reflect_ray_start = if outside {
-                &point_of_intersection + &bias
+                point_of_intersection + bias
             } else {
-                &point_of_intersection - &bias
+                point_of_intersection - bias
             };
 
             let reflect_ray = renderer::Ray {
@@ -292,8 +292,8 @@ impl Material for FresnelReflection {
             //lambert_lights_contribution = lambert_lights_contribution.min(1.0);
 
             // throw random ray
-            let ray_point = point_of_intersection + &normal * 1e-4;
-            let target = ray_point + &normal + get_random_in_unit_sphere();
+            let ray_point = point_of_intersection + normal * 1e-4;
+            let target = ray_point + normal + get_random_in_unit_sphere();
 
             let reflect_ray = renderer::Ray {
                 point: ray_point,

@@ -1,7 +1,6 @@
 film:
   image_width: 1000
   image_height: 1000
-  film_size: 16
   bucket_width: 128
   bucket_height: 128
   filter_radius: 2.0

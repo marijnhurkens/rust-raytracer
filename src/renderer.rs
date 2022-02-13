@@ -211,7 +211,6 @@ fn render_work(
             bucket.add_samples(&sample_results);
         }
     }
-    // bucket.finish();
 
     true
 }

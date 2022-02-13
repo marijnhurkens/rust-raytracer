@@ -369,7 +369,7 @@ fn main() -> GameResult {
     let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
 
     // Build scene
-    println!("Building BHV...");
+    println!("Building BVH...");
     let bvh = BVH::build(&mut objects);
     println!("Done!");
 
@@ -411,7 +411,6 @@ fn main() -> GameResult {
             settings_yaml["film"]["bucket_width"].as_i64().unwrap() as u32,
             settings_yaml["film"]["bucket_height"].as_i64().unwrap() as u32,
         ),
-        settings_yaml["film"]["film_size"].as_i64().unwrap() as u32,
         crop_start,
         crop_end,
         FilterMethod::from_str(settings_yaml["film"]["filter_method"].as_str().unwrap()).unwrap(),
