@@ -35,7 +35,6 @@ use scene::*;
 
 mod film;
 mod helpers;
-mod photon_mapper;
 mod renderer;
 mod sampler;
 mod scene;
@@ -178,32 +177,32 @@ fn main() -> GameResult {
     // Cornell box
     let mut objects: Vec<objects::Object> = vec![];
 
-    let sphere = objects::Sphere {
-        position: Point3::new(0.0, -0.3, 0.0),
-        radius: 0.4,
-        materials: vec![
-            Box::new(materials::FresnelReflection {
-                weight: 1.0,
-                glossiness: 0.98,
-                ior: 1.5,
-                reflection: 0.0,
-                refraction: 0.7,
-                color: Vector3::new(0.5, 0.5, 0.5),
-            }),
-            // Box::new(materials::Lambert {
-            //     weight: 1.0,
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            // }),
-        ],
-        node_index: 0,
-    };
-
-    objects.push(Object::Sphere(sphere));
+    // let sphere = objects::Sphere {
+    //     position: Point3::new(0.0, -0.3, 0.0),
+    //     radius: 0.4,
+    //     materials: vec![
+    //         Box::new(materials::FresnelReflection {
+    //             weight: 1.0,
+    //             glossiness: 0.98,
+    //             ior: 1.5,
+    //             reflection: 0.0,
+    //             refraction: 0.7,
+    //             color: Vector3::new(0.5, 0.5, 0.5),
+    //         }),
+    //         // Box::new(materials::Lambert {
+    //         //     weight: 1.0,
+    //         //     color: Vector3::new(0.5, 0.5, 0.5),
+    //         // }),
+    //     ],
+    //     node_index: 0,
+    // };
+    //
+    // objects.push(Object::Sphere(sphere));
 
     // add a light
     let light = objects::Rectangle {
-        position: Point3::new(-0.3, 0.99, 0.7),
-        side_a: Vector3::new(0.6, 0.0, 0.0),
+        position: Point3::new(0.5, 2.50, -0.7),
+        side_a: Vector3::new(3.6, 0.0, 0.0),
         side_b: Vector3::new(0.0, 0.0, 0.6),
         materials: vec![Box::new(materials::Light {
             weight: 1.0,
@@ -215,107 +214,102 @@ fn main() -> GameResult {
     objects.push(Object::Rectangle(light));
 
     // add a mirror
-    let mirror = objects::Rectangle {
-        position: Point3::new(-1.4, -1.4, 0.0),
-        side_a: Vector3::new(3.0, 0.0, -0.8),
-        side_b: Vector3::new(0.0, 3.0, 0.4),
-        materials: vec![Box::new(materials::Reflection {
-            weight: 1.0,
-            glossiness: 1.0,
-        })],
-        node_index: 0,
-    };
-    objects.push(Object::Rectangle(mirror));
-
-    let light_sphere = objects::Sphere {
-        position: Point3::new(0.8, -0.8, 0.9),
-        radius: 0.12,
-        materials: vec![
-            Box::new(materials::Light {
-                weight: 1.0,
-                intensity: 20.0,
-                color: Vector3::new(1.0, 0.0, 0.0),
-            }),
-            // Box::new(materials::Lambert {
-            //     weight: 1.0,
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            // }),
-        ],
-        node_index: 0,
-    };
-
-    objects.push(Object::Sphere(light_sphere));
-
-    let light_sphere2 = objects::Sphere {
-        position: Point3::new(0.8, -0.8, -0.3),
-        radius: 0.12,
-        materials: vec![
-            Box::new(materials::Light {
-                weight: 1.0,
-                intensity: 20.0,
-                color: Vector3::new(0.0, 0.0, 1.0),
-            }),
-            // Box::new(materials::Lambert {
-            //     weight: 1.0,
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            // }),
-        ],
-        node_index: 0,
-    };
-
-    objects.push(Object::Sphere(light_sphere2));
-
-    let light_sphere3 = objects::Sphere {
-        position: Point3::new(-0.8, -0.8, -0.1),
-        radius: 0.12,
-        materials: vec![
-            Box::new(materials::Light {
-                weight: 1.0,
-                intensity: 30.0,
-                color: Vector3::new(1.0, 1.0, 1.0),
-            }),
-            // Box::new(materials::Lambert {
-            //     weight: 1.0,
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            // }),
-        ],
-        node_index: 0,
-    };
-
-    objects.push(Object::Sphere(light_sphere3));
-
-    let light_sphere4 = objects::Sphere {
-        position: Point3::new(-0.8, -0.8, 0.5),
-        radius: 0.22,
-        materials: vec![
-            Box::new(materials::FresnelReflection {
-                weight: 1.0,
-                glossiness: 0.99,
-                ior: 1.5,
-                reflection: 0.4,
-                refraction: 0.2,
-                color: Vector3::new(0.7, 0.7, 0.7),
-            }),
-            // Box::new(materials::Lambert {
-            //     weight: 1.0,
-            //     color: Vector3::new(0.5, 0.5, 0.5),
-            // }),
-        ],
-        node_index: 0,
-    };
-
-    objects.push(Object::Sphere(light_sphere4));
-
-    //
-    // let light_1 = lights::Light {
-    //     position: Point3::new(0.0, 0.8, 0.0),
-    //     intensity: 0.9,
-    //     color: Vector3::new(1.0, 1.0, 1.0), // white
+    // let mirror = objects::Rectangle {
+    //     position: Point3::new(-1.4, -1.4, 0.0),
+    //     side_a: Vector3::new(3.0, 0.0, -0.8),
+    //     side_b: Vector3::new(0.0, 3.0, 0.4),
+    //     materials: vec![Box::new(materials::Reflection {
+    //         weight: 1.0,
+    //         glossiness: 1.0,
+    //     })],
+    //     node_index: 0,
     // };
+    // objects.push(Object::Rectangle(mirror));
+    //
+    // let light_sphere = objects::Sphere {
+    //     position: Point3::new(0.8, -0.8, 0.9),
+    //     radius: 0.12,
+    //     materials: vec![
+    //         Box::new(materials::Light {
+    //             weight: 1.0,
+    //             intensity: 20.0,
+    //             color: Vector3::new(1.0, 0.0, 0.0),
+    //         }),
+    //         // Box::new(materials::Lambert {
+    //         //     weight: 1.0,
+    //         //     color: Vector3::new(0.5, 0.5, 0.5),
+    //         // }),
+    //     ],
+    //     node_index: 0,
+    // };
+
+    // objects.push(Object::Sphere(light_sphere));
+    //
+    // let light_sphere2 = objects::Sphere {
+    //     position: Point3::new(0.8, -0.8, -0.3),
+    //     radius: 0.12,
+    //     materials: vec![
+    //         Box::new(materials::Light {
+    //             weight: 1.0,
+    //             intensity: 20.0,
+    //             color: Vector3::new(0.0, 0.0, 1.0),
+    //         }),
+    //         // Box::new(materials::Lambert {
+    //         //     weight: 1.0,
+    //         //     color: Vector3::new(0.5, 0.5, 0.5),
+    //         // }),
+    //     ],
+    //     node_index: 0,
+    // };
+    //
+    // objects.push(Object::Sphere(light_sphere2));
+    //
+    // let light_sphere3 = objects::Sphere {
+    //     position: Point3::new(-0.8, -0.8, -0.1),
+    //     radius: 0.12,
+    //     materials: vec![
+    //         Box::new(materials::Light {
+    //             weight: 1.0,
+    //             intensity: 30.0,
+    //             color: Vector3::new(1.0, 1.0, 1.0),
+    //         }),
+    //         // Box::new(materials::Lambert {
+    //         //     weight: 1.0,
+    //         //     color: Vector3::new(0.5, 0.5, 0.5),
+    //         // }),
+    //     ],
+    //     node_index: 0,
+    // };
+    //
+    // objects.push(Object::Sphere(light_sphere3));
+    //
+    // let light_sphere4 = objects::Sphere {
+    //     position: Point3::new(-0.8, -0.8, 0.5),
+    //     radius: 0.22,
+    //     materials: vec![
+    //         Box::new(materials::FresnelReflection {
+    //             weight: 1.0,
+    //             glossiness: 0.99,
+    //             ior: 1.5,
+    //             reflection: 0.4,
+    //             refraction: 0.2,
+    //             color: Vector3::new(0.7, 0.7, 0.7),
+    //         }),
+    //         // Box::new(materials::Lambert {
+    //         //     weight: 1.0,
+    //         //     color: Vector3::new(0.5, 0.5, 0.5),
+    //         // }),
+    //     ],
+    //     node_index: 0,
+    // };
+    //
+    // objects.push(Object::Sphere(light_sphere4));
+
+
 
     ////////// load model
 
-    let (models, _) = tobj::load_obj("./scene/box.obj", true).expect("Failed to load file");
+    let (models, materials) = tobj::load_obj("./scene/big/san-miguel-low-poly.obj", true).expect("Failed to load file");
 
     //let models: Vec<Model> = vec!();
 
@@ -344,6 +338,9 @@ fn main() -> GameResult {
         assert_eq!(mesh.indices.len() % 3, 0);
 
         let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
+
+        let material = &materials[mesh.material_id.unwrap()];
+
         for v in 0..mesh.indices.len() / 3 {
             let v0 = mesh.indices[3 * v] as usize;
             let v1 = mesh.indices[3 * v + 1] as usize;
@@ -404,6 +401,15 @@ fn main() -> GameResult {
                 mesh.normals[3 * v2 + 2] as f64,
             );
 
+
+            let color = Vector3::new(
+                material.diffuse[0] as f64,
+                material.diffuse[1] as f64,
+                material.diffuse[2] as f64,
+            );
+
+            let reflection = material.specular[0] as f64;
+
             let triangle = objects::Triangle::new(
                 p0,
                 p1,
@@ -411,9 +417,13 @@ fn main() -> GameResult {
                 p0_normal,
                 p1_normal,
                 p2_normal,
-                vec![Box::new(materials::Lambert {
+                vec![Box::new(materials::FresnelReflection {
                     weight: 1.0,
-                    color: Vector3::new(0.5, 0.5, 0.5),
+                    color,
+                    glossiness: material.shininess as f64,
+                    ior: material.optical_density as f64,
+                    reflection,
+                    refraction: 1.0 - material.dissolve as f64
                 })],
             );
 

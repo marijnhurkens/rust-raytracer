@@ -1,5 +1,5 @@
 film:
-  image_width: 1000
+  image_width: 2000
   image_height: 1000
   bucket_width: 64
   bucket_height: 64
@@ -9,15 +9,15 @@ film:
 #    start: [300,300]
 #    end: [400,400]
 camera:
-  position: [0.0,0.0,3.0]
-  target: [0.0,0.0,0.0]
-  fov: 60.0
+  position: [10.0,1.0,5.0]
+  target: [5.0,1.0,5.0]
+  fov: 120.0
 sampler:
-  max_samples: 64
-  min_samples: 8
+  max_samples: 16
+  min_samples: 4
   method: sobol
 renderer:
-  depth_limit: 4
+  depth_limit: 5
   threads: 10
 scene:
   background_color: [1.0,1.0,1.0]

@@ -460,7 +460,11 @@ impl Bounded for Triangle {
 
         AABB::with_bounds(
             bvh::nalgebra::Point3::new(min_x as f32, min_y as f32, min_z as f32),
-            bvh::nalgebra::Point3::new(max_x as f32, max_y as f32, max_z as f32),
+            bvh::nalgebra::Point3::new(
+                (max_x + 0.001) as f32,
+                (max_y + 0.001) as f32,
+                (max_z + 0.001) as f32,
+            ),
         )
     }
 }

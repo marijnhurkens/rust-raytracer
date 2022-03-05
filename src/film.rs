@@ -221,7 +221,7 @@ impl Film {
 
             self.pixels[film_pixel_index].sum_weight += pixel.sum_weight;
             self.pixels[film_pixel_index].sum_radiance += pixel.sum_radiance;
-            self.pixels[film_pixel_index].normal = pixel.normal;
+            self.pixels[film_pixel_index].normal += pixel.normal;
 
             if self.pixels[film_pixel_index].sum_weight < f64::EPSILON {
                 self.image_buffer
