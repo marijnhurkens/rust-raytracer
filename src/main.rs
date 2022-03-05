@@ -9,6 +9,7 @@ extern crate rand;
 extern crate sobol;
 extern crate tobj;
 extern crate yaml_rust;
+extern crate clap;
 
 use std::fs::File;
 use std::io::Read;
@@ -22,6 +23,7 @@ use ggez::graphics::{self, Color, DrawParam};
 use ggez::{Context, GameResult};
 use nalgebra::{Vector2};
 use yaml_rust::YamlLoader;
+use clap::Parser;
 
 use film::{Film, FilterMethod};
 use helpers::{
@@ -38,6 +40,12 @@ mod helpers;
 mod renderer;
 mod sampler;
 mod scene;
+
+#[derive(Parser, Debug)]
+struct Args {
+    scene_file: Option<String>,
+    settings_file: Option<String>,
+}
 
 struct MainState {
     film: Arc<RwLock<Film>>,
@@ -172,27 +180,13 @@ impl event::EventHandler for MainState {
 }
 
 fn main() -> GameResult {
-    // let mut objects: Vec<objects::Object> = vec![];
-    //
-    // // add a light
-    // let light = objects::Rectangle {
-    //     position: Point3::new(0.5, 2.50, -0.7),
-    //     side_a: Vector3::new(3.6, 0.0, 0.0),
-    //     side_b: Vector3::new(0.0, 0.0, 0.6),
-    //     materials: vec![Box::new(materials::Light {
-    //         weight: 1.0,
-    //         intensity: 190.0,
-    //         color: Vector3::new(1.0, 1.0, 1.0),
-    //     })],
-    //     node_index: 0,
-    // };
-    // objects.push(Object::Rectangle(light));
+    let args = Args::parse();
 
     // Load scene from yaml file
-    let scene = scene::Scene::load_from_file(Path::new("./scene/cornell/scene.yaml"));
+    let scene = scene::Scene::load_from_file(Path::new(&args.scene_file.unwrap()));
 
     // Get settings from yaml file
-    let mut file = File::open("./scene/cornell/render_settings.yaml").expect("Unable to open file");
+    let mut file = File::open(&args.settings_file.unwrap()).expect("Unable to open file");
     let mut contents = String::new();
 
     file.read_to_string(&mut contents)
@@ -256,7 +250,7 @@ fn main() -> GameResult {
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {
-            title: "Test".to_string(),
+            title: "Rust Raytracer".to_string(),
             samples: NumSamples::Zero,
             vsync: true,
             icon: "".to_string(),
