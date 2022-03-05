@@ -1,0 +1,23 @@
+film:
+  image_width: 1000
+  image_height: 1000
+  bucket_width: 128
+  bucket_height: 128
+  filter_radius: 1.8
+  filter_method: none
+#  crop:
+#    start: [300,300]
+#    end: [400,400]
+camera:
+  position: [0.0,0.0,3.8]
+  target: [0.0,0.0,0.0]
+  fov: 39.0
+sampler:
+  max_samples: 16
+  min_samples: 4
+  method: sobol
+renderer:
+  depth_limit: 5
+  threads: 10
+scene:
+  background_color: [0.0,0.0,0.0]

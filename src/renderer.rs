@@ -8,10 +8,10 @@ use std::time::SystemTime;
 
 use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 
+use camera::Camera;
 use film::{Bucket, Film};
 use objects::Objectable;
 use sampler::Sampler;
-use scene::camera::Camera;
 use scene::lights::Light;
 use scene::objects::Object;
 use scene::Scene;

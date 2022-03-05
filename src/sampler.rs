@@ -4,9 +4,9 @@ use nalgebra::Point2;
 use rand::*;
 use sobol::params::JoeKuoD6;
 use sobol::Sobol;
+use camera::Camera;
 
 use renderer::*;
-use scene::camera::Camera;
 
 #[derive(Debug, Copy, Clone)]
 pub enum SamplerMethod {

@@ -1,0 +1,10 @@
+world:
+  file: cornell.obj
+  up_axis: y
+lights:
+    - type: area
+      position: [0.0,0.5,0.0]
+      rotation: [0.0,0.0,0.0]
+      size: [0.7,0.7]
+      color: [1.0,1.0,1.0]
+      power: 15.0

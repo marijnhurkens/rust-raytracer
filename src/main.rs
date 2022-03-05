@@ -12,34 +12,32 @@ extern crate yaml_rust;
 
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::sync::{Arc, RwLock};
 
-use bvh::bvh::BVH;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event;
 use ggez::event::KeyCode;
 use ggez::graphics::{self, Color, DrawParam};
 use ggez::{Context, GameResult};
-use indicatif::ProgressBar;
-use nalgebra::{Point3, Vector2, Vector3};
+use nalgebra::{Vector2};
 use yaml_rust::YamlLoader;
 
 use film::{Film, FilterMethod};
 use helpers::{
-    yaml_array_into_point2, yaml_array_into_point3, yaml_array_into_vector3, yaml_into_u32,
+    yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32,
 };
 use objects::Object;
 use renderer::SETTINGS;
 use sampler::{Sampler, SamplerMethod};
 use scene::*;
 
+mod camera;
 mod film;
 mod helpers;
 mod renderer;
 mod sampler;
 mod scene;
-
-const UP_AXIS: &str = "y";
 
 struct MainState {
     film: Arc<RwLock<Film>>,
@@ -174,286 +172,32 @@ impl event::EventHandler for MainState {
 }
 
 fn main() -> GameResult {
-    // Cornell box
-    let mut objects: Vec<objects::Object> = vec![];
-
-    // let sphere = objects::Sphere {
-    //     position: Point3::new(0.0, -0.3, 0.0),
-    //     radius: 0.4,
-    //     materials: vec![
-    //         Box::new(materials::FresnelReflection {
-    //             weight: 1.0,
-    //             glossiness: 0.98,
-    //             ior: 1.5,
-    //             reflection: 0.0,
-    //             refraction: 0.7,
-    //             color: Vector3::new(0.5, 0.5, 0.5),
-    //         }),
-    //         // Box::new(materials::Lambert {
-    //         //     weight: 1.0,
-    //         //     color: Vector3::new(0.5, 0.5, 0.5),
-    //         // }),
-    //     ],
-    //     node_index: 0,
-    // };
+    // let mut objects: Vec<objects::Object> = vec![];
     //
-    // objects.push(Object::Sphere(sphere));
-
-    // add a light
-    let light = objects::Rectangle {
-        position: Point3::new(0.5, 2.50, -0.7),
-        side_a: Vector3::new(3.6, 0.0, 0.0),
-        side_b: Vector3::new(0.0, 0.0, 0.6),
-        materials: vec![Box::new(materials::Light {
-            weight: 1.0,
-            intensity: 190.0,
-            color: Vector3::new(1.0, 1.0, 1.0),
-        })],
-        node_index: 0,
-    };
-    objects.push(Object::Rectangle(light));
-
-    // add a mirror
-    // let mirror = objects::Rectangle {
-    //     position: Point3::new(-1.4, -1.4, 0.0),
-    //     side_a: Vector3::new(3.0, 0.0, -0.8),
-    //     side_b: Vector3::new(0.0, 3.0, 0.4),
-    //     materials: vec![Box::new(materials::Reflection {
+    // // add a light
+    // let light = objects::Rectangle {
+    //     position: Point3::new(0.5, 2.50, -0.7),
+    //     side_a: Vector3::new(3.6, 0.0, 0.0),
+    //     side_b: Vector3::new(0.0, 0.0, 0.6),
+    //     materials: vec![Box::new(materials::Light {
     //         weight: 1.0,
-    //         glossiness: 1.0,
+    //         intensity: 190.0,
+    //         color: Vector3::new(1.0, 1.0, 1.0),
     //     })],
     //     node_index: 0,
     // };
-    // objects.push(Object::Rectangle(mirror));
-    //
-    // let light_sphere = objects::Sphere {
-    //     position: Point3::new(0.8, -0.8, 0.9),
-    //     radius: 0.12,
-    //     materials: vec![
-    //         Box::new(materials::Light {
-    //             weight: 1.0,
-    //             intensity: 20.0,
-    //             color: Vector3::new(1.0, 0.0, 0.0),
-    //         }),
-    //         // Box::new(materials::Lambert {
-    //         //     weight: 1.0,
-    //         //     color: Vector3::new(0.5, 0.5, 0.5),
-    //         // }),
-    //     ],
-    //     node_index: 0,
-    // };
+    // objects.push(Object::Rectangle(light));
 
-    // objects.push(Object::Sphere(light_sphere));
-    //
-    // let light_sphere2 = objects::Sphere {
-    //     position: Point3::new(0.8, -0.8, -0.3),
-    //     radius: 0.12,
-    //     materials: vec![
-    //         Box::new(materials::Light {
-    //             weight: 1.0,
-    //             intensity: 20.0,
-    //             color: Vector3::new(0.0, 0.0, 1.0),
-    //         }),
-    //         // Box::new(materials::Lambert {
-    //         //     weight: 1.0,
-    //         //     color: Vector3::new(0.5, 0.5, 0.5),
-    //         // }),
-    //     ],
-    //     node_index: 0,
-    // };
-    //
-    // objects.push(Object::Sphere(light_sphere2));
-    //
-    // let light_sphere3 = objects::Sphere {
-    //     position: Point3::new(-0.8, -0.8, -0.1),
-    //     radius: 0.12,
-    //     materials: vec![
-    //         Box::new(materials::Light {
-    //             weight: 1.0,
-    //             intensity: 30.0,
-    //             color: Vector3::new(1.0, 1.0, 1.0),
-    //         }),
-    //         // Box::new(materials::Lambert {
-    //         //     weight: 1.0,
-    //         //     color: Vector3::new(0.5, 0.5, 0.5),
-    //         // }),
-    //     ],
-    //     node_index: 0,
-    // };
-    //
-    // objects.push(Object::Sphere(light_sphere3));
-    //
-    // let light_sphere4 = objects::Sphere {
-    //     position: Point3::new(-0.8, -0.8, 0.5),
-    //     radius: 0.22,
-    //     materials: vec![
-    //         Box::new(materials::FresnelReflection {
-    //             weight: 1.0,
-    //             glossiness: 0.99,
-    //             ior: 1.5,
-    //             reflection: 0.4,
-    //             refraction: 0.2,
-    //             color: Vector3::new(0.7, 0.7, 0.7),
-    //         }),
-    //         // Box::new(materials::Lambert {
-    //         //     weight: 1.0,
-    //         //     color: Vector3::new(0.5, 0.5, 0.5),
-    //         // }),
-    //     ],
-    //     node_index: 0,
-    // };
-    //
-    // objects.push(Object::Sphere(light_sphere4));
+    // Load scene from yaml file
+    let scene = scene::Scene::load_from_file(Path::new("./scene/cornell/scene.yaml"));
 
-
-
-    ////////// load model
-
-    let (models, materials) = tobj::load_obj("./scene/big/san-miguel-low-poly.obj", true).expect("Failed to load file");
-
-    //let models: Vec<Model> = vec!();
-
-    for (i, m) in models.iter().enumerate() {
-        let mesh = &m.mesh;
-        println!("model[{}].name = \'{}\'", i, m.name);
-        println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
-
-        println!(
-            "Size of model[{}].num_face_indices: {}",
-            i,
-            mesh.num_face_indices.len()
-        );
-
-        // Normals and texture coordinates are also loaded, but not printed in this example
-        println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
-        println!("model[{}].indices: {}", i, mesh.indices.len());
-        println!(
-            "model[{}].expected_triangles: {}",
-            i,
-            mesh.indices.len() / 3
-        );
-        println!("model[{}].faces: {}", i, mesh.num_face_indices.len());
-        println!("model[{}].normals: {}", i, mesh.normals.len() / 3);
-
-        assert_eq!(mesh.indices.len() % 3, 0);
-
-        let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
-
-        let material = &materials[mesh.material_id.unwrap()];
-
-        for v in 0..mesh.indices.len() / 3 {
-            let v0 = mesh.indices[3 * v] as usize;
-            let v1 = mesh.indices[3 * v + 1] as usize;
-            let v2 = mesh.indices[3 * v + 2] as usize;
-
-            let (p0, p1, p2) = match UP_AXIS {
-                // stored as x y z, where y is up
-                "y" => (
-                    Point3::new(
-                        mesh.positions[3 * v0] as f64,
-                        mesh.positions[3 * v0 + 1] as f64,
-                        mesh.positions[3 * v0 + 2] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v1] as f64,
-                        mesh.positions[3 * v1 + 1] as f64,
-                        mesh.positions[3 * v1 + 2] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v2] as f64,
-                        mesh.positions[3 * v2 + 1] as f64,
-                        mesh.positions[3 * v2 + 2] as f64,
-                    ),
-                ),
-                // stored as x z y, where z is up
-                _ => (
-                    Point3::new(
-                        mesh.positions[3 * v0] as f64,
-                        mesh.positions[3 * v0 + 2] as f64,
-                        mesh.positions[3 * v0 + 1] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v1] as f64,
-                        mesh.positions[3 * v1 + 2] as f64,
-                        mesh.positions[3 * v1 + 1] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v2] as f64,
-                        mesh.positions[3 * v2 + 2] as f64,
-                        mesh.positions[3 * v2 + 1] as f64,
-                    ),
-                ),
-            };
-
-            let p0_normal = Vector3::new(
-                mesh.normals[3 * v0] as f64,
-                mesh.normals[3 * v0 + 1] as f64,
-                mesh.normals[3 * v0 + 2] as f64,
-            );
-            let p1_normal = Vector3::new(
-                mesh.normals[3 * v1] as f64,
-                mesh.normals[3 * v1 + 1] as f64,
-                mesh.normals[3 * v1 + 2] as f64,
-            );
-            let p2_normal = Vector3::new(
-                mesh.normals[3 * v2] as f64,
-                mesh.normals[3 * v2 + 1] as f64,
-                mesh.normals[3 * v2 + 2] as f64,
-            );
-
-
-            let color = Vector3::new(
-                material.diffuse[0] as f64,
-                material.diffuse[1] as f64,
-                material.diffuse[2] as f64,
-            );
-
-            let reflection = material.specular[0] as f64;
-
-            let triangle = objects::Triangle::new(
-                p0,
-                p1,
-                p2,
-                p0_normal,
-                p1_normal,
-                p2_normal,
-                vec![Box::new(materials::FresnelReflection {
-                    weight: 1.0,
-                    color,
-                    glossiness: material.shininess as f64,
-                    ior: material.optical_density as f64,
-                    reflection,
-                    refraction: 1.0 - material.dissolve as f64
-                })],
-            );
-
-            objects.push(Object::Triangle(triangle));
-
-            bar.inc(1);
-        }
-
-        bar.finish();
-    }
-
-    // Get settings
-    let mut file = File::open("settings.yaml").expect("Unable to open file");
+    // Get settings from yaml file
+    let mut file = File::open("./scene/cornell/render_settings.yaml").expect("Unable to open file");
     let mut contents = String::new();
 
     file.read_to_string(&mut contents)
         .expect("Unable to read file");
     let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
-
-    // Build scene
-    println!("Building BVH...");
-    let bvh = BVH::build(&mut objects);
-    println!("Done!");
-
-    let scene = scene::Scene::new(
-        yaml_array_into_vector3(&settings_yaml["scene"]["background_color"]),
-        vec![],
-        objects,
-        bvh,
-    );
 
     let camera = camera::Camera::new(
         yaml_array_into_point3(&settings_yaml["camera"]["position"]),
