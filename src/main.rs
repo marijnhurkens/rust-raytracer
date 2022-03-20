@@ -10,6 +10,7 @@ extern crate sobol;
 extern crate tobj;
 extern crate yaml_rust;
 extern crate clap;
+extern crate bitflags;
 
 use std::fs::File;
 use std::io::Read;
@@ -40,6 +41,8 @@ mod helpers;
 mod renderer;
 mod sampler;
 mod scene;
+mod bsdf;
+mod surface_interaction;
 
 #[derive(Parser, Debug)]
 struct Args {

@@ -6,7 +6,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
 
-use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
+use nalgebra::{Point2, Point3, SimdPartialOrd, Vector2, Vector3};
 
 use camera::Camera;
 use film::{Bucket, Film};
@@ -77,6 +77,8 @@ pub struct Intersection {
     pub distance: f64,
     pub normal: Vector3<f64>,
 }
+
+
 
 #[derive(Debug, Copy, Clone)]
 pub struct SampleResult {

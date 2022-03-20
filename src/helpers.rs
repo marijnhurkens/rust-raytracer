@@ -139,6 +139,26 @@ pub fn yaml_into_u32(yaml: &Yaml) -> u32 {
     yaml.as_i64().unwrap() as u32
 }
 
+pub fn max_dimension_vec_3(v: Vector3<f64>) -> usize {
+    if v.x > v.y {
+        if v.x > v.z {
+            0
+        } else {
+            2
+        }
+    } else {
+        if v.y > v.z {
+            1
+        } else {
+            2
+        }
+    }
+}
+
+pub fn permute(v: Vector3<f64>, x: usize, y: usize, z: usize) -> Vector3<f64> {
+    Vector3::new(v[x], v[y], v[z])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

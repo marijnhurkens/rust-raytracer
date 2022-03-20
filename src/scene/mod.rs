@@ -1,10 +1,12 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Arc;
 
 use bvh::bvh::BVH;
 use indicatif::ProgressBar;
 use nalgebra::{Point3, Vector3};
+use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
 use Object;
@@ -16,6 +18,7 @@ pub mod objects;
 pub struct Scene {
     pub bg_color: Vector3<f64>,
     pub objects: Vec<objects::Object>,
+    pub meshes: Vec<Arc<Mesh>>,
     pub bvh: BVH,
     pub lights: Vec<lights::Light>,
 }
@@ -25,11 +28,13 @@ impl Scene {
         bg_color: Vector3<f64>,
         lights: Vec<lights::Light>,
         objects: Vec<objects::Object>,
+        meshes: Vec<Arc<Mesh>>,
         bvh: BVH,
     ) -> Scene {
         Scene {
             bg_color,
             objects,
+            meshes,
             lights,
             bvh,
         }
@@ -50,7 +55,7 @@ impl Scene {
             .join(Path::new(scene_yaml["world"]["file"].as_str().unwrap()));
         let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
 
-        let mut objects = load_model(world_model_file.as_path(), up_axis);
+        let (mut objects, meshes) = load_model(world_model_file.as_path(), up_axis);
 
         // Build scene
         println!("Building BVH...");
@@ -64,6 +69,7 @@ impl Scene {
         Scene {
             bg_color: Vector3::new(1.0, 1.0, 1.0),
             objects,
+            meshes,
             lights,
             bvh,
         }
@@ -74,15 +80,16 @@ impl Scene {
     }
 }
 
-fn load_model(model_file: &Path, up_axis: &str) -> Vec<objects::Object> {
+fn load_model(model_file: &Path, up_axis: &str) -> (Vec<objects::Object>, Vec<Arc<Mesh>>) {
     dbg!(model_file);
     let (models, materials) = tobj::load_obj(model_file, true).expect("Failed to load file");
 
     dbg!(&materials);
     let mut triangles = vec![];
+    let mut meshes = vec![];
 
     for (i, m) in models.iter().enumerate() {
-        let mesh = &m.mesh;
+        let mesh = Arc::new(m.mesh.clone());
         println!("model[{}].name = \'{}\'", i, m.name);
         println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
 
@@ -110,65 +117,6 @@ fn load_model(model_file: &Path, up_axis: &str) -> Vec<objects::Object> {
         let material = &materials[mesh.material_id.unwrap()];
 
         for v in 0..mesh.indices.len() / 3 {
-            let v0 = mesh.indices[3 * v] as usize;
-            let v1 = mesh.indices[3 * v + 1] as usize;
-            let v2 = mesh.indices[3 * v + 2] as usize;
-
-            let (p0, p1, p2) = match up_axis {
-                // stored as x y z, where y is up
-                "y" => (
-                    Point3::new(
-                        mesh.positions[3 * v0] as f64,
-                        mesh.positions[3 * v0 + 1] as f64,
-                        mesh.positions[3 * v0 + 2] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v1] as f64,
-                        mesh.positions[3 * v1 + 1] as f64,
-                        mesh.positions[3 * v1 + 2] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v2] as f64,
-                        mesh.positions[3 * v2 + 1] as f64,
-                        mesh.positions[3 * v2 + 2] as f64,
-                    ),
-                ),
-                // stored as x z y, where z is up
-                _ => (
-                    Point3::new(
-                        mesh.positions[3 * v0] as f64,
-                        mesh.positions[3 * v0 + 2] as f64,
-                        mesh.positions[3 * v0 + 1] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v1] as f64,
-                        mesh.positions[3 * v1 + 2] as f64,
-                        mesh.positions[3 * v1 + 1] as f64,
-                    ),
-                    Point3::new(
-                        mesh.positions[3 * v2] as f64,
-                        mesh.positions[3 * v2 + 2] as f64,
-                        mesh.positions[3 * v2 + 1] as f64,
-                    ),
-                ),
-            };
-
-            let p0_normal = Vector3::new(
-                mesh.normals[3 * v0] as f64,
-                mesh.normals[3 * v0 + 1] as f64,
-                mesh.normals[3 * v0 + 2] as f64,
-            );
-            let p1_normal = Vector3::new(
-                mesh.normals[3 * v1] as f64,
-                mesh.normals[3 * v1 + 1] as f64,
-                mesh.normals[3 * v1 + 2] as f64,
-            );
-            let p2_normal = Vector3::new(
-                mesh.normals[3 * v2] as f64,
-                mesh.normals[3 * v2 + 1] as f64,
-                mesh.normals[3 * v2 + 2] as f64,
-            );
-
             let color = Vector3::new(
                 material.diffuse[0] as f64,
                 material.diffuse[1] as f64,
@@ -178,12 +126,10 @@ fn load_model(model_file: &Path, up_axis: &str) -> Vec<objects::Object> {
             let reflection = material.specular[0] as f64;
 
             let triangle = objects::Triangle::new(
-                p0,
-                p1,
-                p2,
-                p0_normal,
-                p1_normal,
-                p2_normal,
+                mesh.clone(),
+                mesh.indices[3 * v] as usize,
+                 mesh.indices[3 * v + 1] as usize,
+                 mesh.indices[3 * v + 2] as usize,
                 vec![Box::new(materials::FresnelReflection {
                     weight: 1.0,
                     color,
@@ -199,8 +145,10 @@ fn load_model(model_file: &Path, up_axis: &str) -> Vec<objects::Object> {
             bar.inc(1);
         }
 
+        meshes.push(mesh.clone());
+
         bar.finish();
     }
 
-    triangles
+    (triangles, meshes)
 }
