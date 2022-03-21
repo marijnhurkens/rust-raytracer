@@ -1,7 +1,7 @@
 use std::cmp;
 use std::sync::{Arc, Mutex};
 
-use image::{ImageBuffer, Rgb, Rgba};
+use image::{ImageBuffer, Rgb};
 use nalgebra::{Point2, Vector2, Vector3};
 
 use helpers::Bounds;

@@ -6,16 +6,17 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
 
-use nalgebra::{Point2, Point3, SimdPartialOrd, Vector2, Vector3};
+use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 
 use camera::Camera;
 use film::{Bucket, Film};
 use objects::Objectable;
 use sampler::Sampler;
 use scene::lights::Light;
-use scene::objects::Object;
+use objects::Object;
 use scene::Scene;
 use SamplerMethod;
+use surface_interaction::SurfaceInteraction;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
@@ -245,8 +246,6 @@ pub fn trace(
     match intersect {
         None => Some((scene.bg_color, Vector3::new(0.0, 0.0, 0.0))),
         Some((intersection, object)) => {
-            let point_of_intersection = ray.point + (ray.direction * intersection.distance);
-
             let mut color = Vector3::new(0.0, 0.0, 0.0);
 
             for material in object.get_materials() {
@@ -254,8 +253,8 @@ pub fn trace(
                     settings,
                     ray,
                     scene,
-                    point_of_intersection,
-                    intersection.normal, //object.get_normal(point_of_intersection),
+                    intersection.point,
+                    intersection.surface_normal,
                     depth,
                     contribution,
                 ) {
@@ -263,13 +262,14 @@ pub fn trace(
                 }
             }
 
-            Some((color, intersection.normal))
+            Some((color, intersection.surface_normal))
         }
     }
 }
 
-fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Object)> {
-    let mut closest: Option<(Intersection, &Object)> = None;
+fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteraction, &Object)> {
+    let mut closest_hit: Option<(SurfaceInteraction, &Object)> = None;
+    let mut closest_distance = f64::MAX;
 
     let bvh_ray = bvh::ray::Ray::new(
         bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
@@ -282,22 +282,27 @@ fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(Intersection, &Obje
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
     for object in hit_sphere_aabbs {
-        if let Some(intersection) = object.test_intersect(ray) {
+
+        if let Some((distance, intersection)) = object.test_intersect(ray) {
             // If we found an intersection we check if the current
             // closest intersection is farther than the intersection
             // we found.
-            match closest {
-                None => closest = Some((intersection, object)),
-                Some((closest_dist, _)) => {
-                    if intersection.distance < closest_dist.distance {
-                        closest = Some((intersection, object));
+            match closest_hit {
+                None => {
+                    closest_hit = Some((intersection, object));
+                    closest_distance = distance;
+                },
+                Some((_, _)) => {
+                    if distance < closest_distance {
+                        closest_hit = Some((intersection, object));
+                        closest_distance = distance;
                     }
                 }
             }
         }
     }
 
-    closest
+    closest_hit
 }
 
 fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
@@ -312,10 +317,10 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
     for object in hit_sphere_aabbs {
-        if let Some(intersection) = object.test_intersect(ray) {
+        if let Some((distance, _)) = object.test_intersect(ray) {
             // If we found an intersection we check if distance is less
             // than the max distance we want to check. If so -> exit with true
-            if intersection.distance < max_dist {
+            if distance < max_dist {
                 return true;
             }
         }

@@ -11,6 +11,8 @@ extern crate tobj;
 extern crate yaml_rust;
 extern crate clap;
 extern crate bitflags;
+extern crate core;
+extern crate core;
 
 use std::fs::File;
 use std::io::Read;
@@ -43,6 +45,7 @@ mod sampler;
 mod scene;
 mod bsdf;
 mod surface_interaction;
+mod objects;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -118,7 +121,7 @@ impl event::EventHandler for MainState {
                 .expect("Filter config error!");
 
             if let Err(e) = device.get_error() {
-                println!("Error denosing image: {}", e.1);
+                println!("Error denoising image: {}", e.1);
             }
 
             let mut i = 0;

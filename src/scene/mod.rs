@@ -5,19 +5,19 @@ use std::sync::Arc;
 
 use bvh::bvh::BVH;
 use indicatif::ProgressBar;
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Vector3};
 use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
 use Object;
+use objects::triangle::Triangle;
 
 pub mod lights;
 pub mod materials;
-pub mod objects;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
-    pub objects: Vec<objects::Object>,
+    pub objects: Vec<Object>,
     pub meshes: Vec<Arc<Mesh>>,
     pub bvh: BVH,
     pub lights: Vec<lights::Light>,
@@ -27,7 +27,7 @@ impl Scene {
     pub fn new(
         bg_color: Vector3<f64>,
         lights: Vec<lights::Light>,
-        objects: Vec<objects::Object>,
+        objects: Vec<Object>,
         meshes: Vec<Arc<Mesh>>,
         bvh: BVH,
     ) -> Scene {
@@ -75,12 +75,12 @@ impl Scene {
         }
     }
 
-    pub fn push_object(&mut self, o: objects::Object) {
+    pub fn push_object(&mut self, o: Object) {
         self.objects.push(o);
     }
 }
 
-fn load_model(model_file: &Path, up_axis: &str) -> (Vec<objects::Object>, Vec<Arc<Mesh>>) {
+fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>) {
     dbg!(model_file);
     let (models, materials) = tobj::load_obj(model_file, true).expect("Failed to load file");
 
@@ -125,7 +125,7 @@ fn load_model(model_file: &Path, up_axis: &str) -> (Vec<objects::Object>, Vec<Ar
 
             let reflection = material.specular[0] as f64;
 
-            let triangle = objects::Triangle::new(
+            let triangle = Triangle::new(
                 mesh.clone(),
                 mesh.indices[3 * v] as usize,
                  mesh.indices[3 * v + 1] as usize,
