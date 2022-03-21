@@ -1,7 +1,9 @@
 use nalgebra::{Point3, Vector2, Vector3};
+use bsdf::BSDF;
 
-// new method for intersections
+#[derive(Clone)]
 pub struct SurfaceInteraction {
+    pub bsdf: Option<BSDF>,
     pub point: Point3<f64>,
     pub surface_normal: Vector3<f64>,
     pub wo: Vector3<f64>,
@@ -14,8 +16,10 @@ impl SurfaceInteraction {
         surface_normal: Vector3<f64>,
         wo: Vector3<f64>,
         uv: Vector2<f64>,
+
     ) -> SurfaceInteraction {
         SurfaceInteraction {
+            bsdf: None,
             point,
             surface_normal,
             wo,

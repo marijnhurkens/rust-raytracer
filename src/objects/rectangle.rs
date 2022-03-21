@@ -12,7 +12,7 @@ pub struct Rectangle {
     pub position: Point3<f64>,
     pub side_a: Vector3<f64>,
     pub side_b: Vector3<f64>,
-    pub materials: Vec<Box<dyn Material>>,
+    pub materials: Vec<Material>,
     pub node_index: usize,
 }
 
@@ -23,7 +23,7 @@ impl Rectangle {
 }
 
 impl Rectangle {
-    pub fn get_materials(&self) -> &Vec<Box<dyn Material>> {
+    pub fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
 
@@ -67,12 +67,12 @@ impl Rectangle {
         {
             return Some((
                 distance,
-                SurfaceInteraction {
-                    point: ray.point + ray.direction * distance,
-                    surface_normal: normal,
-                    wo: -ray.direction,
-                    uv: Vector2::zeros(),
-                },
+                SurfaceInteraction::new(
+                    ray.point + ray.direction * distance,
+                    normal,
+                    -ray.direction,
+                    Vector2::zeros(),
+                ),
             ));
         }
 

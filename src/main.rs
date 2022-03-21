@@ -1,4 +1,7 @@
+extern crate bitflags;
 extern crate bvh;
+extern crate clap;
+extern crate core;
 extern crate ggez;
 extern crate image;
 extern crate indicatif;
@@ -9,43 +12,38 @@ extern crate rand;
 extern crate sobol;
 extern crate tobj;
 extern crate yaml_rust;
-extern crate clap;
-extern crate bitflags;
-extern crate core;
-extern crate core;
 
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
+use clap::Parser;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event;
 use ggez::event::KeyCode;
 use ggez::graphics::{self, Color, DrawParam};
 use ggez::{Context, GameResult};
-use nalgebra::{Vector2};
+use nalgebra::Vector2;
 use yaml_rust::YamlLoader;
-use clap::Parser;
 
 use film::{Film, FilterMethod};
-use helpers::{
-    yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32,
-};
+use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
 use renderer::SETTINGS;
 use sampler::{Sampler, SamplerMethod};
-use scene::*;
 
+mod bsdf;
 mod camera;
 mod film;
 mod helpers;
+mod materials;
+mod objects;
 mod renderer;
 mod sampler;
 mod scene;
-mod bsdf;
 mod surface_interaction;
-mod objects;
+mod tracer;
 
 #[derive(Parser, Debug)]
 struct Args {

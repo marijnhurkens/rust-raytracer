@@ -1,10 +1,11 @@
 use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
-use ::{materials, renderer};
+use materials::Material;
 use objects::cube::Cube;
 use objects::rectangle::Rectangle;
 use objects::sphere::Sphere;
 use objects::triangle::Triangle;
+use renderer;
 use surface_interaction::SurfaceInteraction;
 
 pub mod triangle;
@@ -22,12 +23,12 @@ pub enum Object {
 }
 
 pub trait Objectable {
-    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>>;
+    fn get_materials(&self) -> &Vec<Material>;
     fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)>;
 }
 
 impl Objectable for Object {
-    fn get_materials(&self) -> &Vec<Box<dyn materials::Material>> {
+    fn get_materials(&self) -> &Vec<Material> {
         match self {
             Object::Sphere(x) => x.get_materials(),
             Object::Triangle(x) => x.get_materials(),

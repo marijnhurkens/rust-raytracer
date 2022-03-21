@@ -1,4 +1,5 @@
 use core::f64;
+
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector2, Vector3};
@@ -12,7 +13,7 @@ use surface_interaction::SurfaceInteraction;
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
-    pub materials: Vec<Box<dyn Material>>,
+    pub materials: Vec<Material>,
     pub node_index: usize,
 }
 
@@ -21,7 +22,7 @@ impl Sphere {
         (point - self.position).normalize()
     }
 
-    pub fn get_materials(&self) -> &Vec<Box<dyn Material>> {
+    pub fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
 
@@ -46,12 +47,12 @@ impl Sphere {
 
             return Some((
                 temp_dist,
-                SurfaceInteraction {
-                    point: ray.point + ray.direction * temp_dist,
-                    surface_normal: normal,
-                    wo: -ray.direction,
-                    uv: Vector2::zeros(),
-                },
+                SurfaceInteraction::new(
+                    ray.point + ray.direction * temp_dist,
+                    normal,
+                    -ray.direction,
+                    Vector2::zeros(),
+                ),
             ));
         }
 
@@ -63,12 +64,12 @@ impl Sphere {
 
             return Some((
                 temp_dist,
-                SurfaceInteraction {
-                    point: ray.point + ray.direction * temp_dist,
-                    surface_normal: normal,
-                    wo: -ray.direction,
-                    uv: Vector2::zeros(),
-                },
+                SurfaceInteraction::new(
+                    ray.point + ray.direction * temp_dist,
+                    normal,
+                    -ray.direction,
+                    Vector2::zeros(),
+                ),
             ));
         }
 

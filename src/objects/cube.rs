@@ -15,11 +15,11 @@ pub struct Cube {
     pub height: f64,
     pub rotation: Vector3<f64>,
     pub node_index: usize,
-    pub materials: Vec<Box<dyn Material>>,
+    pub materials: Vec<Material>,
 }
 
 impl Cube {
-    pub fn get_materials(&self) -> &Vec<Box<dyn Material>> {
+    pub fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
 

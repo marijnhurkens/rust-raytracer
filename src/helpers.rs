@@ -1,3 +1,4 @@
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Mul;
 
 use nalgebra::{ClosedSub, Point2, Point3, Scalar, Vector2, Vector3};
@@ -39,6 +40,47 @@ pub fn get_random_in_unit_sphere() -> Vector3<f64> {
     } {}
 
     vec
+}
+
+fn concentric_sample_disk() -> Point2<f64> {
+    let mut rng = thread_rng();
+
+    let u_offset = Point2::new(rng.gen::<f64>(), rng.gen::<f64>()) * 2.0 - Vector2::new(1.0, 1.0);
+
+    if u_offset.x == 0.0 && u_offset.y == 0.0 {
+        return Point2::new(0.0, 0.0);
+    }
+
+    let (theta, r);
+    if u_offset.x.abs() > u_offset.y.abs() {
+        r = u_offset.x;
+        theta = FRAC_PI_4 * (u_offset.y / u_offset.x);
+    } else {
+        r = u_offset.y;
+        theta = FRAC_PI_2 - FRAC_PI_4 * (u_offset.x / u_offset.y);
+    }
+
+    r * Point2::new(theta.cos(), theta.sin())
+}
+
+pub fn get_cosine_weighted_in_hemisphere() -> Vector3<f64> {
+    let d = concentric_sample_disk();
+    let z = f64::max(0.0, 1.0 - d.x * d.x - d.y * d.y).sqrt();
+
+    Vector3::new(d.x, d.y, z)
+}
+
+pub fn cos_theta(a: Vector3<f64>) -> f64 {
+    a.z
+}
+pub fn cos2theta(a: Vector3<f64>) -> f64 {
+    a.z * a.z
+}
+pub fn abs_cos_theta(a: Vector3<f64>) -> f64 {
+    a.z.abs()
+}
+pub fn same_hemisphere(a: Vector3<f64>, b: Vector3<f64>) -> bool {
+    a.z * b.z > 0.0
 }
 
 pub fn get_fresnel_ratio(normal: Vector3<f64>, angle_of_incidence: Vector3<f64>, ior: f64) -> f64 {
@@ -146,12 +188,10 @@ pub fn max_dimension_vec_3(v: Vector3<f64>) -> usize {
         } else {
             2
         }
+    } else if v.y > v.z {
+        1
     } else {
-        if v.y > v.z {
-            1
-        } else {
-            2
-        }
+        2
     }
 }
 

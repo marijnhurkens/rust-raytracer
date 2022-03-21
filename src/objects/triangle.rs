@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
-use nalgebra::{convert, Point2, Point3, Vector3};
+use nalgebra::{Point2, Point3, Vector3};
 use tobj::Mesh;
 
 use helpers::{max_dimension_vec_3, permute};
@@ -16,7 +16,7 @@ pub struct Triangle {
     pub v0_index: usize,
     pub v1_index: usize,
     pub v2_index: usize,
-    pub materials: Vec<Box<dyn Material>>,
+    pub materials: Vec<Material>,
     pub node_index: usize,
 }
 
@@ -26,7 +26,7 @@ impl Triangle {
         v0_index: usize,
         v1_index: usize,
         v2_index: usize,
-        materials: Vec<Box<dyn Material>>,
+        materials: Vec<Material>,
     ) -> Triangle {
         Triangle {
             mesh,
@@ -80,7 +80,7 @@ impl Triangle {
 }
 
 impl Triangle {
-    pub fn get_materials(&self) -> &Vec<Box<dyn Material>> {
+    pub fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
     pub fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
@@ -165,12 +165,7 @@ impl Triangle {
 
             return Some((
                 t,
-                SurfaceInteraction {
-                    point: p_hit,
-                    surface_normal: normal,
-                    wo: -ray.direction,
-                    uv: uv_hit,
-                },
+                SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit),
             ));
         }
 

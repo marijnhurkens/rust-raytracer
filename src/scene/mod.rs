@@ -5,15 +5,17 @@ use std::sync::Arc;
 
 use bvh::bvh::BVH;
 use indicatif::ProgressBar;
-use nalgebra::{Vector3};
+use nalgebra::{Point3, Vector3};
 use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
-use Object;
+use materials::Material;
 use objects::triangle::Triangle;
+use scene::lights::Light;
+use {materials, Object};
 
 pub mod lights;
-pub mod materials;
+//pub mod materials;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -62,7 +64,11 @@ impl Scene {
         let bvh = BVH::build(&mut objects);
         println!("Done!");
 
-        let lights = vec![];
+        let lights = vec![Light {
+            position: Point3::new(0.0, 0.5, 0.0),
+            intensity: 100.0,
+            color: Vector3::new(1.0, 1.0, 1.0),
+        }];
 
         println!("Scene loaded.");
 
@@ -128,16 +134,16 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
             let triangle = Triangle::new(
                 mesh.clone(),
                 mesh.indices[3 * v] as usize,
-                 mesh.indices[3 * v + 1] as usize,
-                 mesh.indices[3 * v + 2] as usize,
-                vec![Box::new(materials::FresnelReflection {
-                    weight: 1.0,
+                mesh.indices[3 * v + 1] as usize,
+                mesh.indices[3 * v + 2] as usize,
+                vec![Material::MatteMaterial(materials::MatteMaterial::new(
+                    //weight: 1.0,
                     color,
-                    glossiness: (material.shininess/1000.0) as f64,
-                    ior: material.optical_density as f64,
-                    reflection,
-                    refraction: 1.0 - material.dissolve as f64,
-                })],
+                    (material.shininess / 1000.0) as f64,
+                    //ior: material.optical_density as f64,
+                    //reflection,
+                    //refraction: 1.0 - material.dissolve as f64,
+                ))],
             );
 
             triangles.push(Object::Triangle(triangle));

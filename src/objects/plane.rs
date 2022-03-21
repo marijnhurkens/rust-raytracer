@@ -10,12 +10,12 @@ use surface_interaction::SurfaceInteraction;
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
-    pub materials: Vec<Box<dyn Material>>,
+    pub materials: Vec<Material>,
     pub node_index: usize,
 }
 
 impl Plane {
-    pub fn get_materials(&self) -> &Vec<Box<dyn Material>> {
+    pub fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
 
@@ -31,12 +31,7 @@ impl Plane {
             if distance > 0.0001 {
                 return Some((
                     distance,
-                    SurfaceInteraction {
-                        point: p_hit,
-                        surface_normal: self.normal,
-                        wo: -ray.direction,
-                        uv: Vector2::zeros(),
-                    },
+                    SurfaceInteraction::new(p_hit, self.normal, -ray.direction, Vector2::zeros()),
                 ));
             }
         }
