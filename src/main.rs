@@ -12,6 +12,7 @@ extern crate rand;
 extern crate sobol;
 extern crate tobj;
 extern crate yaml_rust;
+extern crate num_traits;
 
 use std::fs::File;
 use std::io::Read;
@@ -44,6 +45,7 @@ mod sampler;
 mod scene;
 mod surface_interaction;
 mod tracer;
+mod lights;
 
 #[derive(Parser, Debug)]
 struct Args {

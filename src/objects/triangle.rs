@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
-use nalgebra::{Point2, Point3, Vector3};
+use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
 
-use helpers::{max_dimension_vec_3, permute};
+use helpers::{coordinate_system, max_dimension_vec_3, permute};
 use materials::Material;
 use renderer;
 use surface_interaction::SurfaceInteraction;
@@ -129,7 +129,9 @@ impl Triangle {
         // todo: implement ray.t_max instead of 1000.0
         if det < 0.0 && (t_scaled >= 0.0 || t_scaled < 1000.0 * det) {
             return None;
-        } else if det > 0.0 && (t_scaled <= 0.0 || t_scaled > 1000.0 * det) {
+        }
+
+        if det > 0.0 && (t_scaled <= 0.0 || t_scaled > 1000.0 * det) {
             return None;
         }
 
@@ -146,17 +148,23 @@ impl Triangle {
                 Point2::new(1.0, 1.0),
             ];
 
-            // not needed yet
-            // let duv02: Vector2<f64> = uv[0] - uv[2];
-            // let duv12: Vector2<f64> = uv[1] - uv[2];
-            // let dp02: Vector3<f64> = p0 - p2;
-            // let dp12: Vector3<f64> = p1 - p2;
-            //
-            // let determinant = duv02.x * duv12.y - duv02.y * duv12.x;
-            // let inv_det = 1.0 / determinant;
-            //
-            // let dpdu = ( duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
-            // let dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
+            let duv02: Vector2<f64> = uv[0] - uv[2];
+            let duv12: Vector2<f64> = uv[1] - uv[2];
+            let dp02: Vector3<f64> = p0 - p2;
+            let dp12: Vector3<f64> = p1 - p2;
+
+            let determinant = duv02.x * duv12.y - duv02.y * duv12.x;
+
+            let dpdu;
+            let dpdv;
+
+            if determinant == 0.0 {
+                (_, dpdu, dpdv) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
+            } else {
+                let inv_det = 1.0 / determinant;
+                dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
+                dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
+            }
 
             let (p0_normal, p1_normal, p2_normal) = self.get_normals();
             let normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
@@ -165,7 +173,7 @@ impl Triangle {
 
             return Some((
                 t,
-                SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit),
+                SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit, dpdu, dpdv),
             ));
         }
 

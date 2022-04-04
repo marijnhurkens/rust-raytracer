@@ -12,12 +12,13 @@ use camera::Camera;
 use film::{Bucket, Film};
 use objects::Objectable;
 use sampler::Sampler;
-use scene::lights::Light;
+use lights::Light;
 use objects::Object;
 use scene::Scene;
 use SamplerMethod;
 use surface_interaction::SurfaceInteraction;
 use tracer::trace;
+use lights::LightTrait;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
@@ -334,10 +335,10 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
 pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: &Light) -> bool {
     let ray = Ray {
         point: position,
-        direction: (light.position - position).try_normalize(1.0e-6).unwrap(),
+        direction: (light.get_position() - position).try_normalize(1.0e-6).unwrap(),
     };
 
-    let distance = nalgebra::distance(&position, &light.position);
+    let distance = nalgebra::distance(&position, &light.get_position());
 
     if check_intersect_scene_simple(ray, scene, distance) {
         return false;

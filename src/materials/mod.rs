@@ -8,6 +8,10 @@ pub enum Material {
     MatteMaterial(MatteMaterial),
 }
 
+pub trait MaterialTrait {
+    fn compute_scattering_functions(&self, si: &mut SurfaceInteraction);
+}
+
 impl MaterialTrait for Material {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
         match self {
@@ -15,13 +19,6 @@ impl MaterialTrait for Material {
         }
     }
 }
-
-
-pub trait MaterialTrait {
-    fn compute_scattering_functions(&self, si: &mut SurfaceInteraction);
-}
-
-
 
 
 #[derive(Debug)]

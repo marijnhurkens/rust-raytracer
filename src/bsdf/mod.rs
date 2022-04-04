@@ -13,6 +13,8 @@ pub struct BSDF {
     ior: f64,
     geometry_normal: Vector3<f64>,
     shading_normal: Vector3<f64>,
+    ss: Vector3<f64>,
+    ts: Vector3<f64>,
 }
 
 impl BSDF {
@@ -22,6 +24,10 @@ impl BSDF {
             ior: ior.unwrap_or(1.0),
             geometry_normal: surface_interaction.surface_normal,
             shading_normal: surface_interaction.surface_normal,
+            ss: surface_interaction.delta_p_delta_u.normalize(),
+            ts: surface_interaction
+                .surface_normal
+                .cross(&surface_interaction.delta_p_delta_u.normalize()),
         }
     }
 
@@ -31,9 +37,38 @@ impl BSDF {
         self
     }
 
-    //pub fn sample_f(&self)
+    pub fn sample_f(
+        &self,
+        wo_world: Vector3<f64>,
+        bxdf_types_flags: BXDFTYPES,
+    ) -> (Vector3<f64>, f64, Vector3<f64>) {
+        let bxdfs: Vec<&BXDF> = self
+            .bxdfs
+            .iter()
+            .filter(|&bxdf| bxdf.get_type_flags().intersects(bxdf_types_flags))
+            .collect();
 
-    pub fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>, bxdf_types_flags: BXDFTYPES) -> Vector3<f64> {
+        if bxdfs.len() == 0 {
+            return (Vector3::zeros(), 0.0, Vector3::zeros());
+        }
+
+        let wo = self.world_to_local(wo_world);
+
+        let (wi, pdf, f) = bxdfs[0].sample_f(Point3::new(1.0, 1.0, 1.0), wo);
+
+        let wi_world = self.local_to_world(wi);
+        (wi_world, pdf, f)
+    }
+
+    pub fn f(
+        &self,
+        wo_world: Vector3<f64>,
+        wi_world: Vector3<f64>,
+        bxdf_types_flags: BXDFTYPES,
+    ) -> Vector3<f64> {
+        let wi = self.world_to_local(wi_world);
+        let wo = self.world_to_local(wo_world);
+
         let mut f = Vector3::zeros();
         for bxdf in &self.bxdfs {
             if bxdf.get_type_flags().intersects(bxdf_types_flags) {
@@ -44,10 +79,21 @@ impl BSDF {
         f
     }
 
+    fn world_to_local(&self, v: Vector3<f64>) -> Vector3<f64> {
+        Vector3::new(
+            v.dot(&self.ss),
+            v.dot(&self.ts),
+            v.dot(&self.shading_normal),
+        )
+    }
 
-    //  pub fn f()
-
-    //fn world_to_local()
+    fn local_to_world(&self, v: Vector3<f64>) -> Vector3<f64> {
+        Vector3::new(
+            self.ss.x * v.x + self.ts.x * v.y + self.shading_normal.x * v.z,
+            self.ss.y * v.x + self.ts.y * v.y + self.shading_normal.y * v.z,
+            self.ss.z * v.x + self.ts.z * v.y + self.shading_normal.z * v.z,
+        )
+    }
 }
 
 bitflags! {
@@ -61,24 +107,24 @@ bitflags! {
 
 #[derive(Debug, Clone)]
 pub enum BXDF {
-    Lambertian(Lambertian)
+    Lambertian(Lambertian),
 }
 
 pub trait BXDFtrait {
-    fn get_type_flags(&self)-> BXDFTYPES;
+    fn get_type_flags(&self) -> BXDFTYPES;
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64>;
 }
 
 impl BXDFtrait for BXDF {
     fn get_type_flags(&self) -> BXDFTYPES {
         match self {
-            BXDF::Lambertian(x) => x.get_type_flags()
+            BXDF::Lambertian(x) => x.get_type_flags(),
         }
     }
 
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64> {
         match self {
-            BXDF::Lambertian(x) => x.f( wo, wi)
+            BXDF::Lambertian(x) => x.f(wo, wi),
         }
     }
 }
@@ -92,7 +138,11 @@ impl BXDF {
         }
     }
 
-    pub fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+    pub fn sample_f(
+        &self,
+        _point: Point3<f64>,
+        wo: Vector3<f64>,
+    ) -> (Vector3<f64>, f64, Vector3<f64>) {
         let mut wi = get_cosine_weighted_in_hemisphere();
         if wo.z < 0.0 {
             wi.z = -wi.z;

@@ -70,6 +70,20 @@ pub fn get_cosine_weighted_in_hemisphere() -> Vector3<f64> {
     Vector3::new(d.x, d.y, z)
 }
 
+pub fn coordinate_system(v1: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {
+    let v2;
+
+    if v1.x.abs() > v1.y.abs() {
+        v2 = Vector3::new(-v1.z, 0.0, v1.x) / (v1.x * v1.x + v1.z * v1.z).sqrt();
+    } else {
+        v2 = Vector3::new(0.0, v1.z, -v1.y) / (v1.y * v1.y + v1.z * v1.z).sqrt();
+    }
+
+    let v3 = v1.cross(&v2);
+
+    (v1, v2, v3)
+}
+
 pub fn cos_theta(a: Vector3<f64>) -> f64 {
     a.z
 }

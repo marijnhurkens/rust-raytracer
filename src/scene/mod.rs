@@ -11,24 +11,21 @@ use yaml_rust::YamlLoader;
 
 use materials::Material;
 use objects::triangle::Triangle;
-use scene::lights::Light;
 use {materials, Object};
-
-pub mod lights;
-//pub mod materials;
+use lights::{Light, PointLight};
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
     pub objects: Vec<Object>,
     pub meshes: Vec<Arc<Mesh>>,
     pub bvh: BVH,
-    pub lights: Vec<lights::Light>,
+    pub lights: Vec<Light>,
 }
 
 impl Scene {
     pub fn new(
         bg_color: Vector3<f64>,
-        lights: Vec<lights::Light>,
+        lights: Vec<Light>,
         objects: Vec<Object>,
         meshes: Vec<Arc<Mesh>>,
         bvh: BVH,
@@ -64,16 +61,15 @@ impl Scene {
         let bvh = BVH::build(&mut objects);
         println!("Done!");
 
-        let lights = vec![Light {
-            position: Point3::new(0.0, 0.5, 0.0),
-            intensity: 100.0,
-            color: Vector3::new(1.0, 1.0, 1.0),
-        }];
+        let lights = vec![Light::PointLight(PointLight::new(
+             Point3::new(0.0, 10.0, 0.0),
+             Vector3::new(10.0,10.0,10.0),
+        ))];
 
         println!("Scene loaded.");
 
         Scene {
-            bg_color: Vector3::new(1.0, 1.0, 1.0),
+            bg_color: Vector3::new(0.0, 0.0, 0.0),
             objects,
             meshes,
             lights,
@@ -85,6 +81,7 @@ impl Scene {
         self.objects.push(o);
     }
 }
+
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>) {
     dbg!(model_file);

@@ -2287,6 +2287,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "nalgebra 0.22.1",
+ "num-traits 0.2.14",
  "oidn",
  "rand 0.7.3",
  "sobol",
