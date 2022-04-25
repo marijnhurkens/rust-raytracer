@@ -62,14 +62,14 @@ impl Scene {
         println!("Done!");
 
         let lights = vec![Light::PointLight(PointLight::new(
-             Point3::new(0.0, 10.0, 0.0),
-             Vector3::new(10.0,10.0,10.0),
+             Point3::new(0.0, 0.9, 0.0),
+             Vector3::new(1.0,1.0,1.0),
         ))];
 
         println!("Scene loaded.");
 
         Scene {
-            bg_color: Vector3::new(0.0, 0.0, 0.0),
+            bg_color: Vector3::new(0.5, 0.5, 0.5),
             objects,
             meshes,
             lights,
@@ -126,7 +126,7 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
                 material.diffuse[2] as f64,
             );
 
-            let reflection = material.specular[0] as f64;
+            let _reflection = material.specular[0] as f64;
 
             let triangle = Triangle::new(
                 mesh.clone(),

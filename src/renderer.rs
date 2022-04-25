@@ -225,50 +225,6 @@ fn render_work(
     true
 }
 
-// pub fn trace(
-//     settings: &Settings,
-//     ray: Ray,
-//     scene: &Scene,
-//     depth: u32,
-//     contribution: f64,
-// ) -> Option<(Vector3<f64>, Vector3<f64>)> {
-//     // Early exit when max depth is reach or the contribution factor is too low.
-//     //
-//     // The contribution factor is checked here to force the user to provide one.
-//     if contribution < 0.01 {
-//         return None;
-//     }
-//
-//     if depth > settings.depth_limit {
-//         return None;
-//     }
-//
-//     let intersect = check_intersect_scene(ray, scene);
-//
-//     match intersect {
-//         None => Some((scene.bg_color, Vector3::new(0.0, 0.0, 0.0))),
-//         Some((intersection, object)) => {
-//             let mut color = Vector3::new(0.0, 0.0, 0.0);
-//
-//             for material in object.get_materials() {
-//                 if let Some(calculated_color) = material.get_surface_color(
-//                     settings,
-//                     ray,
-//                     scene,
-//                     intersection.point,
-//                     intersection.surface_normal,
-//                     depth,
-//                     contribution,
-//                 ) {
-//                     color += calculated_color;
-//                 }
-//             }
-//
-//             Some((color, intersection.surface_normal))
-//         }
-//     }
-// }
-
 pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteraction, &Object)> {
     let mut closest_hit: Option<(SurfaceInteraction, &Object)> = None;
     let mut closest_distance = f64::MAX;

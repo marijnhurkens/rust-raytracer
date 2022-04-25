@@ -16,6 +16,7 @@ pub fn trace(
     starting_ray: Ray,
     scene: &Scene,
 ) -> Option<(Vector3<f64>, Vector3<f64>)> {
+    let mut rng = thread_rng();
     let mut l = Vector3::new(0.0, 0.0, 0.0);
     let mut contribution = Vector3::new(1.0,1.0,1.0);
     let mut specular_bounce = false;
@@ -24,11 +25,11 @@ pub fn trace(
     for bounce in 0..settings.depth_limit {
         let intersect = check_intersect_scene(ray, scene);
 
+        // Check for an intersection
         let (mut surface_interaction, object) = match intersect {
             Some(intersection) => intersection,
             None => {
-                // terminate
-                return Some((scene.bg_color, Vector3::new(0.0, 0.0, 0.0)));
+                break;
             }
         };
 
@@ -58,12 +59,22 @@ pub fn trace(
             &(f * wi.dot(&surface_interaction.surface_normal).abs() / pdf)
         );
 
-
         ray = Ray {
             point: surface_interaction.point,
             direction: wi,
+        };
+
+        // russian roulette termination
+        if bounce > 3 {
+            let q = (1.0 - contribution.y).max(0.05);
+            if rng.gen::<f64>() < q {
+                break;
+            }
+
+            contribution /= 1.0 - q;
         }
     }
+
 
     Some((l, Vector3::zeros()))
 }
