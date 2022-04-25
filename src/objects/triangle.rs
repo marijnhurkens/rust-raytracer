@@ -5,7 +5,7 @@ use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
 
-use helpers::{coordinate_system, max_dimension_vec_3, permute};
+use helpers::{coordinate_system, gamma, max_dimension_vec_3, permute};
 use materials::Material;
 use renderer;
 use surface_interaction::SurfaceInteraction;
@@ -141,43 +141,53 @@ impl Triangle {
         let b2 = e2 * inv_det;
         let t = t_scaled * inv_det;
 
-        if t > f64::EPSILON {
-            let uv = vec![
-                Point2::new(0.0, 0.0),
-                Point2::new(1.0, 0.0),
-                Point2::new(1.0, 1.0),
-            ];
-
-            let duv02: Vector2<f64> = uv[0] - uv[2];
-            let duv12: Vector2<f64> = uv[1] - uv[2];
-            let dp02: Vector3<f64> = p0 - p2;
-            let dp12: Vector3<f64> = p1 - p2;
-
-            let determinant = duv02.x * duv12.y - duv02.y * duv12.x;
-
-            let dpdu;
-            let dpdv;
-
-            if determinant == 0.0 {
-                (_, dpdu, dpdv) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
-            } else {
-                let inv_det = 1.0 / determinant;
-                dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
-                dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
-            }
-
-            let (p0_normal, p1_normal, p2_normal) = self.get_normals();
-            let normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
-            let p_hit: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
-            let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
-
-            return Some((
-                t,
-                SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit, dpdu, dpdv),
-            ));
+        if t < f64::EPSILON {
+            return None;
         }
 
-        None
+        let uv = vec![
+            Point2::new(0.0, 0.0),
+            Point2::new(1.0, 0.0),
+            Point2::new(1.0, 1.0),
+        ];
+
+        let duv02: Vector2<f64> = uv[0] - uv[2];
+        let duv12: Vector2<f64> = uv[1] - uv[2];
+        let dp02: Vector3<f64> = p0 - p2;
+        let dp12: Vector3<f64> = p1 - p2;
+
+        let determinant = duv02.x * duv12.y - duv02.y * duv12.x;
+
+        let dpdu;
+        let dpdv;
+
+        if determinant == 0.0 {
+            (_, dpdu, dpdv) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
+        } else {
+            let inv_det = 1.0 / determinant;
+            dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
+            dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
+        }
+
+        let (p0_normal, p1_normal, p2_normal) = self.get_normals();
+        let normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
+        let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
+
+
+        let x_abs_sum = (b0 * p0.x).abs() + (b1 * p1.x).abs() + (b2 * p2.x).abs();
+        let y_abs_sum = (b0 * p0.y).abs() + (b1 * p1.y).abs() + (b2 * p2.y).abs();
+        let z_abs_sum = (b0 * p0.z).abs() + (b1 * p1.z).abs() + (b2 * p2.z).abs();
+
+        let p_error: Vector3<f64> = gamma(7.0) * Vector3::new(x_abs_sum, y_abs_sum, z_abs_sum);
+        let mut p_hit: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
+
+        // todo: fix how to handle error, otherwise light leaks
+        p_hit += normal * 1.0e-9;
+
+        Some((
+            t,
+            SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit, dpdu, dpdv, p_error),
+        ))
     }
 }
 
@@ -210,5 +220,65 @@ impl BHShape for Triangle {
 
     fn bh_node_index(&self) -> usize {
         self.node_index
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use nalgebra::{Point3, Vector3};
+    use tobj::Mesh;
+
+    use materials;
+    use materials::Material;
+    use objects::triangle::Triangle;
+    use renderer::Ray;
+
+    #[test]
+    fn it_tests_intersects() {
+        let mesh = Mesh {
+            positions: vec![-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0],
+            normals: vec![0.6, 0.0, -1.0, 0.0, 0.5, -1.0, 0.4, 0.0, -1.0],
+            texcoords: vec![],
+            indices: vec![],
+            num_face_indices: vec![],
+            material_id: None,
+        };
+
+        let triangle = Triangle::new(
+            Arc::new(mesh),
+            0,
+            1,
+            2,
+            vec![Material::MatteMaterial(materials::MatteMaterial::new(
+                Vector3::new(1.0, 1.0, 1.0),
+                100.0,
+            ))],
+        );
+
+        let ray = Ray {
+            point: Point3::new(0.0, 0.0, -2.0),
+            direction: Vector3::new(0.0, 0.0, 1.0),
+        };
+
+        let option_intersection = triangle.test_intersect(ray);
+
+        assert_eq!(true, option_intersection.is_some());
+
+        let (distance, i) = option_intersection.unwrap();
+
+        assert_eq!(
+            true,
+            Vector3::<f64>::new(0.5, 0.0, -1.0).normalize().relative_eq(
+                &i.surface_normal,
+                f64::EPSILON,
+                1.0e-6
+            )
+        );
+
+        assert_eq!(2.0, distance);
+
+        dbg!(i);
     }
 }

@@ -7,7 +7,7 @@ use surface_interaction::SurfaceInteraction;
 
 pub mod lambertian;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BSDF {
     bxdfs: Vec<BXDF>,
     ior: f64,
@@ -19,15 +19,18 @@ pub struct BSDF {
 
 impl BSDF {
     pub fn new(surface_interaction: SurfaceInteraction, ior: Option<f64>) -> BSDF {
+        let mut ss = surface_interaction.delta_p_delta_u.normalize();
+        let ts = surface_interaction.surface_normal.cross(&ss);
+
+        ss = surface_interaction.surface_normal.cross(&ts);
+
         BSDF {
             bxdfs: vec![],
             ior: ior.unwrap_or(1.0),
             geometry_normal: surface_interaction.surface_normal,
             shading_normal: surface_interaction.surface_normal,
-            ss: surface_interaction.delta_p_delta_u.normalize(),
-            ts: surface_interaction
-                .surface_normal
-                .cross(&surface_interaction.delta_p_delta_u.normalize()),
+            ss,
+            ts,
         }
     }
 

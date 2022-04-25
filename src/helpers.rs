@@ -84,6 +84,11 @@ pub fn coordinate_system(v1: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>, Vecto
     (v1, v2, v3)
 }
 
+
+pub fn gamma(n: f64) -> f64 {
+    (n * f64::EPSILON) / (1.0 - n * f64::EPSILON)
+}
+
 pub fn cos_theta(a: Vector3<f64>) -> f64 {
     a.z
 }

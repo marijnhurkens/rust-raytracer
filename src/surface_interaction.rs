@@ -1,7 +1,8 @@
 use nalgebra::{Point3, Vector2, Vector3};
+
 use bsdf::BSDF;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SurfaceInteraction {
     pub bsdf: Option<BSDF>,
     pub point: Point3<f64>,
@@ -10,6 +11,7 @@ pub struct SurfaceInteraction {
     pub uv: Vector2<f64>,
     pub delta_p_delta_u: Vector3<f64>,
     pub delta_p_delta_v: Vector3<f64>,
+    pub p_error: Vector3<f64>,
 }
 
 impl SurfaceInteraction {
@@ -18,9 +20,9 @@ impl SurfaceInteraction {
         surface_normal: Vector3<f64>,
         wo: Vector3<f64>,
         uv: Vector2<f64>,
-         delta_p_delta_u: Vector3<f64>,
-         delta_p_delta_v: Vector3<f64>,
-
+        delta_p_delta_u: Vector3<f64>,
+        delta_p_delta_v: Vector3<f64>,
+        p_error: Vector3<f64>,
     ) -> SurfaceInteraction {
         SurfaceInteraction {
             bsdf: None,
@@ -29,7 +31,8 @@ impl SurfaceInteraction {
             wo,
             uv,
             delta_p_delta_u,
-            delta_p_delta_v
+            delta_p_delta_v,
+            p_error,
         }
     }
 }
