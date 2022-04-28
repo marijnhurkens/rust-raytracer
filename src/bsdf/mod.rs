@@ -1,15 +1,24 @@
+use std::convert::identity;
+
 use bitflags::bitflags;
 use nalgebra::{Point3, Vector3};
+use rand::thread_rng;
+use rand::prelude::SliceRandom;
 
 use bsdf::lambertian::Lambertian;
+use bsdf::specular_reflection::SpecularReflection;
 use helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
 use surface_interaction::SurfaceInteraction;
 
+pub mod fresnel;
 pub mod lambertian;
+pub mod specular_reflection;
 
-#[derive(Clone, Debug)]
+const MAX_BXDF_COUNT: usize = 5;
+
+#[derive(Copy, Clone, Debug)]
 pub struct BSDF {
-    bxdfs: Vec<BXDF>,
+    bxdfs: [Option<BXDF>; MAX_BXDF_COUNT],
     ior: f64,
     geometry_normal: Vector3<f64>,
     shading_normal: Vector3<f64>,
@@ -25,7 +34,7 @@ impl BSDF {
         ss = surface_interaction.surface_normal.cross(&ts);
 
         BSDF {
-            bxdfs: vec![],
+            bxdfs: [None; MAX_BXDF_COUNT],
             ior: ior.unwrap_or(1.0),
             geometry_normal: surface_interaction.surface_normal,
             shading_normal: surface_interaction.surface_normal,
@@ -35,7 +44,9 @@ impl BSDF {
     }
 
     pub fn add(&mut self, bxdf: BXDF) -> &mut BSDF {
-        self.bxdfs.push(bxdf);
+        let slot = self.bxdfs.iter_mut().find(|x| x.is_none()).unwrap();
+
+        *slot = Some(bxdf);
 
         self
     }
@@ -45,10 +56,20 @@ impl BSDF {
         wo_world: Vector3<f64>,
         bxdf_types_flags: BXDFTYPES,
     ) -> (Vector3<f64>, f64, Vector3<f64>) {
+        let mut rng = thread_rng();
+
         let bxdfs: Vec<&BXDF> = self
             .bxdfs
             .iter()
-            .filter(|&bxdf| bxdf.get_type_flags().intersects(bxdf_types_flags))
+            .filter_map(|bxdf| {
+                if let Some(bxdf) = bxdf {
+                    if bxdf.get_type_flags().intersects(bxdf_types_flags) {
+                        return Some(bxdf);
+                    }
+                }
+
+                None
+            })
             .collect();
 
         if bxdfs.len() == 0 {
@@ -57,7 +78,7 @@ impl BSDF {
 
         let wo = self.world_to_local(wo_world);
 
-        let (wi, pdf, f) = bxdfs[0].sample_f(Point3::new(1.0, 1.0, 1.0), wo);
+        let (wi, pdf, f) = bxdfs.choose(&mut rng).unwrap().sample_f(Point3::new(1.0, 1.0, 1.0), wo);
 
         let wi_world = self.local_to_world(wi);
         (wi_world, pdf, f)
@@ -73,7 +94,7 @@ impl BSDF {
         let wo = self.world_to_local(wo_world);
 
         let mut f = Vector3::zeros();
-        for bxdf in &self.bxdfs {
+        for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
             if bxdf.get_type_flags().intersects(bxdf_types_flags) {
                 f += bxdf.f(wo, wi);
             }
@@ -104,53 +125,50 @@ bitflags! {
         const REFLECTION = 0b00000001;
         const REFRACTION = 0b00000010;
         const DIFFUSE = 0b00000100;
-        const ALL = Self::REFLECTION.bits | Self::REFRACTION.bits | Self::DIFFUSE.bits;
+        const SPECULAR = 0b00001000;
+        const ALL = Self::REFLECTION.bits | Self::REFRACTION.bits | Self::DIFFUSE.bits | Self::SPECULAR.bits;
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BXDF {
     Lambertian(Lambertian),
+    SpecularReflection(SpecularReflection),
 }
 
 pub trait BXDFtrait {
     fn get_type_flags(&self) -> BXDFTYPES;
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64>;
+    fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64;
+    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>);
 }
 
 impl BXDFtrait for BXDF {
     fn get_type_flags(&self) -> BXDFTYPES {
         match self {
             BXDF::Lambertian(x) => x.get_type_flags(),
+            BXDF::SpecularReflection(x) => x.get_type_flags(),
         }
     }
 
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64> {
         match self {
             BXDF::Lambertian(x) => x.f(wo, wi),
-        }
-    }
-}
-
-impl BXDF {
-    pub fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
-        if same_hemisphere(wo, wi) {
-            abs_cos_theta(wi) * std::f64::consts::FRAC_1_PI
-        } else {
-            0.0
+            BXDF::SpecularReflection(x) => x.f(wo, wi),
         }
     }
 
-    pub fn sample_f(
-        &self,
-        _point: Point3<f64>,
-        wo: Vector3<f64>,
-    ) -> (Vector3<f64>, f64, Vector3<f64>) {
-        let mut wi = get_cosine_weighted_in_hemisphere();
-        if wo.z < 0.0 {
-            wi.z = -wi.z;
+    fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
+        match self {
+            BXDF::Lambertian(x) => x.pdf(wo, wi),
+            BXDF::SpecularReflection(x) => x.pdf(wo, wi),
         }
+    }
 
-        (wi, self.pdf(wo, wi), self.f(wo, wi))
+    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+        match self {
+            BXDF::Lambertian(x) => x.sample_f(_point, wo),
+            BXDF::SpecularReflection(x) => x.sample_f(_point, wo),
+        }
     }
 }

@@ -9,10 +9,12 @@ use nalgebra::{Point3, Vector3};
 use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
-use materials::Material;
-use objects::triangle::Triangle;
-use {materials, Object};
 use lights::{Light, PointLight};
+use materials::matte::MatteMaterial;
+use materials::Material;
+use materials::plastic::PlasticMaterial;
+use objects::triangle::Triangle;
+use Object;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -62,8 +64,8 @@ impl Scene {
         println!("Done!");
 
         let lights = vec![Light::PointLight(PointLight::new(
-             Point3::new(0.0, 0.9, 0.0),
-             Vector3::new(1.0,1.0,1.0),
+            Point3::new(0.0, 0.9, 0.0),
+            Vector3::new(1.0, 1.0, 1.0),
         ))];
 
         println!("Scene loaded.");
@@ -81,7 +83,6 @@ impl Scene {
         self.objects.push(o);
     }
 }
-
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>) {
     dbg!(model_file);
@@ -126,6 +127,16 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
                 material.diffuse[2] as f64,
             );
 
+            // let specular = Vector3::new(
+            //     material.specular[0] as f64,
+            //     material.specular[1] as f64,
+            //     material.specular[2] as f64,
+            // );
+
+            let specular = Vector3::new(
+               1.0,1.0,1.0
+            );
+
             let _reflection = material.specular[0] as f64;
 
             let triangle = Triangle::new(
@@ -133,12 +144,12 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
                 mesh.indices[3 * v] as usize,
                 mesh.indices[3 * v + 1] as usize,
                 mesh.indices[3 * v + 2] as usize,
-                vec![Material::MatteMaterial(materials::MatteMaterial::new(
+                vec![Material::PlasticMaterial(PlasticMaterial::new(
                     //weight: 1.0,
                     color,
-                    (material.shininess / 1000.0) as f64,
+                    specular,
+                    0.0,//(material.shininess / 1000.0) as f64,
                     //ior: material.optical_density as f64,
-                    //reflection,
                     //refraction: 1.0 - material.dissolve as f64,
                 ))],
             );

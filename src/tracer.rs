@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Vector, Vector3};
+use nalgebra::{Vector3};
 use num_traits::identities::Zero;
 use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;

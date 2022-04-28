@@ -2,7 +2,7 @@ use nalgebra::{Point3, Vector2, Vector3};
 
 use bsdf::BSDF;
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct SurfaceInteraction {
     pub bsdf: Option<BSDF>,
     pub point: Point3<f64>,

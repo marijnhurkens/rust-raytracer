@@ -182,7 +182,7 @@ impl Triangle {
         let mut p_hit: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
 
         // todo: fix how to handle error, otherwise light leaks
-        p_hit += normal * 1.0e-9;
+        p_hit += normal * 1.0e-5;
 
         Some((
             t,
