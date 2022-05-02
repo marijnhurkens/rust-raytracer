@@ -10,15 +10,15 @@ use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 
 use camera::Camera;
 use film::{Bucket, Film};
+use lights::Light;
+use lights::LightTrait;
+use objects::Object;
 use objects::Objectable;
 use sampler::Sampler;
-use lights::Light;
-use objects::Object;
 use scene::Scene;
-use SamplerMethod;
 use surface_interaction::SurfaceInteraction;
 use tracer::trace;
-use lights::LightTrait;
+use SamplerMethod;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
@@ -54,6 +54,7 @@ lazy_static! {
 
 pub struct ThreadMessage {
     pub exit: bool,
+    pub finished: bool,
 }
 
 #[derive(Debug)]
@@ -81,8 +82,6 @@ pub struct Intersection {
     pub normal: Vector3<f64>,
 }
 
-
-
 #[derive(Debug, Copy, Clone)]
 pub struct SampleResult {
     pub radiance: Vector3<f64>,
@@ -102,20 +101,22 @@ lazy_static! {
 }
 
 pub fn render(
-    scene: Arc<Scene>,
+    scene: Scene,
     film: Arc<RwLock<Film>>,
-) -> (Vec<JoinHandle<()>>, Vec<Sender<ThreadMessage>>) {
+) -> (Vec<JoinHandle<()>>, Receiver<ThreadMessage>) {
+    let scene = Arc::new(scene);
     let mut threads: Vec<JoinHandle<()>> = vec![];
-    let mut thread_senders: Vec<Sender<ThreadMessage>> = vec![];
     let settings = SETTINGS.read().unwrap();
+
+    let (sender, receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) =
+        mpsc::channel();
 
     // thread id is used to divide the work
     for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
         let thread_film = film.clone();
 
-        let (thread_sender, thread_receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) =
-            mpsc::channel();
+        let thread_sender = sender.clone();
 
         let thread = thread::spawn(move || {
             STATS.write().unwrap().threads.insert(
@@ -127,6 +128,9 @@ pub fn render(
                 },
             );
 
+            let start_time = SystemTime::now();
+            let mut samples_done = 0;
+
             loop {
                 let bucket = thread_film.write().unwrap().get_bucket();
 
@@ -136,80 +140,64 @@ pub fn render(
                         let mut bucket_lock = bucket.try_lock().unwrap();
 
                         // returns false if thread was requested to stop
-                        if !render_work(&mut bucket_lock, &thread_scene, &thread_receiver) {
+                        if !render_work(&mut bucket_lock, &thread_scene) {
                             return;
                         }
 
+                        samples_done += bucket_lock.samples.len();
                         thread_film
                             .read()
                             .unwrap()
                             .write_bucket_pixels(&mut bucket_lock);
+                        // keep the write lock as short as possible
                         thread_film
                             .write()
                             .unwrap()
                             .merge_bucket_pixels_to_image_buffer(&mut bucket_lock);
-
-                        // let mut stats = STATS.write().unwrap();
-                        //
-                        // let rays_done = ((x_end - work.x) * (y_end - work.y)) * settings.max_samples;
-                        //
-                        // stats.rays_done += rays_done;
-                        //
-                        // if let Some(stats_thread) = stats.threads.get_mut(&thread_id) {
-                        //     let duration =
-                        //         stats_thread.start_time.elapsed().expect("Duration failed!");
-                        //     let secs = duration.as_secs();
-                        //     let sub_nanos = duration.subsec_nanos();
-                        //     let nanos = secs * 1_000_000_000 + sub_nanos as u64;
-                        //
-                        //     stats_thread.rays_done += rays_done;
-                        //     stats_thread.ns_per_ray = nanos as f64 / stats_thread.rays_done as f64;
-                        // }
                     }
                     None => {
                         break;
                     }
                 }
             } // end of loop
+
+            let duration = start_time.elapsed().expect("Duration failed!");
+            let secs = duration.as_secs();
+            let sub_nanos = duration.subsec_nanos();
+            let nano_seconds = secs * 1_000_000_000 + sub_nanos as u64;
+            let nano_seconds_per_sample = (nano_seconds as f64 / samples_done as f64).round();
+
+            println!("Thread {thread_id} done, {samples_done} rendered, {nano_seconds_per_sample} ns per sample");
+
+            thread_sender.send(ThreadMessage {
+                exit: false,
+                finished: true,
+            }).unwrap();
         }); // end of thread
 
         threads.push(thread);
-        thread_senders.push(thread_sender);
     }
 
-    (threads, thread_senders)
+    (threads, receiver)
 }
 
 fn render_work(
     bucket: &mut Bucket,
     scene: &Scene,
-    thread_receiver: &Receiver<ThreadMessage>,
 ) -> bool {
     let settings = SETTINGS.read().unwrap();
 
     for y in bucket.sample_bounds.p_min.y..bucket.sample_bounds.p_max.y {
-        match thread_receiver.try_recv() {
-            Ok(thread_message) => {
-                if thread_message.exit {
-                    println!("Stopping...");
-                    return false;
-                }
-            }
-            Err(_err) => {}
-        }
-
         for x in bucket.sample_bounds.p_min.x..bucket.sample_bounds.p_max.x {
             let samples = settings.sampler.get_samples(settings.max_samples, x, y);
 
             let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
 
             for sample in samples {
-                // todo: remove clamp?
-                let (mut new_pixel_color, normal) =
-                    trace(&settings, sample.ray, scene, ).unwrap();
+                let (mut new_pixel_color, normal) = trace(&settings, sample.ray, scene).unwrap();
 
-                new_pixel_color = new_pixel_color
-                    .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+                // new_pixel_color = new_pixel_color
+                //     .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
 
                 sample_results.push(SampleResult {
                     radiance: new_pixel_color,
@@ -230,8 +218,8 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
     let mut closest_distance = f64::MAX;
 
     let bvh_ray = bvh::ray::Ray::new(
-        bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::nalgebra::Vector3::new(
+        bvh::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
+        bvh::Vector3::new(
             ray.direction.x as f32,
             ray.direction.y as f32,
             ray.direction.z as f32,
@@ -265,16 +253,15 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
 
 fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
     let bvh_ray = bvh::ray::Ray::new(
-        bvh::nalgebra::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::nalgebra::Vector3::new(
+        bvh::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
+        bvh::Vector3::new(
             ray.direction.x as f32,
             ray.direction.y as f32,
             ray.direction.z as f32,
         ),
     );
 
-    let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
-    for object in hit_sphere_aabbs {
+    scene.bvh.traverse_iterator(&bvh_ray, &scene.objects).any(|object| {
         if let Some((distance, _)) = object.test_intersect(ray) {
             // If we found an intersection we check if distance is less
             // than the max distance we want to check. If so -> exit with true
@@ -282,16 +269,17 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
                 return true;
             }
         }
-    }
 
-    // No intersections found within distance
-    false
+        false
+    })
 }
 
 pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: &Light) -> bool {
     let ray = Ray {
         point: position,
-        direction: (light.get_position() - position).try_normalize(1.0e-6).unwrap(),
+        direction: (light.get_position() - position)
+            .try_normalize(1.0e-6)
+            .unwrap(),
     };
 
     let distance = nalgebra::distance(&position, &light.get_position());

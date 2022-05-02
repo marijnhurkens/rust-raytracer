@@ -85,8 +85,8 @@ impl Sampler {
         let mut samples = Vec::new();
 
         for _w in 0..sample_num {
-            let sub_pixel_horizontal_offset = rng.gen_range(0.0, 1.0);
-            let sub_pixel_vertical_offset = rng.gen_range(0.0, 1.0);
+            let sub_pixel_horizontal_offset = rng.gen_range(0.0..=1.0);
+            let sub_pixel_vertical_offset = rng.gen_range(0.0..=1.0);
             let sub_pixel_horizontal_offset_radians =
                 sub_pixel_horizontal_offset - 0.5 * self.pixel_width_radians;
             let sub_pixel_vertical_offset_radians =

@@ -10,7 +10,6 @@ use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
 use lights::{Light, PointLight};
-use materials::matte::MatteMaterial;
 use materials::Material;
 use materials::plastic::PlasticMaterial;
 use objects::triangle::Triangle;
@@ -20,8 +19,8 @@ pub struct Scene {
     pub bg_color: Vector3<f64>,
     pub objects: Vec<Object>,
     pub meshes: Vec<Arc<Mesh>>,
-    pub bvh: BVH,
     pub lights: Vec<Light>,
+    pub bvh: BVH,
 }
 
 impl Scene {

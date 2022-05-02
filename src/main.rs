@@ -8,36 +8,42 @@ extern crate indicatif;
 #[macro_use]
 extern crate lazy_static;
 extern crate nalgebra;
+extern crate num_traits;
 extern crate rand;
 extern crate sobol;
 extern crate tobj;
 extern crate yaml_rust;
-extern crate num_traits;
 
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
+use std::thread::JoinHandle;
 
 use clap::Parser;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
-use ggez::event;
-use ggez::event::KeyCode;
+use ggez::event::{run, KeyCode};
 use ggez::graphics::{self, Color, DrawParam};
+use ggez::input::keyboard;
+use ggez::{event, GameError};
 use ggez::{Context, GameResult};
 use nalgebra::Vector2;
 use yaml_rust::YamlLoader;
 
+use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
-use renderer::SETTINGS;
+use renderer::{ThreadMessage, SETTINGS};
 use sampler::{Sampler, SamplerMethod};
 
 mod bsdf;
 mod camera;
+mod denoise;
 mod film;
 mod helpers;
+mod lights;
 mod materials;
 mod objects;
 mod renderer;
@@ -45,7 +51,6 @@ mod sampler;
 mod scene;
 mod surface_interaction;
 mod tracer;
-mod lights;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -54,34 +59,84 @@ struct Args {
 }
 
 struct MainState {
+    redraw: bool,
     film: Arc<RwLock<Film>>,
+    threads: Vec<JoinHandle<()>>,
+    receiver: Receiver<ThreadMessage>,
+    running_threads: usize,
+    finished: bool,
+    denoised: bool,
+    debug_normals: bool,
 }
 
 impl MainState {
-    fn new(_ctx: &mut Context, film: Arc<RwLock<Film>>) -> GameResult<MainState> {
-        Ok(MainState { film })
+    fn new(
+        film: Arc<RwLock<Film>>,
+        threads: Vec<JoinHandle<()>>,
+        receiver: Receiver<ThreadMessage>,
+        running_threads: usize,
+    ) -> GameResult<MainState> {
+        Ok(MainState {
+            redraw: true,
+            film,
+            threads,
+            receiver,
+            running_threads,
+            finished: false,
+            denoised: false,
+            debug_normals: false,
+        })
     }
 }
 
-impl event::EventHandler for MainState {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+impl event::EventHandler<GameError> for MainState {
+    fn update(&mut self, ctx: &mut Context) -> GameResult {
+        if !ggez::timer::check_update_time(ctx, 1) {
+            return Ok(());
+        }
+
+        self.redraw = true;
+
+        let message = self.receiver.try_recv();
+        if let Ok(message) = message {
+            if message.finished {
+                self.running_threads -= 1;
+            }
+        }
+
+        if self.running_threads == 0 && !self.finished {
+            println!("All work is done.");
+            self.finished = true;
+
+            if !self.denoised {
+                print!("Denoising...");
+                let mut film = self.film.write().unwrap();
+                denoise(&mut film);
+                self.denoised = true;
+                println!(" done!");
+            }
+        }
+
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        if !ggez::timer::check_update_time(ctx, 1) {
+        if !self.redraw {
             return Ok(());
+        }
+        self.redraw = false;
+
+        if keyboard::is_key_pressed(ctx, KeyCode::N) && !keyboard::is_key_repeated(ctx) {
+            self.debug_normals = !self.debug_normals;
+            println!("Normals debug view {:?}.", self.debug_normals);
         }
 
         let film = self.film.read().unwrap();
         let image_width = film.image_size.x;
         let image_height = film.image_size.y;
-
-        let denoise = true;
-
         let mut output = vec![0u8; image_width as usize * image_height as usize * 4];
 
-        if ggez::input::keyboard::is_key_pressed(ctx, KeyCode::N) {
+        if self.debug_normals {
             let mut i = 0;
             film.pixels.clone().iter().for_each(|pixel| {
                 output[i] = (pixel.normal.x * 255.0) as u8;
@@ -90,48 +145,6 @@ impl event::EventHandler for MainState {
                 output[i + 3] = 255;
                 i += 4;
             });
-        } else if denoise && ggez::input::keyboard::is_key_pressed(ctx, KeyCode::D) {
-            println!("denoise");
-
-            let mut normal_map = vec![0f32; image_width as usize * image_height as usize * 3];
-            let mut i = 0;
-            film.pixels.clone().iter().for_each(|pixel| {
-                normal_map[i] = pixel.normal.x as f32;
-                normal_map[i + 1] = pixel.normal.y as f32;
-                normal_map[i + 2] = pixel.normal.z as f32;
-                i += 3;
-            });
-
-            let temp = film.image_buffer.clone();
-            let input_img: Vec<f32> = temp
-                .into_raw()
-                .iter()
-                .map(|val| (*val as f32) / 255.0)
-                .collect();
-            let mut filter_output = vec![0.0f32; input_img.len()];
-
-            let device = oidn::Device::new();
-
-            oidn::RayTracing::new(&device)
-                .srgb(false)
-                //.albedo_normal(&input_img[..], &normal_map[..])
-                //.clean_aux(true)
-                .image_dimensions(image_width as usize, image_height as usize)
-                .filter(&input_img[..], &mut filter_output[..])
-                .expect("Filter config error!");
-
-            if let Err(e) = device.get_error() {
-                println!("Error denoising image: {}", e.1);
-            }
-
-            let mut i = 0;
-            for chunk in filter_output.chunks(3) {
-                output[i] = (chunk[0] * 255.0) as u8;
-                output[i + 1] = (chunk[1] * 255.0) as u8;
-                output[i + 2] = (chunk[2] * 255.0) as u8;
-                output[i + 3] = 255;
-                i += 4;
-            }
         } else {
             let mut i = 0;
             for chunk in film.image_buffer.clone().into_raw().chunks(3) {
@@ -143,7 +156,7 @@ impl event::EventHandler for MainState {
             }
         }
 
-        let image = ggez::graphics::Image::from_rgba8(
+        let image = graphics::Image::from_rgba8(
             ctx,
             image_width as u16,
             image_height as u16,
@@ -194,7 +207,6 @@ fn main() -> GameResult {
     // Get settings from yaml file
     let mut file = File::open(&args.settings_file.unwrap()).expect("Unable to open file");
     let mut contents = String::new();
-
     file.read_to_string(&mut contents)
         .expect("Unable to read file");
     let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
@@ -252,19 +264,19 @@ fn main() -> GameResult {
 
     // Start the render threads
     println!("Start rendering...");
-    renderer::render(Arc::new(scene), film.clone());
+    let (threads, receiver) = renderer::render(scene, film.clone());
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {
             title: "Rust Raytracer".to_string(),
-            samples: NumSamples::Zero,
+            samples: NumSamples::One,
             vsync: true,
             icon: "".to_string(),
             srgb: false,
         })
         .window_mode(WindowMode {
-            width: image_width as f32 / 1.5,
-            height: image_height as f32 / 1.5,
+            width: image_width as f32 * 1.5,
+            height: image_height as f32 * 1.5,
             maximized: false,
             fullscreen_type: FullscreenType::Windowed,
             borderless: false,
@@ -273,8 +285,13 @@ fn main() -> GameResult {
             max_width: 0.0,
             max_height: 0.0,
             resizable: true,
+            visible: true,
+            resize_on_scale_factor_change: true,
         });
-    let (ctx, event_loop) = &mut cb.build()?;
-    let state = &mut MainState::new(ctx, film)?;
+
+    let (ctx, event_loop) = cb.build()?;
+    let running_threads = threads.len();
+    let state = MainState::new(film, threads, receiver, running_threads)?;
+
     event::run(ctx, event_loop, state)
 }

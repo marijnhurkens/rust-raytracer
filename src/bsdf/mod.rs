@@ -1,5 +1,3 @@
-use std::convert::identity;
-
 use bitflags::bitflags;
 use nalgebra::{Point3, Vector3};
 use rand::thread_rng;
@@ -7,7 +5,6 @@ use rand::prelude::SliceRandom;
 
 use bsdf::lambertian::Lambertian;
 use bsdf::specular_reflection::SpecularReflection;
-use helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
 use surface_interaction::SurfaceInteraction;
 
 pub mod fresnel;

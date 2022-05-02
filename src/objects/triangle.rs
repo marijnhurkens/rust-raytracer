@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
@@ -13,9 +13,16 @@ use surface_interaction::SurfaceInteraction;
 #[derive(Debug)]
 pub struct Triangle {
     pub mesh: Arc<Mesh>,
-    pub v0_index: usize,
-    pub v1_index: usize,
-    pub v2_index: usize,
+
+    // pub v0_index: usize,
+    // pub v1_index: usize,
+    // pub v2_index: usize,
+    p0: Point3<f64>,
+    p1: Point3<f64>,
+    p2: Point3<f64>,
+    n0: Vector3<f64>,
+    n1: Vector3<f64>,
+    n2: Vector3<f64>,
     pub materials: Vec<Material>,
     pub node_index: usize,
 }
@@ -28,52 +35,60 @@ impl Triangle {
         v2_index: usize,
         materials: Vec<Material>,
     ) -> Triangle {
+        let (p0, p1, p2) = Triangle::get_vertices(&mesh, v0_index, v1_index, v2_index);
+        let (n0, n1, n2) = Triangle::get_normals(&mesh, v0_index, v1_index, v2_index);
+
         Triangle {
             mesh,
-            v0_index,
-            v1_index,
-            v2_index,
+            p0, p1, p2,
+            n0, n1, n2,
             materials,
             node_index: 0,
         }
     }
 
-    fn get_vertices(&self) -> (Point3<f64>, Point3<f64>, Point3<f64>) {
+    fn get_vertices(mesh: &Arc<Mesh>,
+                    v0_index: usize,
+                    v1_index: usize,
+                    v2_index: usize, ) -> (Point3<f64>, Point3<f64>, Point3<f64>) {
         (
             Point3::new(
-                self.mesh.positions[3 * self.v0_index] as f64,
-                self.mesh.positions[3 * self.v0_index + 1] as f64,
-                self.mesh.positions[3 * self.v0_index + 2] as f64,
+                mesh.positions[3 * v0_index] as f64,
+                mesh.positions[3 * v0_index + 1] as f64,
+                mesh.positions[3 * v0_index + 2] as f64,
             ),
             Point3::new(
-                self.mesh.positions[3 * self.v1_index] as f64,
-                self.mesh.positions[3 * self.v1_index + 1] as f64,
-                self.mesh.positions[3 * self.v1_index + 2] as f64,
+                mesh.positions[3 * v1_index] as f64,
+                mesh.positions[3 * v1_index + 1] as f64,
+                mesh.positions[3 * v1_index + 2] as f64,
             ),
             Point3::new(
-                self.mesh.positions[3 * self.v2_index] as f64,
-                self.mesh.positions[3 * self.v2_index + 1] as f64,
-                self.mesh.positions[3 * self.v2_index + 2] as f64,
+                mesh.positions[3 * v2_index] as f64,
+                mesh.positions[3 * v2_index + 1] as f64,
+                mesh.positions[3 * v2_index + 2] as f64,
             ),
         )
     }
 
-    fn get_normals(&self) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {
+    fn get_normals(mesh: &Arc<Mesh>,
+                   v0_index: usize,
+                   v1_index: usize,
+                   v2_index: usize,) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {
         (
             Vector3::new(
-                self.mesh.normals[3 * self.v0_index] as f64,
-                self.mesh.normals[3 * self.v0_index + 1] as f64,
-                self.mesh.normals[3 * self.v0_index + 2] as f64,
+                mesh.normals[3 * v0_index] as f64,
+                mesh.normals[3 * v0_index + 1] as f64,
+                mesh.normals[3 * v0_index + 2] as f64,
             ),
             Vector3::new(
-                self.mesh.normals[3 * self.v1_index] as f64,
-                self.mesh.normals[3 * self.v1_index + 1] as f64,
-                self.mesh.normals[3 * self.v1_index + 2] as f64,
+                mesh.normals[3 * v1_index] as f64,
+                mesh.normals[3 * v1_index + 1] as f64,
+                mesh.normals[3 * v1_index + 2] as f64,
             ),
             Vector3::new(
-                self.mesh.normals[3 * self.v2_index] as f64,
-                self.mesh.normals[3 * self.v2_index + 1] as f64,
-                self.mesh.normals[3 * self.v2_index + 2] as f64,
+                mesh.normals[3 * v2_index] as f64,
+                mesh.normals[3 * v2_index + 1] as f64,
+                mesh.normals[3 * v2_index + 2] as f64,
             ),
         )
     }
@@ -84,7 +99,9 @@ impl Triangle {
         &self.materials
     }
     pub fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
-        let (p0, p1, p2) = self.get_vertices();
+        let p0 = self.p0;
+        let p1 = self.p1;
+        let p2 = self.p2;
 
         let mut p0t = p0 - ray.point;
         let mut p1t = p1 - ray.point;
@@ -169,7 +186,9 @@ impl Triangle {
             dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
         }
 
-        let (p0_normal, p1_normal, p2_normal) = self.get_normals();
+        let p0_normal = self.n0;
+        let p1_normal = self.n1;
+        let p2_normal = self.n2;
         let normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
         let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
 
@@ -193,18 +212,16 @@ impl Triangle {
 
 impl Bounded for Triangle {
     fn aabb(&self) -> AABB {
-        let (p0, p1, p2) = self.get_vertices();
-
-        let min_x = p0.x.min(p1.x.min(p2.x));
-        let min_y = p0.y.min(p1.y.min(p2.y));
-        let min_z = p0.z.min(p1.z.min(p2.z));
-        let max_x = p0.x.max(p1.x.max(p2.x));
-        let max_y = p0.y.max(p1.y.max(p2.y));
-        let max_z = p0.z.max(p1.z.max(p2.z));
+        let min_x = self.p0.x.min(self.p1.x.min(self.p2.x));
+        let min_y = self.p0.y.min(self.p1.y.min(self.p2.y));
+        let min_z = self.p0.z.min(self.p1.z.min(self.p2.z));
+        let max_x = self.p0.x.max(self.p1.x.max(self.p2.x));
+        let max_y = self.p0.y.max(self.p1.y.max(self.p2.y));
+        let max_z = self.p0.z.max(self.p1.z.max(self.p2.z));
 
         AABB::with_bounds(
-            bvh::nalgebra::Point3::new(min_x as f32, min_y as f32, min_z as f32),
-            bvh::nalgebra::Point3::new(
+            bvh::Point3::new(min_x as f32, min_y as f32, min_z as f32),
+            bvh::Point3::new(
                 (max_x + 0.001) as f32,
                 (max_y + 0.001) as f32,
                 (max_z + 0.001) as f32,
