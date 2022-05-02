@@ -13,7 +13,7 @@ camera:
   target: [0.0,0.0,0.0]
   fov: 79.0
 sampler:
-  max_samples: 16
+  max_samples: 32
   min_samples: 4
   method: sobol
 renderer:

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{AABB, Bounded};
+use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
@@ -40,17 +40,23 @@ impl Triangle {
 
         Triangle {
             mesh,
-            p0, p1, p2,
-            n0, n1, n2,
+            p0,
+            p1,
+            p2,
+            n0,
+            n1,
+            n2,
             materials,
             node_index: 0,
         }
     }
 
-    fn get_vertices(mesh: &Arc<Mesh>,
-                    v0_index: usize,
-                    v1_index: usize,
-                    v2_index: usize, ) -> (Point3<f64>, Point3<f64>, Point3<f64>) {
+    fn get_vertices(
+        mesh: &Arc<Mesh>,
+        v0_index: usize,
+        v1_index: usize,
+        v2_index: usize,
+    ) -> (Point3<f64>, Point3<f64>, Point3<f64>) {
         (
             Point3::new(
                 mesh.positions[3 * v0_index] as f64,
@@ -70,10 +76,12 @@ impl Triangle {
         )
     }
 
-    fn get_normals(mesh: &Arc<Mesh>,
-                   v0_index: usize,
-                   v1_index: usize,
-                   v2_index: usize,) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {
+    fn get_normals(
+        mesh: &Arc<Mesh>,
+        v0_index: usize,
+        v1_index: usize,
+        v2_index: usize,
+    ) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {
         (
             Vector3::new(
                 mesh.normals[3 * v0_index] as f64,
@@ -192,7 +200,6 @@ impl Triangle {
         let normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
         let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
 
-
         let x_abs_sum = (b0 * p0.x).abs() + (b1 * p1.x).abs() + (b2 * p2.x).abs();
         let y_abs_sum = (b0 * p0.y).abs() + (b1 * p1.y).abs() + (b2 * p2.y).abs();
         let z_abs_sum = (b0 * p0.z).abs() + (b1 * p1.z).abs() + (b2 * p2.z).abs();
@@ -200,13 +207,48 @@ impl Triangle {
         let p_error: Vector3<f64> = gamma(7.0) * Vector3::new(x_abs_sum, y_abs_sum, z_abs_sum);
         let mut p_hit: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
 
-        // todo: fix how to handle error, otherwise light leaks
-        p_hit += normal * 1.0e-5;
+        // p_hit = compute_shading_position(
+        //     p_hit, p0, p1, p2, p0_normal, p1_normal, p2_normal, b0, b1, b2, normal,
+        // );
+
+        p_hit += normal * 1.0e-7;
 
         Some((
             t,
             SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit, dpdu, dpdv, p_error),
         ))
+    }
+}
+
+fn project_on_plane(p: Point3<f64>, origin: Point3<f64>, normal: Vector3<f64>) -> Point3<f64> {
+    p - (p - origin).dot(&normal) * normal
+}
+
+fn compute_shading_position(
+    p_hit: Point3<f64>,
+    v0: Point3<f64>,
+    v1: Point3<f64>,
+    v2: Point3<f64>,
+    p0_normal: Vector3<f64>,
+    p1_normal: Vector3<f64>,
+    p2_normal: Vector3<f64>,
+    b0: f64,
+    b1: f64,
+    b2: f64,
+    shading_normal: Vector3<f64>,
+) -> Point3<f64> {
+    let p0 = project_on_plane(p_hit, v0, p0_normal);
+    let p1 = project_on_plane(p_hit, v1, p1_normal);
+    let p2 = project_on_plane(p_hit, v2, p2_normal);
+
+    let shading_pos: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
+
+    let convex = (shading_pos - p_hit).dot(&shading_normal) > 0.0;
+
+    if convex {
+        shading_pos
+    } else {
+        p_hit
     }
 }
 

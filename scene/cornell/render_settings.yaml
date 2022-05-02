@@ -1,10 +1,11 @@
 film:
   image_width: 1200
   image_height: 1200
-  bucket_width: 128
-  bucket_height: 128
+  bucket_width: 256
+  bucket_height: 256
   filter_radius: 1.8
   filter_method: none
+  denoise: false
 #  crop:
 #    start: [300,300]
 #    end: [400,400]
@@ -13,11 +14,11 @@ camera:
   target: [0.0,0.0,0.0]
   fov: 39.0
 sampler:
-  max_samples: 32
+  max_samples: 1
   min_samples: 0
   method: sobol
 renderer:
-  depth_limit: 12
+  depth_limit: 1
   threads: 10
 scene:
   background_color: [0.0,0.0,0.0]

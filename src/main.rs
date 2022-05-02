@@ -21,6 +21,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
+use bvh::Vector3;
 use clap::Parser;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event::{run, KeyCode};
@@ -35,7 +36,7 @@ use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
-use renderer::{ThreadMessage, SETTINGS};
+use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
 use sampler::{Sampler, SamplerMethod};
 
 mod bsdf;
@@ -67,6 +68,7 @@ struct MainState {
     finished: bool,
     denoised: bool,
     debug_normals: bool,
+    debug_buffer: bool,
 }
 
 impl MainState {
@@ -85,17 +87,30 @@ impl MainState {
             finished: false,
             denoised: false,
             debug_normals: false,
+            debug_buffer: false,
         })
     }
 }
 
 impl event::EventHandler<GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if !ggez::timer::check_update_time(ctx, 1) {
+        if !ggez::timer::check_update_time(ctx, 5) {
             return Ok(());
         }
 
         self.redraw = true;
+
+        let settings = SETTINGS.read().unwrap();
+
+        if keyboard::is_key_pressed(ctx, KeyCode::N) {
+            self.debug_normals = !self.debug_normals;
+            println!("Normals debug view {:?}.", self.debug_normals);
+        }
+
+        if keyboard::is_key_pressed(ctx, KeyCode::D) {
+            self.debug_buffer = !self.debug_buffer;
+            println!("Debug buffer view {:?}.", self.debug_buffer);
+        }
 
         let message = self.receiver.try_recv();
         if let Ok(message) = message {
@@ -108,7 +123,7 @@ impl event::EventHandler<GameError> for MainState {
             println!("All work is done.");
             self.finished = true;
 
-            if !self.denoised {
+            if !self.denoised && settings.denoise {
                 print!("Denoising...");
                 let mut film = self.film.write().unwrap();
                 denoise(&mut film);
@@ -126,11 +141,6 @@ impl event::EventHandler<GameError> for MainState {
         }
         self.redraw = false;
 
-        if keyboard::is_key_pressed(ctx, KeyCode::N) && !keyboard::is_key_repeated(ctx) {
-            self.debug_normals = !self.debug_normals;
-            println!("Normals debug view {:?}.", self.debug_normals);
-        }
-
         let film = self.film.read().unwrap();
         let image_width = film.image_size.x;
         let image_height = film.image_size.y;
@@ -139,12 +149,29 @@ impl event::EventHandler<GameError> for MainState {
         if self.debug_normals {
             let mut i = 0;
             film.pixels.clone().iter().for_each(|pixel| {
-                output[i] = (pixel.normal.x * 255.0) as u8;
-                output[i + 1] = (pixel.normal.y * 255.0) as u8;
-                output[i + 2] = (pixel.normal.z * 255.0) as u8;
+                //
+                let scaled_normal =
+                    (pixel.normal * 0.5 + nalgebra::Vector3::new(0.5, 0.5, 0.5)) * 255.0;
+                output[i] = scaled_normal.x as u8;
+                output[i + 1] = scaled_normal.y as u8;
+                output[i + 2] = scaled_normal.z as u8;
                 output[i + 3] = 255;
                 i += 4;
             });
+        } else if self.debug_buffer {
+            let mut i = 0;
+            DEBUG_BUFFER
+                .read()
+                .unwrap()
+                .buffer
+                .chunks(3)
+                .for_each(|chunk| {
+                    output[i] = (chunk[0] * 255.0) as u8;
+                    output[i + 1] = (chunk[1] * 255.0) as u8;
+                    output[i + 2] = (chunk[2] * 255.0) as u8;
+                    output[i + 3] = 255;
+                    i += 4;
+                });
         } else {
             let mut i = 0;
             for chunk in film.image_buffer.clone().into_raw().chunks(3) {
@@ -156,12 +183,8 @@ impl event::EventHandler<GameError> for MainState {
             }
         }
 
-        let image = graphics::Image::from_rgba8(
-            ctx,
-            image_width as u16,
-            image_height as u16,
-            &output,
-        )?;
+        let image =
+            graphics::Image::from_rgba8(ctx, image_width as u16, image_height as u16, &output)?;
 
         // now lets render our scene once in the top left and in the bottom right
         let window_size = graphics::size(ctx);
@@ -250,6 +273,7 @@ fn main() -> GameResult {
 
     {
         let mut settings = SETTINGS.write().unwrap();
+        settings.denoise = settings_yaml["film"]["denoise"].as_bool().unwrap();
         settings.max_samples = yaml_into_u32(&settings_yaml["sampler"]["max_samples"]);
         settings.min_samples = yaml_into_u32(&settings_yaml["sampler"]["min_samples"]);
         settings.depth_limit = yaml_into_u32(&settings_yaml["renderer"]["depth_limit"]);
@@ -260,6 +284,13 @@ fn main() -> GameResult {
             image_width,
             image_height,
         )
+    }
+
+    {
+        let mut debug_buffer = DEBUG_BUFFER.write().unwrap();
+        debug_buffer.width = image_width;
+        debug_buffer.height = image_height;
+        debug_buffer.buffer = vec![0.0; (image_width as usize) * (image_height as usize) * 3];
     }
 
     // Start the render threads

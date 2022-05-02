@@ -5,6 +5,7 @@ use rand::prelude::SliceRandom;
 
 use bsdf::lambertian::Lambertian;
 use bsdf::specular_reflection::SpecularReflection;
+use renderer::debug_write_pixel;
 use surface_interaction::SurfaceInteraction;
 
 pub mod fresnel;
@@ -74,6 +75,7 @@ impl BSDF {
         }
 
         let wo = self.world_to_local(wo_world);
+        //debug_write_pixel(wo);
 
         let (wi, pdf, f) = bxdfs.choose(&mut rng).unwrap().sample_f(Point3::new(1.0, 1.0, 1.0), wo);
 

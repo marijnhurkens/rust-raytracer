@@ -11,6 +11,7 @@ use yaml_rust::YamlLoader;
 
 use lights::{Light, PointLight};
 use materials::Material;
+use materials::matte::MatteMaterial;
 use materials::plastic::PlasticMaterial;
 use objects::triangle::Triangle;
 use Object;
@@ -143,10 +144,10 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
                 mesh.indices[3 * v] as usize,
                 mesh.indices[3 * v + 1] as usize,
                 mesh.indices[3 * v + 2] as usize,
-                vec![Material::PlasticMaterial(PlasticMaterial::new(
+                vec![Material::MatteMaterial(MatteMaterial::new(
                     //weight: 1.0,
                     color,
-                    specular,
+                    //specular,
                     0.0,//(material.shininess / 1000.0) as f64,
                     //ior: material.optical_density as f64,
                     //refraction: 1.0 - material.dissolve as f64,

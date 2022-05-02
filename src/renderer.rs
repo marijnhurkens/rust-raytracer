@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -22,6 +24,7 @@ use SamplerMethod;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
+    pub denoise: bool,
     pub thread_count: u32,
     pub depth_limit: u32,
     pub max_samples: u32,
@@ -30,9 +33,16 @@ pub struct Settings {
     pub sampler: Sampler,
 }
 
+pub struct DebugBuffer {
+    pub width: u32,
+    pub height: u32,
+    pub buffer: Vec<f64>,
+}
+
 lazy_static! {
     pub static ref SETTINGS: RwLock<Settings> = {
         RwLock::new(Settings {
+            denoise: false,
             thread_count: 8,
             depth_limit: 4,
             max_samples: 32,
@@ -50,6 +60,18 @@ lazy_static! {
             ),
         })
     };
+    pub static ref DEBUG_BUFFER: RwLock<DebugBuffer> = {
+        RwLock::new(DebugBuffer {
+            width: 0,
+            height: 0,
+            buffer: vec![],
+        })
+    };
+}
+
+thread_local! {
+    static CURRENT_X: RefCell<u32> = RefCell::new(0);
+    static CURRENT_Y: RefCell<u32> = RefCell::new(0);
 }
 
 pub struct ThreadMessage {
@@ -100,6 +122,34 @@ lazy_static! {
     };
 }
 
+pub fn debug_write_pixel(val: Vector3<f64>) {
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val.x;
+    buffer.buffer[(index+1) as usize] = val.y;
+    buffer.buffer[(index+2) as usize] = val.z;
+}
+
+pub fn debug_write_pixel_f64(val: f64) {
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val;
+    buffer.buffer[(index+1) as usize] = val;
+    buffer.buffer[(index+2) as usize] = val;
+}
+
 pub fn render(
     scene: Scene,
     film: Arc<RwLock<Film>>,
@@ -108,8 +158,7 @@ pub fn render(
     let mut threads: Vec<JoinHandle<()>> = vec![];
     let settings = SETTINGS.read().unwrap();
 
-    let (sender, receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) =
-        mpsc::channel();
+    let (sender, receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) = mpsc::channel();
 
     // thread id is used to divide the work
     for thread_id in 0..settings.thread_count {
@@ -169,10 +218,12 @@ pub fn render(
 
             println!("Thread {thread_id} done, {samples_done} rendered, {nano_seconds_per_sample} ns per sample");
 
-            thread_sender.send(ThreadMessage {
-                exit: false,
-                finished: true,
-            }).unwrap();
+            thread_sender
+                .send(ThreadMessage {
+                    exit: false,
+                    finished: true,
+                })
+                .unwrap();
         }); // end of thread
 
         threads.push(thread);
@@ -181,14 +232,14 @@ pub fn render(
     (threads, receiver)
 }
 
-fn render_work(
-    bucket: &mut Bucket,
-    scene: &Scene,
-) -> bool {
+fn render_work(bucket: &mut Bucket, scene: &Scene) -> bool {
     let settings = SETTINGS.read().unwrap();
 
     for y in bucket.sample_bounds.p_min.y..bucket.sample_bounds.p_max.y {
         for x in bucket.sample_bounds.p_min.x..bucket.sample_bounds.p_max.x {
+            CURRENT_X.with(|current_x| *current_x.borrow_mut() = x);
+            CURRENT_Y.with(|current_y| *current_y.borrow_mut() = y);
+
             let samples = settings.sampler.get_samples(settings.max_samples, x, y);
 
             let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
@@ -228,7 +279,6 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
 
     let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
     for object in hit_sphere_aabbs {
-
         if let Some((distance, intersection)) = object.test_intersect(ray) {
             // If we found an intersection we check if the current
             // closest intersection is farther than the intersection
@@ -237,7 +287,7 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
                 None => {
                     closest_hit = Some((intersection, object));
                     closest_distance = distance;
-                },
+                }
                 Some((_, _)) => {
                     if distance < closest_distance {
                         closest_hit = Some((intersection, object));
@@ -261,25 +311,26 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
         ),
     );
 
-    scene.bvh.traverse_iterator(&bvh_ray, &scene.objects).any(|object| {
-        if let Some((distance, _)) = object.test_intersect(ray) {
-            // If we found an intersection we check if distance is less
-            // than the max distance we want to check. If so -> exit with true
-            if distance < max_dist {
-                return true;
+    scene
+        .bvh
+        .traverse_iterator(&bvh_ray, &scene.objects)
+        .any(|object| {
+            if let Some((distance, _)) = object.test_intersect(ray) {
+                // If we found an intersection we check if distance is less
+                // than the max distance we want to check. If so -> exit with true
+                if distance < max_dist {
+                    return true;
+                }
             }
-        }
 
-        false
-    })
+            false
+        })
 }
 
 pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: &Light) -> bool {
     let ray = Ray {
         point: position,
-        direction: (light.get_position() - position)
-            .try_normalize(1.0e-6)
-            .unwrap(),
+        direction: (light.get_position() - position).normalize(),
     };
 
     let distance = nalgebra::distance(&position, &light.get_position());
