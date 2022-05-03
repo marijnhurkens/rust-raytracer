@@ -102,6 +102,15 @@ pub fn same_hemisphere(a: Vector3<f64>, b: Vector3<f64>) -> bool {
     a.z * b.z > 0.0
 }
 
+pub fn face_forward(n: Vector3<f64>, v: Vector3<f64>) -> Vector3<f64>
+{
+    if n.dot(&v) < 0.0 {
+        return -n;
+    }
+
+    n
+}
+
 pub fn get_fresnel_ratio(normal: Vector3<f64>, angle_of_incidence: Vector3<f64>, ior: f64) -> f64 {
     let fresnel_ratio: f64;
 

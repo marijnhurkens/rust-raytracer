@@ -35,7 +35,7 @@ pub fn trace(
         };
 
         if bounce == 0 {
-            normal = surface_interaction.surface_normal;
+            normal = surface_interaction.geometry_normal;
         }
 
         if bounce == 0 || specular_bounce {
@@ -64,7 +64,7 @@ pub fn trace(
         }
 
         contribution = contribution
-            .component_mul(&(f * wi.dot(&surface_interaction.surface_normal).abs() / pdf));
+            .component_mul(&(f * wi.dot(&surface_interaction.shading_normal).abs() / pdf));
 
         ray = Ray {
             point: surface_interaction.point,
@@ -101,14 +101,13 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
             surface_interaction.wo,
             wi,
             bsdf_flags,
-        ) * wi.dot(&surface_interaction.surface_normal).abs();
+        ) * wi.dot(&surface_interaction.shading_normal).abs();
 
         if !f.is_zero() {
             if !check_light_visible(surface_interaction.point, scene, light) {
                 irradiance = Vector3::zeros();
             }
 
-            //debug_write_pixel(irradiance);
 
             if !irradiance.is_zero() {
                 direct_irradiance += f.component_mul(&irradiance) / pdf;

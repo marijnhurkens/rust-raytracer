@@ -1,11 +1,11 @@
 use bitflags::bitflags;
 use nalgebra::{Point3, Vector3};
-use rand::thread_rng;
 use rand::prelude::SliceRandom;
+use rand::thread_rng;
 
 use bsdf::lambertian::Lambertian;
 use bsdf::specular_reflection::SpecularReflection;
-use renderer::debug_write_pixel;
+use renderer::{debug_write_pixel, debug_write_pixel_f64};
 use surface_interaction::SurfaceInteraction;
 
 pub mod fresnel;
@@ -26,18 +26,13 @@ pub struct BSDF {
 
 impl BSDF {
     pub fn new(surface_interaction: SurfaceInteraction, ior: Option<f64>) -> BSDF {
-        let mut ss = surface_interaction.delta_p_delta_u.normalize();
-        let ts = surface_interaction.surface_normal.cross(&ss);
-
-        ss = surface_interaction.surface_normal.cross(&ts);
-
         BSDF {
             bxdfs: [None; MAX_BXDF_COUNT],
             ior: ior.unwrap_or(1.0),
-            geometry_normal: surface_interaction.surface_normal,
-            shading_normal: surface_interaction.surface_normal,
-            ss,
-            ts,
+            geometry_normal: surface_interaction.geometry_normal,
+            shading_normal: surface_interaction.shading_normal,
+            ss: surface_interaction.ss,
+            ts: surface_interaction.ts,
         }
     }
 
@@ -75,11 +70,14 @@ impl BSDF {
         }
 
         let wo = self.world_to_local(wo_world);
-        //debug_write_pixel(wo);
 
-        let (wi, pdf, f) = bxdfs.choose(&mut rng).unwrap().sample_f(Point3::new(1.0, 1.0, 1.0), wo);
+        let (wi, pdf, f) = bxdfs
+            .choose(&mut rng)
+            .unwrap()
+            .sample_f(Point3::new(1.0, 1.0, 1.0), wo);
 
         let wi_world = self.local_to_world(wi);
+        //debug_write_pixel_f64(pdf);
         (wi_world, pdf, f)
     }
 
@@ -91,13 +89,24 @@ impl BSDF {
     ) -> Vector3<f64> {
         let wi = self.world_to_local(wi_world);
         let wo = self.world_to_local(wo_world);
+        let reflect =
+            wi_world.dot(&self.geometry_normal) * wo_world.dot(&self.geometry_normal) > 0.0;
+        let must_match_type = match reflect {
+            true => BXDFTYPES::REFLECTION,
+            false => BXDFTYPES::TRANSMISSION,
+        };
 
         let mut f = Vector3::zeros();
         for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
-            if bxdf.get_type_flags().intersects(bxdf_types_flags) {
+            if bxdf.get_type_flags().intersects(bxdf_types_flags)
+                && bxdf.get_type_flags().contains(must_match_type)
+            {
                 f += bxdf.f(wo, wi);
             }
         }
+
+        // shadow terminator offset
+        f *= shift_cos_in(wi_world.dot(&self.shading_normal), 1.002);
 
         f
     }
@@ -119,12 +128,41 @@ impl BSDF {
     }
 }
 
+fn bump_shadowing_term(
+    normal_geometry: Vector3<f64>,
+    normal_shading: Vector3<f64>,
+    wi: Vector3<f64>,
+) -> f64 {
+    let g =
+        (normal_geometry.dot(&wi) / normal_shading.dot(&wi)) * normal_geometry.dot(&normal_shading);
+
+    if g >= 1.0
+    {
+        return 1.0;
+    }
+
+    if g < 0.0
+    {
+        return 0.0;
+    }
+
+    let g2 = g.powf(2.0);
+    -g2 * g + g2 + g
+}
+
+fn shift_cos_in(cos_in: f64, frequency_multiplier: f64) -> f64 {
+    let cos_in = cos_in.min(1.0);
+    let angle = cos_in.acos();
+    (angle * frequency_multiplier).cos().max(0.0) / cos_in
+}
+
 bitflags! {
     pub struct BXDFTYPES: u32 {
         const REFLECTION = 0b00000001;
         const REFRACTION = 0b00000010;
         const DIFFUSE = 0b00000100;
         const SPECULAR = 0b00001000;
+        const TRANSMISSION = 0b00010000;
         const ALL = Self::REFLECTION.bits | Self::REFRACTION.bits | Self::DIFFUSE.bits | Self::SPECULAR.bits;
     }
 }

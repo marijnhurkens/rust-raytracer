@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
@@ -8,6 +8,7 @@ use tobj::Mesh;
 use helpers::{coordinate_system, gamma, max_dimension_vec_3, permute};
 use materials::Material;
 use renderer;
+use renderer::debug_write_pixel;
 use surface_interaction::SurfaceInteraction;
 
 #[derive(Debug)]
@@ -197,7 +198,16 @@ impl Triangle {
         let p0_normal = self.n0;
         let p1_normal = self.n1;
         let p2_normal = self.n2;
-        let normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
+        let shading_normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
+        let mut ss = dpdu.normalize();
+        let mut ts = shading_normal.cross(&ss);
+        if ts.magnitude_squared() > 0.0 {
+            ts = ts.normalize();
+            ss = ts.cross(&shading_normal);
+        } else {
+              (_, ss , ts) = coordinate_system(shading_normal);
+        }
+
         let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
 
         let x_abs_sum = (b0 * p0.x).abs() + (b1 * p1.x).abs() + (b2 * p2.x).abs();
@@ -210,12 +220,14 @@ impl Triangle {
         // p_hit = compute_shading_position(
         //     p_hit, p0, p1, p2, p0_normal, p1_normal, p2_normal, b0, b1, b2, normal,
         // );
+        let p1p0 = p1-p0;
+        let geometry_normal = (p2 - p0).cross(&p1p0).normalize();
 
-        p_hit += normal * 1.0e-7;
+        p_hit += shading_normal * 1.0e-9;
 
         Some((
             t,
-            SurfaceInteraction::new(p_hit, normal, -ray.direction, uv_hit, dpdu, dpdv, p_error),
+            SurfaceInteraction::new(p_hit, geometry_normal, -ray.direction, uv_hit, ss, ts,dpdu, dpdv, p_error),
         ))
     }
 }
@@ -330,7 +342,7 @@ mod tests {
         assert_eq!(
             true,
             Vector3::<f64>::new(0.5, 0.0, -1.0).normalize().relative_eq(
-                &i.surface_normal,
+                &i.geometry_normal,
                 f64::EPSILON,
                 1.0e-6
             )
