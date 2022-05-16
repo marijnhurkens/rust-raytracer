@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::mpsc;
@@ -8,14 +7,13 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
 
-use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
+use nalgebra::{Point2, Point3, Vector3};
 
 use camera::Camera;
 use film::{Bucket, Film};
-use lights::Light;
-use lights::LightTrait;
+use lights::LightIrradianceSample;
 use objects::Object;
-use objects::Objectable;
+use objects::ObjectTrait;
 use sampler::Sampler;
 use scene::Scene;
 use surface_interaction::SurfaceInteraction;
@@ -132,8 +130,8 @@ pub fn debug_write_pixel(val: Vector3<f64>) {
         });
     });
     buffer.buffer[index as usize] = val.x;
-    buffer.buffer[(index+1) as usize] = val.y;
-    buffer.buffer[(index+2) as usize] = val.z;
+    buffer.buffer[(index + 1) as usize] = val.y;
+    buffer.buffer[(index + 2) as usize] = val.z;
 }
 
 pub fn debug_write_pixel_f64(val: f64) {
@@ -146,8 +144,8 @@ pub fn debug_write_pixel_f64(val: f64) {
         });
     });
     buffer.buffer[index as usize] = val;
-    buffer.buffer[(index+1) as usize] = val;
-    buffer.buffer[(index+2) as usize] = val;
+    buffer.buffer[(index + 1) as usize] = val;
+    buffer.buffer[(index + 2) as usize] = val;
 }
 
 pub fn render(
@@ -301,7 +299,7 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
     closest_hit
 }
 
-fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
+pub fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
     let bvh_ray = bvh::ray::Ray::new(
         bvh::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
         bvh::Vector3::new(
@@ -327,13 +325,17 @@ fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool 
         })
 }
 
-pub fn check_light_visible(position: Point3<f64>, scene: &Scene, light: &Light) -> bool {
+pub fn check_light_visible(
+    interaction: &SurfaceInteraction,
+    scene: &Scene,
+    light_sample: &LightIrradianceSample,
+) -> bool {
     let ray = Ray {
-        point: position,
-        direction: (light.get_position() - position).normalize(),
+        point: interaction.point,
+        direction: (light_sample.point - interaction.point).normalize(),
     };
 
-    let distance = nalgebra::distance(&position, &light.get_position());
+    let distance = nalgebra::distance(&interaction.point, &light_sample.point);
 
     if check_intersect_scene_simple(ray, scene, distance) {
         return false;

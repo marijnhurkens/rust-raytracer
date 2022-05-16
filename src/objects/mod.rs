@@ -1,12 +1,17 @@
-use bvh::aabb::{AABB, Bounded};
+use std::sync::Arc;
+use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
+use nalgebra::{Point3, Vector3};
+use lights::area::AreaLight;
+use lights::Light;
+
 use materials::Material;
 //use objects::cube::Cube;
 //use objects::rectangle::Rectangle;
 //use objects::sphere::Sphere;
 use objects::triangle::Triangle;
 use renderer;
-use surface_interaction::SurfaceInteraction;
+use surface_interaction::{Interaction, SurfaceInteraction};
 
 pub mod triangle;
 //pub mod sphere;
@@ -14,7 +19,7 @@ pub mod triangle;
 //pub mod cube;
 //pub mod rectangle;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Object {
     //Sphere(Sphere),
     Triangle(Triangle),
@@ -22,18 +27,31 @@ pub enum Object {
     //Cube(Cube),
 }
 
-pub trait Objectable {
+pub trait ObjectTrait {
     fn get_materials(&self) -> &Vec<Material>;
+    fn get_light(&self) -> Option<&Arc<Light>>;
     fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)>;
+    fn sample_point(&self) -> Interaction;
+    fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64;
+    fn area(&self) -> f64;
 }
 
-impl Objectable for Object {
+impl ObjectTrait for Object {
     fn get_materials(&self) -> &Vec<Material> {
         match self {
             //Object::Sphere(x) => x.get_materials(),
             Object::Triangle(x) => x.get_materials(),
             //Object::Rectangle(x) => x.get_materials(),
             //Object::Cube(x) => x.get_materials(),
+        }
+    }
+
+    fn get_light(&self) -> Option<&Arc<Light>> {
+        match self {
+            //Object::Sphere(x) => x.test_intersect(ray),
+            Object::Triangle(x) => x.get_light(),
+            //Object::Rectangle(x) => x.test_intersect(ray),
+            //Object::Cube(x) => x.test_intersect(ray),
         }
     }
 
@@ -45,9 +63,35 @@ impl Objectable for Object {
             //Object::Cube(x) => x.test_intersect(ray),
         }
     }
+
+    fn sample_point(&self) -> Interaction {
+        match self {
+            //Object::Sphere(x) => x.test_intersect(ray),
+            Object::Triangle(x) => x.sample_point(),
+            //Object::Rectangle(x) => x.test_intersect(ray),
+            //Object::Cube(x) => x.test_intersect(ray),
+        }
+    }
+
+    fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
+        match self {
+            //Object::Sphere(x) => x.test_intersect(ray),
+            Object::Triangle(x) => x.pdf(interaction, wi),
+            //Object::Rectangle(x) => x.test_intersect(ray),
+            //Object::Cube(x) => x.test_intersect(ray),
+        }
+    }
+
+    fn area(&self) -> f64 {
+        match self {
+            //Object::Sphere(x) => x.test_intersect(ray),
+            Object::Triangle(x) => x.area(),
+            //Object::Rectangle(x) => x.test_intersect(ray),
+            //Object::Cube(x) => x.test_intersect(ray),
+        }
+    }
 }
 
-// BOX
 impl Bounded for Object {
     fn aabb(&self) -> AABB {
         match self {

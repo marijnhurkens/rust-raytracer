@@ -5,7 +5,7 @@ use surface_interaction::SurfaceInteraction;
 pub mod matte;
 pub mod plastic;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Material {
     MatteMaterial(MatteMaterial),
     PlasticMaterial(PlasticMaterial)

@@ -4,7 +4,7 @@ use bsdf::lambertian::Lambertian;
 use materials::MaterialTrait;
 use surface_interaction::SurfaceInteraction;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MatteMaterial {
     pub reflectance_color: Vector3<f64>,
     pub roughness: f64,

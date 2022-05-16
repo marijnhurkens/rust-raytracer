@@ -1,17 +1,20 @@
 use std::sync::Arc;
 
-use bvh::aabb::{AABB, Bounded};
+use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
 
-use helpers::{coordinate_system, gamma, max_dimension_vec_3, permute};
+use helpers::{coordinate_system, gamma, max_dimension_vec_3, permute, uniform_sample_triangle};
+use lights::area::AreaLight;
+use lights::Light;
 use materials::Material;
+use objects::ObjectTrait;
 use renderer;
-use renderer::debug_write_pixel;
-use surface_interaction::SurfaceInteraction;
+use renderer::{check_intersect_scene, debug_write_pixel, Ray};
+use surface_interaction::{Interaction, SurfaceInteraction};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Triangle {
     pub mesh: Arc<Mesh>,
 
@@ -25,6 +28,7 @@ pub struct Triangle {
     n1: Vector3<f64>,
     n2: Vector3<f64>,
     pub materials: Vec<Material>,
+    pub light: Option<Arc<Light>>,
     pub node_index: usize,
 }
 
@@ -35,6 +39,7 @@ impl Triangle {
         v1_index: usize,
         v2_index: usize,
         materials: Vec<Material>,
+        light: Option<Arc<Light>>,
     ) -> Triangle {
         let (p0, p1, p2) = Triangle::get_vertices(&mesh, v0_index, v1_index, v2_index);
         let (n0, n1, n2) = Triangle::get_normals(&mesh, v0_index, v1_index, v2_index);
@@ -48,6 +53,7 @@ impl Triangle {
             n1,
             n2,
             materials,
+            light,
             node_index: 0,
         }
     }
@@ -103,11 +109,11 @@ impl Triangle {
     }
 }
 
-impl Triangle {
-    pub fn get_materials(&self) -> &Vec<Material> {
+impl ObjectTrait for Triangle {
+    fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
-    pub fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
         let p0 = self.p0;
         let p1 = self.p1;
         let p2 = self.p2;
@@ -205,7 +211,7 @@ impl Triangle {
             ts = ts.normalize();
             ss = ts.cross(&shading_normal);
         } else {
-              (_, ss , ts) = coordinate_system(shading_normal);
+            (_, ss, ts) = coordinate_system(shading_normal);
         }
 
         let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
@@ -220,15 +226,72 @@ impl Triangle {
         // p_hit = compute_shading_position(
         //     p_hit, p0, p1, p2, p0_normal, p1_normal, p2_normal, b0, b1, b2, normal,
         // );
-        let p1p0 = p1-p0;
+        let p1p0 = p1 - p0;
         let geometry_normal = (p2 - p0).cross(&p1p0).normalize();
 
         p_hit += shading_normal * 1.0e-9;
 
         Some((
             t,
-            SurfaceInteraction::new(p_hit, geometry_normal, -ray.direction, uv_hit, ss, ts,dpdu, dpdv, p_error),
+            SurfaceInteraction::new(
+                p_hit,
+                geometry_normal,
+                -ray.direction,
+                uv_hit,
+                ss,
+                ts,
+                dpdu,
+                dpdv,
+                p_error,
+            ),
         ))
+    }
+
+    fn sample_point(&self) -> Interaction {
+        let sample = uniform_sample_triangle();
+
+        let point = sample.x * self.p0
+            + sample.y * self.p1.coords
+            + (1.0 - sample.x - sample.y) * self.p2.coords;
+
+        let shading_normal =
+            (sample.x * self.n0 + sample.y * self.n1 + (1.0 - sample.x - sample.y) * self.n2)
+                .normalize();
+
+        Interaction {
+            point,
+            normal: shading_normal,
+        }
+    }
+
+    fn area(&self) -> f64 {
+        let p0p1 = self.p1 - self.p0;
+        let p0p2 = self.p2 - self.p0;
+
+        0.5 * p0p1.cross(&p0p2).magnitude()
+    }
+
+    fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
+        let ray = Ray {
+            point: interaction.point,
+            direction: wi,
+        };
+
+        let intersect_object = self.test_intersect(ray);
+
+        if intersect_object.is_none() {
+            return 0.0;
+        }
+
+        let (_, surface_interaction) = intersect_object.unwrap();
+
+        (interaction.point - surface_interaction.point).magnitude_squared() /
+            surface_interaction.shading_normal.dot(&-wi).abs() * self.area()
+
+    }
+
+    fn get_light(&self) -> Option<&Arc<Light>> {
+        self.light.as_ref()
     }
 }
 
@@ -342,7 +405,7 @@ mod tests {
         assert_eq!(
             true,
             Vector3::<f64>::new(0.5, 0.0, -1.0).normalize().relative_eq(
-                &i.geometry_normal,
+                &i.shading_normal,
                 f64::EPSILON,
                 1.0e-6
             )

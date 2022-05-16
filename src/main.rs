@@ -17,18 +17,19 @@ extern crate yaml_rust;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::sync::mpsc::Receiver;
 use std::sync::{Arc, RwLock};
+use std::sync::mpsc::Receiver;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use bvh::Vector3;
 use clap::Parser;
-use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
-use ggez::event::{run, KeyCode};
-use ggez::graphics::{self, Color, DrawParam};
-use ggez::input::keyboard;
 use ggez::{event, GameError};
 use ggez::{Context, GameResult};
+use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
+use ggez::event::{KeyCode, run};
+use ggez::graphics::{self, Color, DrawParam};
+use ggez::input::keyboard;
 use nalgebra::Vector2;
 use yaml_rust::YamlLoader;
 
@@ -36,7 +37,7 @@ use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
-use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
+use renderer::{DEBUG_BUFFER, DebugBuffer, SETTINGS, ThreadMessage};
 use sampler::{Sampler, SamplerMethod};
 
 mod bsdf;
@@ -52,6 +53,7 @@ mod sampler;
 mod scene;
 mod surface_interaction;
 mod tracer;
+mod normal;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -94,7 +96,8 @@ impl MainState {
 
 impl event::EventHandler<GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if !ggez::timer::check_update_time(ctx, 5) {
+        if !ggez::timer::check_update_time(ctx, 2) {
+            ggez::timer::sleep(Duration::from_secs_f64(1.0/2.0));
             return Ok(());
         }
 
@@ -301,7 +304,7 @@ fn main() -> GameResult {
         .window_setup(WindowSetup {
             title: "Rust Raytracer".to_string(),
             samples: NumSamples::One,
-            vsync: true,
+            vsync: false,
             icon: "".to_string(),
             srgb: false,
         })

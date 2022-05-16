@@ -111,6 +111,33 @@ impl BSDF {
         f
     }
 
+    pub fn pdf(
+        &self,
+        wo_world: Vector3<f64>,
+        wi_world: Vector3<f64>,
+        bxdf_types_flags: BXDFTYPES,
+    ) -> f64 {
+        let wi = self.world_to_local(wi_world);
+        let wo = self.world_to_local(wo_world);
+        let reflect =
+            wi_world.dot(&self.geometry_normal) * wo_world.dot(&self.geometry_normal) > 0.0;
+        let must_match_type = match reflect {
+            true => BXDFTYPES::REFLECTION,
+            false => BXDFTYPES::TRANSMISSION,
+        };
+
+        let mut pdf = 0.0;
+        for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
+            if bxdf.get_type_flags().intersects(bxdf_types_flags)
+                && bxdf.get_type_flags().contains(must_match_type)
+            {
+                pdf += bxdf.pdf(wo, wi);
+            }
+        }
+
+        pdf
+    }
+
     fn world_to_local(&self, v: Vector3<f64>) -> Vector3<f64> {
         Vector3::new(
             v.dot(&self.ss),

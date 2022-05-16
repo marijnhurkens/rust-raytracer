@@ -9,25 +9,25 @@ use nalgebra::{Point3, Vector3};
 use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
-use lights::{Light, PointLight};
+use lights::area::AreaLight;
+use lights::Light;
 use materials::Material;
 use materials::matte::MatteMaterial;
-use materials::plastic::PlasticMaterial;
-use objects::triangle::Triangle;
 use Object;
+use objects::triangle::Triangle;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
     pub objects: Vec<Object>,
     pub meshes: Vec<Arc<Mesh>>,
-    pub lights: Vec<Light>,
+    pub lights: Vec<Arc<Light>>,
     pub bvh: BVH,
 }
 
 impl Scene {
     pub fn new(
         bg_color: Vector3<f64>,
-        lights: Vec<Light>,
+        lights: Vec<Arc<Light>>,
         objects: Vec<Object>,
         meshes: Vec<Arc<Mesh>>,
         bvh: BVH,
@@ -58,15 +58,48 @@ impl Scene {
 
         let (mut objects, meshes) = load_model(world_model_file.as_path(), up_axis);
 
+        let triangle_light_mesh = Arc::new(Mesh {
+            positions: vec![-0.5, 0.9, 0.0, 0.5, 0.9, 0.0, 0.0, 0.9, 0.5],
+            normals: vec![0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0],
+            texcoords: vec![],
+            indices: vec![],
+            num_face_indices: vec![],
+            material_id: None,
+        });
+
+        let triangle_light =  Arc::new(Light::Area(AreaLight::new(
+            Object::Triangle(Triangle::new(
+                triangle_light_mesh.clone(),
+                0,
+                1,
+                2,
+                vec![],
+                None
+            )),
+            Vector3::repeat(4.4),
+        )));
+
+        let triangle_light_object = Object::Triangle(Triangle::new(
+            triangle_light_mesh,
+            0,
+            1,
+            2,
+            vec![Material::MatteMaterial(MatteMaterial::new(
+                Vector3::repeat(1.0),
+                1000.0,
+            ))],
+            Some(triangle_light.clone())
+        ));
+
+        let lights: Vec<Arc<Light>> = vec![triangle_light];
+
+        objects.push(triangle_light_object);
+
+
         // Build scene
         println!("Building BVH...");
         let bvh = BVH::build(&mut objects);
         println!("Done!");
-
-        let lights = vec![Light::PointLight(PointLight::new(
-            Point3::new(0.0, 0.9, 0.0),
-            Vector3::new(1.0, 1.0, 1.0),
-        ))];
 
         println!("Scene loaded.");
 
@@ -133,9 +166,7 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
             //     material.specular[2] as f64,
             // );
 
-            let specular = Vector3::new(
-               1.0,1.0,1.0
-            );
+            let specular = Vector3::new(1.0, 1.0, 1.0);
 
             let _reflection = material.specular[0] as f64;
 
@@ -148,10 +179,11 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
                     //weight: 1.0,
                     color,
                     //specular,
-                    0.0,//(material.shininess / 1000.0) as f64,
-                    //ior: material.optical_density as f64,
-                    //refraction: 1.0 - material.dissolve as f64,
+                    1000.0, //(material.shininess / 1000.0) as f64,
+                           //ior: material.optical_density as f64,
+                           //refraction: 1.0 - material.dissolve as f64,
                 ))],
+                None,
             );
 
             triangles.push(Object::Triangle(triangle));

@@ -4,12 +4,16 @@ use rand::prelude::SliceRandom;
 use rand::{thread_rng, Rng};
 
 use bsdf::BXDFTYPES;
-use lights::LightTrait;
+use helpers::power_heuristic;
+use lights::{Light, LightTrait};
 use materials::MaterialTrait;
-use objects::Objectable;
-use renderer::{check_intersect_scene, check_light_visible, debug_write_pixel, debug_write_pixel_f64, Ray, Settings};
+use objects::ObjectTrait;
+use renderer::{
+    check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
+    debug_write_pixel_f64, Ray, Settings,
+};
 use scene::Scene;
-use surface_interaction::SurfaceInteraction;
+use surface_interaction::{Interaction, SurfaceInteraction};
 
 pub fn trace(
     settings: &Settings,
@@ -35,7 +39,7 @@ pub fn trace(
         };
 
         if bounce == 0 {
-            normal = surface_interaction.geometry_normal;
+            normal = surface_interaction.shading_normal;
         }
 
         if bounce == 0 || specular_bounce {
@@ -92,26 +96,94 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
     let mut direct_irradiance = Vector3::zeros();
 
     let light = scene.lights.choose(&mut rng).unwrap();
-    let mut irradiance = light.sample_irradiance(surface_interaction);
-    let wi = (light.get_position() - surface_interaction.point).normalize();
-    let pdf = 1.0;
+    let mut irradiance_sample = light.sample_irradiance(surface_interaction);
 
-    if pdf > 0.0 || !irradiance.is_zero() {
-        let f = surface_interaction.bsdf.as_ref().unwrap().f(
-            surface_interaction.wo,
-            wi,
-            bsdf_flags,
-        ) * wi.dot(&surface_interaction.shading_normal).abs();
+    if irradiance_sample.pdf > 0.0 || !irradiance_sample.irradiance.is_zero() {
+        let mut f = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
+            bsdf.f(surface_interaction.wo, irradiance_sample.wi, bsdf_flags)
+        } else {
+            Vector3::zeros()
+        };
+
+        f *= irradiance_sample
+            .wi
+            .dot(&surface_interaction.shading_normal)
+            .abs();
+
+        let scattering_pdf = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
+            bsdf.pdf(surface_interaction.wo, irradiance_sample.wi, bsdf_flags)
+        } else {
+            0.0
+        };
 
         if !f.is_zero() {
-            if !check_light_visible(surface_interaction.point, scene, light) {
-                irradiance = Vector3::zeros();
+            if !check_light_visible(surface_interaction, scene, &irradiance_sample) {
+                irradiance_sample.irradiance = Vector3::zeros();
             }
 
-
-            if !irradiance.is_zero() {
-                direct_irradiance += f.component_mul(&irradiance) / pdf;
+            if !irradiance_sample.irradiance.is_zero() {
+                if light.is_delta() {
+                    direct_irradiance +=
+                        f.component_mul(&irradiance_sample.irradiance) / irradiance_sample.pdf;
+                } else {
+                    let weight = power_heuristic(1, irradiance_sample.pdf, 1, scattering_pdf);
+                    let light_irradiance = irradiance_sample.irradiance * weight;
+                    direct_irradiance += f.component_mul(&light_irradiance) / irradiance_sample.pdf;
+                }
             }
+        }
+    }
+
+    if !light.is_delta() {
+        let (wi, scattering_pdf, f) = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
+            bsdf.sample_f(surface_interaction.wo, bsdf_flags)
+        } else {
+            (Vector3::zeros(), 0.0, Vector3::zeros())
+        };
+
+        let f = f * wi.dot(&surface_interaction.shading_normal).abs();
+
+        if !f.is_zero() && scattering_pdf > 0.0 {
+            let interaction = Interaction {
+                point: surface_interaction.point,
+                normal: surface_interaction.shading_normal,
+            };
+            let light_pdf = light.pdf_incidence(&interaction, wi);
+            if light_pdf == 0.0 {
+                return direct_irradiance;
+            }
+
+            let weight = power_heuristic(1, scattering_pdf, 1, light_pdf);
+
+            let ray = Ray {
+                point: surface_interaction.point + (wi * 1.0e-9),
+                direction: wi,
+            };
+
+            let mut light_irradiance = Vector3::zeros();
+
+            if let Some((object_interaction, object)) = check_intersect_scene(ray, &scene) {
+                let light_option = object.get_light();
+                if let Some(light) = light_option {
+                    if let Light::Area(light) = light.as_ref() {
+                        // we've hit an area light
+                        let interaction = Interaction {
+                            point: object_interaction.point,
+                            normal: object_interaction.shading_normal,
+                        };
+                        light_irradiance = light.irradiance_at_point(&interaction, -wi);
+                    }
+                }
+            } else {
+                // no hit, add emitting light if infinite area light
+                // let interaction = Interaction {
+                //     point: surface_interaction.point,
+                //     normal: surface_interaction.shading_normal,
+                // };
+                // light_irradiance = light.emitting(&interaction, -wi)
+            }
+
+            direct_irradiance += f.component_mul(&(light_irradiance * weight)) / scattering_pdf;
         }
     }
 

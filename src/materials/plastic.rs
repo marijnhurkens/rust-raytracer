@@ -9,7 +9,7 @@ use surface_interaction::SurfaceInteraction;
 use num_traits::Zero;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PlasticMaterial {
     pub diffuse: Vector3<f64>,
     pub specular: Vector3<f64>,

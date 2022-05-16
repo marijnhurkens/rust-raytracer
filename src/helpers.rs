@@ -2,7 +2,7 @@ use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Mul;
 
 use nalgebra::{ClosedSub, Point2, Point3, Scalar, Vector2, Vector3};
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use yaml_rust::Yaml;
 
 #[derive(Debug)]
@@ -42,6 +42,7 @@ pub fn get_random_in_unit_sphere() -> Vector3<f64> {
     vec
 }
 
+// todo: add sampler input
 fn concentric_sample_disk() -> Point2<f64> {
     let mut rng = thread_rng();
 
@@ -70,6 +71,24 @@ pub fn get_cosine_weighted_in_hemisphere() -> Vector3<f64> {
     Vector3::new(d.x, d.y, z)
 }
 
+// todo: add sampler input
+pub fn uniform_sample_triangle() -> Point2<f64> {
+    let mut rng = thread_rng();
+
+    let point = Point2::new(rng.gen::<f64>(), rng.gen::<f64>());
+    let su0 = point.x.sqrt();
+
+    Point2::new(1.0 - su0, point.y * su0)
+}
+
+
+pub fn power_heuristic(nf: i32, f_pdf: f64, ng: i32, g_pdf: f64) -> f64
+{
+    let f = nf as f64 * f_pdf;
+    let g= ng as f64 * g_pdf;
+    (f*f) / (f*f+g*g)
+}
+
 pub fn coordinate_system(v1: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>, Vector3<f64>) {
     let v2;
 
@@ -83,7 +102,6 @@ pub fn coordinate_system(v1: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>, Vecto
 
     (v1, v2, v3)
 }
-
 
 pub fn gamma(n: f64) -> f64 {
     (n * f64::EPSILON) / (1.0 - n * f64::EPSILON)
@@ -102,8 +120,7 @@ pub fn same_hemisphere(a: Vector3<f64>, b: Vector3<f64>) -> bool {
     a.z * b.z > 0.0
 }
 
-pub fn face_forward(n: Vector3<f64>, v: Vector3<f64>) -> Vector3<f64>
-{
+pub fn face_forward(n: Vector3<f64>, v: Vector3<f64>) -> Vector3<f64> {
     if n.dot(&v) < 0.0 {
         return -n;
     }
