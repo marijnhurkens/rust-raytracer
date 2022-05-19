@@ -5,13 +5,13 @@ use nalgebra::Vector3;
 
 use lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
 use Object;
-use objects::ObjectTrait;
+use objects::{ArcObject, ObjectTrait};
 use renderer::{debug_write_pixel_f64, Ray};
 use surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug)]
 pub struct AreaLight {
-    object: Object,
+    object: ArcObject,
     intensity: Vector3<f64>,
 }
 
@@ -62,7 +62,7 @@ impl LightTrait for AreaLight {
 }
 
 impl AreaLight {
-    pub fn new(object: Object, intensity: Vector3<f64>) -> Self {
+    pub fn new(object: ArcObject, intensity: Vector3<f64>) -> Self {
         Self {
             object,
             intensity,

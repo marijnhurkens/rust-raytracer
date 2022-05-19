@@ -14,11 +14,12 @@ use lights::Light;
 use materials::Material;
 use materials::matte::MatteMaterial;
 use Object;
+use objects::ArcObject;
 use objects::triangle::Triangle;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
-    pub objects: Vec<Object>,
+    pub objects: Vec<ArcObject>,
     pub meshes: Vec<Arc<Mesh>>,
     pub lights: Vec<Arc<Light>>,
     pub bvh: BVH,
@@ -28,7 +29,7 @@ impl Scene {
     pub fn new(
         bg_color: Vector3<f64>,
         lights: Vec<Arc<Light>>,
-        objects: Vec<Object>,
+        objects: Vec<ArcObject>,
         meshes: Vec<Arc<Mesh>>,
         bvh: BVH,
     ) -> Scene {
@@ -68,18 +69,18 @@ impl Scene {
         });
 
         let triangle_light =  Arc::new(Light::Area(AreaLight::new(
-            Object::Triangle(Triangle::new(
+            ArcObject(Arc::new(Object::Triangle(Triangle::new(
                 triangle_light_mesh.clone(),
                 0,
                 1,
                 2,
                 vec![],
                 None
-            )),
+            )))),
             Vector3::repeat(4.4),
         )));
 
-        let triangle_light_object = Object::Triangle(Triangle::new(
+        let triangle_light_object = ArcObject(Arc::new(Object::Triangle(Triangle::new(
             triangle_light_mesh,
             0,
             1,
@@ -89,7 +90,7 @@ impl Scene {
                 1000.0,
             ))],
             Some(triangle_light.clone())
-        ));
+        ))));
 
         let lights: Vec<Arc<Light>> = vec![triangle_light];
 
@@ -112,17 +113,17 @@ impl Scene {
         }
     }
 
-    pub fn push_object(&mut self, o: Object) {
+    pub fn push_object(&mut self, o: ArcObject) {
         self.objects.push(o);
     }
 }
 
-fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>) {
+fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
     dbg!(model_file);
     let (models, materials) = tobj::load_obj(model_file, true).expect("Failed to load file");
 
     dbg!(&materials);
-    let mut triangles = vec![];
+    let mut triangles: Vec<ArcObject> = vec![];
     let mut meshes = vec![];
 
     for (i, m) in models.iter().enumerate() {
@@ -186,7 +187,7 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<Object>, Vec<Arc<Mesh>>
                 None,
             );
 
-            triangles.push(Object::Triangle(triangle));
+            triangles.push(ArcObject(Arc::new(Object::Triangle(triangle))));
 
             bar.inc(1);
         }

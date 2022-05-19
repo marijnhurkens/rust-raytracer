@@ -4,6 +4,7 @@ use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector3};
 use lights::area::AreaLight;
 use lights::Light;
+use std::borrow::BorrowMut;
 
 use materials::Material;
 //use objects::cube::Cube;
@@ -36,9 +37,9 @@ pub trait ObjectTrait {
     fn area(&self) -> f64;
 }
 
-impl ObjectTrait for Object {
+impl ObjectTrait for ArcObject {
     fn get_materials(&self) -> &Vec<Material> {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.get_materials(),
             Object::Triangle(x) => x.get_materials(),
             //Object::Rectangle(x) => x.get_materials(),
@@ -47,7 +48,7 @@ impl ObjectTrait for Object {
     }
 
     fn get_light(&self) -> Option<&Arc<Light>> {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.get_light(),
             //Object::Rectangle(x) => x.test_intersect(ray),
@@ -56,7 +57,7 @@ impl ObjectTrait for Object {
     }
 
     fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.test_intersect(ray),
             //Object::Rectangle(x) => x.test_intersect(ray),
@@ -65,7 +66,7 @@ impl ObjectTrait for Object {
     }
 
     fn sample_point(&self) -> Interaction {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.sample_point(),
             //Object::Rectangle(x) => x.test_intersect(ray),
@@ -74,7 +75,7 @@ impl ObjectTrait for Object {
     }
 
     fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.pdf(interaction, wi),
             //Object::Rectangle(x) => x.test_intersect(ray),
@@ -83,7 +84,7 @@ impl ObjectTrait for Object {
     }
 
     fn area(&self) -> f64 {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.area(),
             //Object::Rectangle(x) => x.test_intersect(ray),
@@ -92,9 +93,12 @@ impl ObjectTrait for Object {
     }
 }
 
-impl Bounded for Object {
+#[derive(Debug)]
+pub struct ArcObject (pub Arc<Object>);
+
+impl Bounded for ArcObject {
     fn aabb(&self) -> AABB {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.aabb(),
             Object::Triangle(x) => x.aabb(),
             //Object::Rectangle(x) => x.aabb(),
@@ -103,9 +107,9 @@ impl Bounded for Object {
     }
 }
 
-impl BHShape for Object {
+impl BHShape for ArcObject {
     fn set_bh_node_index(&mut self, index: usize) {
-        match self {
+        match Arc::get_mut(&mut self.0).unwrap() {
             //Object::Sphere(x) => x.set_bh_node_index(index),
             Object::Triangle(x) => x.set_bh_node_index(index),
             //Object::Rectangle(x) => x.set_bh_node_index(index),
@@ -114,7 +118,7 @@ impl BHShape for Object {
     }
 
     fn bh_node_index(&self) -> usize {
-        match self {
+        match self.0.as_ref() {
             //Object::Sphere(x) => x.bh_node_index(),
             Object::Triangle(x) => x.bh_node_index(),
             //Object::Rectangle(x) => x.bh_node_index(),

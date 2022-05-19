@@ -12,7 +12,7 @@ use nalgebra::{Point2, Point3, Vector3};
 use camera::Camera;
 use film::{Bucket, Film};
 use lights::LightIrradianceSample;
-use objects::Object;
+use objects::{ArcObject, Object};
 use objects::ObjectTrait;
 use sampler::Sampler;
 use scene::Scene;
@@ -262,8 +262,8 @@ fn render_work(bucket: &mut Bucket, scene: &Scene) -> bool {
     true
 }
 
-pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteraction, &Object)> {
-    let mut closest_hit: Option<(SurfaceInteraction, &Object)> = None;
+pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteraction, &ArcObject)> {
+    let mut closest_hit: Option<(SurfaceInteraction, &ArcObject)> = None;
     let mut closest_distance = f64::MAX;
 
     let bvh_ray = bvh::ray::Ray::new(
@@ -275,12 +275,13 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
         ),
     );
 
-    let hit_sphere_aabbs = scene.bvh.traverse(&bvh_ray, &scene.objects);
+    let hit_sphere_aabbs = scene.bvh.traverse_iterator(&bvh_ray, &scene.objects);
     for object in hit_sphere_aabbs {
         if let Some((distance, intersection)) = object.test_intersect(ray) {
             // If we found an intersection we check if the current
             // closest intersection is farther than the intersection
             // we found.
+
             match closest_hit {
                 None => {
                     closest_hit = Some((intersection, object));

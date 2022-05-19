@@ -149,14 +149,15 @@ checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 [[package]]
 name = "bvh"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9db59f8d1840da2b783a3225420cafb6694da9ef5dd27dab6207a2581bbc4c06"
+source = "git+https://github.com/dbenson24/bvh?branch=master#904b86e95d19ee48e0e7012ec4242a9eec240f7c"
 dependencies = [
  "approx",
- "glam 0.18.0",
+ "glam",
  "log",
  "num",
  "rand",
+ "rayon",
+ "smallvec",
 ]
 
 [[package]]
@@ -914,7 +915,7 @@ dependencies = [
  "gfx_core",
  "gfx_device_gl",
  "gilrs",
- "glam 0.20.5",
+ "glam",
  "glutin",
  "glyph_brush",
  "image",
@@ -984,12 +985,6 @@ dependencies = [
  "log",
  "xml-rs",
 ]
-
-[[package]]
-name = "glam"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "525a3e490ba77b8e326fb67d4b44b4bd2f920f44d4cc73ccec50adc68e3bee34"
 
 [[package]]
 name = "glam"
