@@ -50,6 +50,10 @@ impl LightTrait for PointLight {
         }
     }
 
+    fn environment_emitting(&self, ray: Ray) -> Vector3<f64> {
+        unimplemented!()
+    }
+
     fn power(&self) -> Vector3<f64> {
         4.0 * PI * self.intensity
     }

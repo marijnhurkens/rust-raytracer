@@ -11,8 +11,10 @@ use yaml_rust::YamlLoader;
 
 use lights::area::AreaLight;
 use lights::distant::DistantLight;
+use lights::point::PointLight;
 use lights::Light;
 use materials::matte::MatteMaterial;
+use materials::plastic::PlasticMaterial;
 use materials::Material;
 use objects::plane::Plane;
 use objects::triangle::Triangle;
@@ -60,8 +62,10 @@ impl Scene {
             Point3::origin(),
             1e20,
             Vector3::new(0.4, 1.0, 0.4),
-            Vector3::repeat(6.0),
+            Vector3::repeat(5.0),
         )));
+
+
 
         let lights: Vec<Arc<Light>> = vec![distant_light];
 
@@ -160,13 +164,18 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 mesh.indices[3 * v] as usize,
                 mesh.indices[3 * v + 1] as usize,
                 mesh.indices[3 * v + 2] as usize,
-                vec![Material::MatteMaterial(MatteMaterial::new(
-                    //weight: 1.0,
-                    color,
-                    //specular,
-                    20.0, //(material.shininess / 1000.0) as f64,
-                         //ior: material.optical_density as f64,
-                         //refraction: 1.0 - material.dissolve as f64,
+                // vec![Material::MatteMaterial(MatteMaterial::new(
+                //     //weight: 1.0,
+                //     color,
+                //     //specular,
+                //     20.0, //(material.shininess / 1000.0) as f64,
+                //          //ior: material.optical_density as f64,
+                //          //refraction: 1.0 - material.dissolve as f64,
+                // ))],
+                vec![Material::PlasticMaterial(PlasticMaterial::new(
+                    Vector3::new(0.4, 0.0, 0.0),
+                    Vector3::repeat(1.0),
+                    20.0,
                 ))],
                 None,
             );

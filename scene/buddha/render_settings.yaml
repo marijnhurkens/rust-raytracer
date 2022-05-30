@@ -1,6 +1,6 @@
 film:
-  image_width: 1000
-  image_height: 1000
+  image_width: 1500
+  image_height: 1500
   bucket_width: 64
   bucket_height: 64
   filter_radius: 1.8
@@ -14,7 +14,7 @@ camera:
   target: [0.0,4.0,0.0]
   fov: 50.0
 sampler:
-  max_samples: 80
+  max_samples: 120
   min_samples: 0
   method: sobol
 renderer:
@@ -23,4 +23,4 @@ renderer:
 scene:
   background_color: [1.0,1.0,1.0]
 window:
-  scale: 2.0
+  scale: 1.5

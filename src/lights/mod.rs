@@ -23,6 +23,7 @@ pub trait LightTrait {
     fn sample_emitting(&self) -> LightEmittingSample;
     fn pdf_incidence(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64;
     fn pdf_emitting(&self, ray: Ray, light_normal: Vector3<f64>) -> LightEmittingPdf;
+    fn environment_emitting(&self, ray: Ray) -> Vector3<f64>;
     fn power(&self) -> Vector3<f64>;
 }
 
@@ -87,6 +88,15 @@ impl LightTrait for Light {
             Light::Point(x) => x.pdf_emitting(ray, light_normal),
             Light::Area(x) => x.pdf_emitting(ray, light_normal),
             Light::Distant(x) => x.pdf_emitting(ray, light_normal),
+        }
+    }
+
+    // Le()
+    fn environment_emitting(&self, ray: Ray) -> Vector3<f64> {
+        match self {
+            Light::Point(x) => Vector3::zeros(),
+            Light::Area(x) => Vector3::zeros(),
+            Light::Distant(x) => x.environment_emitting(ray),
         }
     }
 

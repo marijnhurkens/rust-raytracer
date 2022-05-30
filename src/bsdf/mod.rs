@@ -27,6 +27,13 @@ pub struct Bsdf {
     ts: Vector3<f64>,
 }
 
+pub struct BsdfSampleResult {
+    pub wi: Vector3<f64>,
+    pub pdf: f64,
+    pub f: Vector3<f64>,
+    pub sampled_flags: BXDFTYPES,
+}
+
 impl Bsdf {
     pub fn new(surface_interaction: SurfaceInteraction, ior: Option<f64>) -> Bsdf {
         Bsdf {
@@ -51,7 +58,7 @@ impl Bsdf {
         &self,
         wo_world: Vector3<f64>,
         bxdf_types_flags: BXDFTYPES,
-    ) -> (Vector3<f64>, f64, Vector3<f64>) {
+    ) -> BsdfSampleResult {
         let mut rng = thread_rng();
 
         let bxdfs: Vec<&BXDF> = self
@@ -69,19 +76,27 @@ impl Bsdf {
             .collect();
 
         if bxdfs.is_empty() {
-            return (Vector3::zeros(), 0.0, Vector3::zeros());
+            return BsdfSampleResult {
+                wi: Vector3::zeros(),
+                pdf:  0.0,
+                f: Vector3::zeros(),
+                sampled_flags: BXDFTYPES::NONE
+            };
         }
-,
+
         let wo = self.world_to_local(wo_world);
 
-        let (wi, pdf, f) = bxdfs
-            .choose(&mut rng)
-            .unwrap()
-            .sample_f(Point3::new(1.0, 1.0, 1.0), wo);
+        let bxdf = bxdfs.choose(&mut rng).unwrap();
+        let (wi, pdf, f) = bxdf.sample_f(Point3::new(1.0, 1.0, 1.0), wo);
 
         let wi_world = self.local_to_world(wi);
         //debug_write_pixel_f64(pdf);
-        (wi_world, pdf, f)
+        BsdfSampleResult {
+            wi: wi_world,
+            pdf,
+            f,
+            sampled_flags: bxdf.get_type_flags(),
+        }
     }
 
     pub fn f(
@@ -194,6 +209,7 @@ bitflags! {
         const SPECULAR = 0b00001000;
         const TRANSMISSION = 0b00010000;
         const ALL = Self::REFLECTION.bits | Self::REFRACTION.bits | Self::DIFFUSE.bits | Self::SPECULAR.bits;
+        const NONE = 0b00000000;
     }
 }
 

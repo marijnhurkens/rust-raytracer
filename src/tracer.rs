@@ -2,20 +2,24 @@ use std::borrow::BorrowMut;
 
 use nalgebra::{Point3, Vector3};
 use num_traits::identities::Zero;
-use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;
+use rand::{thread_rng, Rng};
 
-use bsdf::BXDFTYPES;
+use bsdf::{BsdfSampleResult, BXDFTYPES};
 use helpers::power_heuristic;
-use lights::{Light, LightTrait};
 use lights::area::AreaLight;
+use lights::{Light, LightTrait};
 use materials::MaterialTrait;
-use Object;
-use objects::ObjectTrait;
 use objects::plane::Plane;
-use renderer::{check_intersect_scene, check_intersect_scene_simple, check_light_visible, CURRENT_BOUNCE, debug_write_pixel, debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray, Settings};
+use objects::ObjectTrait;
+use renderer::{
+    check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
+    debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray,
+    Settings, CURRENT_BOUNCE,
+};
 use scene::Scene;
 use surface_interaction::{Interaction, SurfaceInteraction};
+use Object;
 
 pub fn trace(
     settings: &Settings,
@@ -30,9 +34,18 @@ pub fn trace(
     let mut normal = Vector3::zeros();
 
     for bounce in 0..settings.depth_limit {
-        CURRENT_BOUNCE.with(| current_bounce| *current_bounce.borrow_mut()  = bounce );
+        CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow_mut() = bounce);
 
         let intersect = check_intersect_scene(ray, scene);
+
+        if bounce == 0 || specular_bounce {
+            if intersect.is_none() {
+                for light in &scene.lights
+                {
+                    l += contribution.component_mul(&light.environment_emitting(ray));
+                }
+            }
+        }
 
         // Check for an intersection
         let (mut surface_interaction, object) = match intersect {
@@ -42,28 +55,8 @@ pub fn trace(
             }
         };
 
-        // if let Object::Plane(plane) = object.0.as_ref() {
-        //
-        //     if bounce == 1 {
-        //         dbg!(surface_interaction);
-        //         panic!();
-        //     }
-        // }
-        //
-        // if let Object::Triangle(triangle) = object.0.as_ref() {
-        //
-        //     if bounce == 1 && triangle.p0 == Point3::new(-300.5, 0.0, -300.0) {
-        //         dbg!(surface_interaction);
-        //         panic!();
-        //     }
-        // }
-
         if bounce == 0 {
             normal = surface_interaction.shading_normal;
-        }
-
-        if bounce == 0 || specular_bounce {
-            //l += contribution * intersection.le();
         }
 
         for material in object.get_materials() {
@@ -75,24 +68,30 @@ pub fn trace(
         l += contribution.component_mul(&light_irradiance);
 
         let wo = -ray.direction;
-        let (wi, pdf, f) = surface_interaction
+        let bsdf_sample = surface_interaction
             .bsdf
             .as_ref()
             .unwrap()
             .sample_f(wo, BXDFTYPES::ALL);
 
-        //debug_write_pixel(wi);
-        // todo: fix
-        if pdf == 0.0 || f.is_zero() {
+        if bsdf_sample.pdf == 0.0 || bsdf_sample.f.is_zero() {
             break;
         }
 
-        contribution = contribution
-            .component_mul(&(f * wi.dot(&surface_interaction.shading_normal).abs() / pdf));
+        contribution = contribution.component_mul(
+            &(bsdf_sample.f
+                * bsdf_sample
+                    .wi
+                    .dot(&surface_interaction.shading_normal)
+                    .abs()
+                / bsdf_sample.pdf),
+        );
+
+        specular_bounce = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 
         ray = Ray {
             point: surface_interaction.point,
-            direction: wi,
+            direction: bsdf_sample.wi,
         };
 
         // russian roulette termination
@@ -150,36 +149,46 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
                     };
 
                     let weight = power_heuristic(1, irradiance_sample.pdf, 1, scattering_pdf);
-                    direct_irradiance +=  f.component_mul(&irradiance_sample.irradiance) * weight / irradiance_sample.pdf;
+                    direct_irradiance += f.component_mul(&irradiance_sample.irradiance) * weight
+                        / irradiance_sample.pdf;
                 }
             }
         }
     }
 
     if !light.is_delta() {
-        let (wi, scattering_pdf, f) = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
+        let bsdf_sample = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
             bsdf.sample_f(surface_interaction.wo, bsdf_flags)
         } else {
-            (Vector3::zeros(), 0.0, Vector3::zeros())
+            BsdfSampleResult {
+                wi: Vector3::zeros(),
+                pdf: 0.0,
+                f: Vector3::zeros(),
+                sampled_flags: BXDFTYPES::NONE,
+            }
         };
 
-        let f = f * wi.dot(&surface_interaction.shading_normal).abs();
+        let f = bsdf_sample.f
+            * bsdf_sample
+                .wi
+                .dot(&surface_interaction.shading_normal)
+                .abs();
 
-        if !f.is_zero() && scattering_pdf > 0.0 {
+        if !f.is_zero() && bsdf_sample.pdf > 0.0 {
             let interaction = Interaction {
                 point: surface_interaction.point,
                 normal: surface_interaction.shading_normal,
             };
-            let light_pdf = light.pdf_incidence(&interaction, wi);
+            let light_pdf = light.pdf_incidence(&interaction, bsdf_sample.wi);
             if light_pdf == 0.0 {
                 return direct_irradiance;
             }
 
-            let weight = power_heuristic(1, scattering_pdf, 1, light_pdf);
+            let weight = power_heuristic(1, bsdf_sample.pdf, 1, light_pdf);
 
             let ray = Ray {
-                point: surface_interaction.point + (wi * 1.0e-9),
-                direction: wi,
+                point: surface_interaction.point + (bsdf_sample.wi * 1.0e-9),
+                direction: bsdf_sample.wi,
             };
 
             let mut light_irradiance = Vector3::zeros();
@@ -193,7 +202,8 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
                                 point: object_interaction.point,
                                 normal: object_interaction.shading_normal,
                             };
-                            light_irradiance = light.irradiance_at_point(&interaction, -wi);
+                            light_irradiance =
+                                light.irradiance_at_point(&interaction, -bsdf_sample.wi);
                         }
                     }
                 }
@@ -206,7 +216,7 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
                 // light_irradiance = light.emitting(&interaction, -wi)
             }
 
-            direct_irradiance += f.component_mul(&(light_irradiance * weight)) / scattering_pdf;
+            direct_irradiance += f.component_mul(&(light_irradiance * weight)) / bsdf_sample.pdf;
         }
     }
 

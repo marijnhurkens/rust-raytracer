@@ -1,37 +1,26 @@
 # rust-raytracer
 
-Basic ray-tracer in Rust.
+Basic ray-tracer in Rust, following the [PBRT Book](https://pbr-book.org/3ed-2018/contents).
 
 Features done:
 
-- Spheres
-- Planes
-- Triangles
-- Rectangles
-- Reflection
-- Refraction
-- Fresnel material
-- Multithreading
-- Adaptive ray depth
+- Objects (planes, triangles)
+- Meshes
 - Obj loading
+- Lights (point, area, distant)
+- Materials (matte, half of plastic)
+- Multithreading
+- Multiple Importance Sampling
+- Denoising using OpenImage Denoise
+- Basic scene configuration
 
 Todo:
 
-- BxDF
+- Microfacets
+- Transmittance (BTDF)
 - File output
-- Static dispatch for materials
-- Better scenes
 - Textures
-- Vertex normal interpolation
-
-
-## Example
-
-Fresnel reflections:
-![Test image](examples/fresnel.png)
-
-Obj model loading and triangle intersection:
-![Test image](examples/cow.png)
+- Other things
 
 ## Build and run
 
@@ -45,12 +34,10 @@ Export the OIDN location for the build to find the headers & libraries. For exam
 export OIDN_DIR=$HOME/Downloads/oidn-1.3.0.x86_64.linux/
 ```
 
-
 ```
-cargo run --release ./scene/cornell/scene.yaml ./scene/cornell/render_settings.yaml
+cargo run --release ./scene/buddha
 ```
 
-During rendering, press and hold D for denoise and N for normals.
 
 ## Usage
 
@@ -67,3 +54,20 @@ ARGS:
 OPTIONS:
     -h, --help    Print help information
 ```
+
+During rendering, press and hold D for debug layers (probably nothing will show)
+and N for normals.
+
+## Examples
+
+Part of PBRT book implementation:
+
+![Buddha](examples/buddha.png)
+
+Old whitted raytracer:
+
+Fresnel reflections:
+![Test image](examples/fresnel.png)
+
+Obj model loading and triangle intersection:
+![Test image](examples/cow.png)

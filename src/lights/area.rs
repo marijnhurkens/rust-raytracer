@@ -60,6 +60,10 @@ impl LightTrait for AreaLight {
         }
     }
 
+    fn environment_emitting(&self, ray: Ray) -> Vector3<f64> {
+        unimplemented!()
+    }
+
     fn power(&self) -> Vector3<f64> {
         self.intensity * self.area() * PI
     }

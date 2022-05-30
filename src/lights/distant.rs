@@ -49,6 +49,10 @@ impl LightTrait for DistantLight {
         unimplemented!();
     }
 
+    fn environment_emitting(&self, ray: Ray) -> Vector3<f64> {
+        self.intensity
+    }
+
     fn power(&self) -> Vector3<f64> {
         self.world_radius * self.world_radius * PI * self.intensity
     }
