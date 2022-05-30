@@ -14,11 +14,11 @@ camera:
   target: [0.0,0.0,0.0]
   fov: 39.0
 sampler:
-  max_samples: 16
+  max_samples: 8
   min_samples: 0
   method: sobol
 renderer:
   depth_limit: 12
   threads: 11
 scene:
-  background_color: [0.0,0.0,0.0]
+  background_color: [0.9,0.9,0.9]

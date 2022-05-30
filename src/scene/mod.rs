@@ -11,16 +11,16 @@ use yaml_rust::YamlLoader;
 
 use lights::area::AreaLight;
 use lights::Light;
-use materials::Material;
 use materials::matte::MatteMaterial;
-use Object;
-use objects::ArcObject;
+use materials::Material;
 use objects::triangle::Triangle;
+use objects::ArcObject;
+use Object;
+use objects::plane::Plane;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
     pub objects: Vec<ArcObject>,
-    pub meshes: Vec<Arc<Mesh>>,
     pub lights: Vec<Arc<Light>>,
     pub bvh: BVH,
 }
@@ -36,31 +36,28 @@ impl Scene {
         Scene {
             bg_color,
             objects,
-            meshes,
             lights,
             bvh,
         }
     }
 
-    pub fn load_from_file(path: &Path) -> Scene {
+    pub fn load_from_folder(path: &Path) -> Scene {
         println!("Load scene from {:?}", path.display());
-        let mut file = File::open(path).expect("Unable to open file");
+        let mut file = File::open(path.join("scene.yaml")).expect("Unable to open scene.yaml file");
         let mut contents = String::new();
 
         file.read_to_string(&mut contents)
             .expect("Unable to read file");
         let scene_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
 
-        let world_model_file = path
-            .parent()
-            .unwrap()
-            .join(Path::new(scene_yaml["world"]["file"].as_str().unwrap()));
+        let world_model_file = path.join(Path::new(scene_yaml["world"]["file"].as_str().unwrap()));
         let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
 
         let (mut objects, meshes) = load_model(world_model_file.as_path(), up_axis);
 
+        let light_height = 10.0;
         let triangle_light_mesh = Arc::new(Mesh {
-            positions: vec![-0.5, 0.9, 0.0, 0.5, 0.9, 0.0, 0.0, 0.9, 0.5],
+            positions: vec![-3.5, light_height, -3.0, 3.5, light_height, -3.0, 0.0, light_height, 3.5],
             normals: vec![0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0],
             texcoords: vec![],
             indices: vec![],
@@ -68,16 +65,16 @@ impl Scene {
             material_id: None,
         });
 
-        let triangle_light =  Arc::new(Light::Area(AreaLight::new(
+        let triangle_light = Arc::new(Light::Area(AreaLight::new(
             ArcObject(Arc::new(Object::Triangle(Triangle::new(
                 triangle_light_mesh.clone(),
                 0,
                 1,
                 2,
                 vec![],
-                None
+                None,
             )))),
-            Vector3::repeat(4.4),
+            Vector3::repeat(25.0),
         )));
 
         let triangle_light_object = ArcObject(Arc::new(Object::Triangle(Triangle::new(
@@ -87,15 +84,57 @@ impl Scene {
             2,
             vec![Material::MatteMaterial(MatteMaterial::new(
                 Vector3::repeat(1.0),
-                1000.0,
+                20.0,
             ))],
-            Some(triangle_light.clone())
+            Some(triangle_light.clone()),
         ))));
 
         let lights: Vec<Arc<Light>> = vec![triangle_light];
 
         objects.push(triangle_light_object);
 
+        // let floor_mesh = Arc::new(Mesh {
+        //     positions: vec![-300.5, 0.0, -300.0, 300.5, 0.0, -300.0, 0.0, 0.0, 300.5],
+        //     normals: vec![0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+        //     texcoords: vec![],
+        //     indices: vec![],
+        //     num_face_indices: vec![],
+        //     material_id: None,
+        // });
+        //
+        // let floor = ArcObject(Arc::new(Object::Triangle(Triangle::new(
+        //     floor_mesh,
+        //     0,
+        //     1,
+        //     2,
+        //     vec![Material::MatteMaterial(MatteMaterial::new(
+        //         Vector3::repeat(1.0),
+        //         20.0,
+        //     ))],
+        //     None,
+        // ))));
+
+        //
+        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+            Point3::origin(),
+            Vector3::new(0.0,1.0,0.0),
+            vec![Material::MatteMaterial(MatteMaterial::new(
+                Vector3::repeat(1.0),
+                20.0,
+            ))],
+        ))));
+
+        let ceil = ArcObject(Arc::new(Object::Plane(Plane::new(
+            Point3::new(0.0,15.0,0.0),
+            Vector3::new(0.0,-1.0,0.0),
+            vec![Material::MatteMaterial(MatteMaterial::new(
+                Vector3::repeat(1.0),
+                0.0,
+            ))],
+        ))));
+
+        objects.push(floor);
+        objects.push(ceil);
 
         // Build scene
         println!("Building BVH...");
@@ -107,7 +146,6 @@ impl Scene {
         Scene {
             bg_color: Vector3::new(0.5, 0.5, 0.5),
             objects,
-            meshes,
             lights,
             bvh,
         }
@@ -152,14 +190,18 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
 
         let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
 
-        let material = &materials[mesh.material_id.unwrap()];
+        let material = mesh.material_id.map(|material_id| &materials[material_id]);
 
         for v in 0..mesh.indices.len() / 3 {
-            let color = Vector3::new(
-                material.diffuse[0] as f64,
-                material.diffuse[1] as f64,
-                material.diffuse[2] as f64,
-            );
+            let color = if let Some(material) = material {
+                Vector3::new(
+                    material.diffuse[0] as f64,
+                    material.diffuse[1] as f64,
+                    material.diffuse[2] as f64,
+                )
+            } else {
+                Vector3::repeat(0.5)
+            };
 
             // let specular = Vector3::new(
             //     material.specular[0] as f64,
@@ -167,9 +209,9 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
             //     material.specular[2] as f64,
             // );
 
-            let specular = Vector3::new(1.0, 1.0, 1.0);
+            //let specular = Vector3::new(1.0, 1.0, 1.0);
 
-            let _reflection = material.specular[0] as f64;
+            // let _reflection = material.specular[0] as f64;
 
             let triangle = Triangle::new(
                 mesh.clone(),
@@ -180,16 +222,18 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                     //weight: 1.0,
                     color,
                     //specular,
-                    1000.0, //(material.shininess / 1000.0) as f64,
-                           //ior: material.optical_density as f64,
-                           //refraction: 1.0 - material.dissolve as f64,
+                    20.0, //(material.shininess / 1000.0) as f64,
+                         //ior: material.optical_density as f64,
+                         //refraction: 1.0 - material.dissolve as f64,
                 ))],
                 None,
             );
 
             triangles.push(ArcObject(Arc::new(Object::Triangle(triangle))));
 
-            bar.inc(1);
+            if v % 1000 == 0 {
+                bar.inc(1000);
+            }
         }
 
         meshes.push(mesh.clone());

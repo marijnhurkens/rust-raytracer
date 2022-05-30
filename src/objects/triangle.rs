@@ -21,7 +21,7 @@ pub struct Triangle {
     // pub v0_index: usize,
     // pub v1_index: usize,
     // pub v2_index: usize,
-    p0: Point3<f64>,
+    pub p0: Point3<f64>,
     p1: Point3<f64>,
     p2: Point3<f64>,
     n0: Vector3<f64>,
@@ -273,7 +273,7 @@ impl ObjectTrait for Triangle {
 
     fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
         let ray = Ray {
-            point: interaction.point,
+            point: interaction.point + wi * 1e-9,
             direction: wi,
         };
 
@@ -285,8 +285,8 @@ impl ObjectTrait for Triangle {
 
         let (_, surface_interaction) = intersect_object.unwrap();
 
-        (interaction.point - surface_interaction.point).magnitude_squared() /
-            surface_interaction.shading_normal.dot(&-wi).abs() * self.area()
+        nalgebra::distance_squared(&interaction.point, &surface_interaction.point) /
+            (surface_interaction.shading_normal.dot(&-wi).abs() * self.area())
 
     }
 
@@ -368,6 +368,7 @@ mod tests {
     use materials::Material;
     use objects::triangle::Triangle;
     use renderer::Ray;
+    use objects::ObjectTrait;
 
     #[test]
     fn it_tests_intersects() {
@@ -389,6 +390,7 @@ mod tests {
                 Vector3::new(1.0, 1.0, 1.0),
                 100.0,
             ))],
+            None,
         );
 
         let ray = Ray {

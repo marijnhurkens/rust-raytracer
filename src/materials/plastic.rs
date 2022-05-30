@@ -3,13 +3,13 @@ use nalgebra::Vector3;
 use bsdf::fresnel::DielectricFresnel;
 use bsdf::lambertian::Lambertian;
 use bsdf::specular_reflection::SpecularReflection;
-use bsdf::{BSDF, BXDF};
+use bsdf::{Bsdf, BXDF};
 use materials::MaterialTrait;
 use surface_interaction::SurfaceInteraction;
 use num_traits::Zero;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlasticMaterial {
     pub diffuse: Vector3<f64>,
     pub specular: Vector3<f64>,
@@ -28,7 +28,7 @@ impl PlasticMaterial {
 
 impl MaterialTrait for PlasticMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
-        let mut bsdf = BSDF::new(*si, None);
+        let mut bsdf = Bsdf::new(*si, None);
 
         if !self.diffuse.is_zero() {
             bsdf.add(BXDF::Lambertian(Lambertian::new(self.diffuse)));

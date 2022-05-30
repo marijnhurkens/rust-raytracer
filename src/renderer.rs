@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::mpsc;
@@ -12,8 +13,8 @@ use nalgebra::{Point2, Point3, Vector3};
 use camera::Camera;
 use film::{Bucket, Film};
 use lights::LightIrradianceSample;
-use objects::{ArcObject, Object};
 use objects::ObjectTrait;
+use objects::{ArcObject, Object};
 use sampler::Sampler;
 use scene::Scene;
 use surface_interaction::SurfaceInteraction;
@@ -70,6 +71,7 @@ lazy_static! {
 thread_local! {
     static CURRENT_X: RefCell<u32> = RefCell::new(0);
     static CURRENT_Y: RefCell<u32> = RefCell::new(0);
+    pub static CURRENT_BOUNCE: RefCell<u32> = RefCell::new(0);
 }
 
 pub struct ThreadMessage {
@@ -135,6 +137,42 @@ pub fn debug_write_pixel(val: Vector3<f64>) {
 }
 
 pub fn debug_write_pixel_f64(val: f64) {
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val;
+    buffer.buffer[(index + 1) as usize] = val;
+    buffer.buffer[(index + 2) as usize] = val;
+}
+
+pub fn debug_write_pixel_on_bounce(val: Vector3<f64>, bounce: u32) {
+    if CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow() != bounce) {
+        return;
+    }
+
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val.x;
+    buffer.buffer[(index + 1) as usize] = val.y;
+    buffer.buffer[(index + 2) as usize] = val.z;
+}
+
+pub fn debug_write_pixel_f64_on_bounce(val: f64, bounce: u32) {
+    if CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow() != bounce) {
+        return;
+    }
+
     let mut buffer = DEBUG_BUFFER.write().unwrap();
     let mut index = 0;
     CURRENT_Y.with(|y| {
@@ -331,12 +369,13 @@ pub fn check_light_visible(
     scene: &Scene,
     light_sample: &LightIrradianceSample,
 ) -> bool {
+    let direction = (light_sample.point - interaction.point).normalize();
     let ray = Ray {
-        point: interaction.point,
-        direction: (light_sample.point - interaction.point).normalize(),
+        point: interaction.point + (direction * 1e-9),
+        direction,
     };
 
-    let distance = nalgebra::distance(&interaction.point, &light_sample.point);
+    let distance = nalgebra::distance(&interaction.point, &light_sample.point) - 1e-7;
 
     if check_intersect_scene_simple(ray, scene, distance) {
         return false;

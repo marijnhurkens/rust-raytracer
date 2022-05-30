@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 extern crate bitflags;
 extern crate bvh;
 extern crate clap;
@@ -17,19 +19,19 @@ extern crate yaml_rust;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use bvh::Vector3;
 use clap::Parser;
-use ggez::{event, GameError};
-use ggez::{Context, GameResult};
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
-use ggez::event::{KeyCode, run};
+use ggez::event::{run, KeyCode};
 use ggez::graphics::{self, Color, DrawParam};
 use ggez::input::keyboard;
+use ggez::{event, GameError};
+use ggez::{Context, GameResult};
 use nalgebra::Vector2;
 use yaml_rust::YamlLoader;
 
@@ -37,7 +39,7 @@ use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
-use renderer::{DEBUG_BUFFER, DebugBuffer, SETTINGS, ThreadMessage};
+use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
 use sampler::{Sampler, SamplerMethod};
 
 mod bsdf;
@@ -47,18 +49,17 @@ mod film;
 mod helpers;
 mod lights;
 mod materials;
+mod normal;
 mod objects;
 mod renderer;
 mod sampler;
 mod scene;
 mod surface_interaction;
 mod tracer;
-mod normal;
 
 #[derive(Parser, Debug)]
 struct Args {
-    scene_file: Option<String>,
-    settings_file: Option<String>,
+    scene_folder: Option<String>,
 }
 
 struct MainState {
@@ -96,24 +97,19 @@ impl MainState {
 
 impl event::EventHandler<GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if !ggez::timer::check_update_time(ctx, 2) {
-            ggez::timer::sleep(Duration::from_secs_f64(1.0/2.0));
+        if !ggez::timer::check_update_time(ctx, 30) {
+            ggez::timer::sleep(Duration::from_secs_f64(1.0 / 10.0));
             return Ok(());
         }
 
-        self.redraw = true;
+        if ggez::timer::ticks(ctx) % 7 == 0 {
+            self.redraw = true;
+        }
 
         let settings = SETTINGS.read().unwrap();
 
-        if keyboard::is_key_pressed(ctx, KeyCode::N) {
-            self.debug_normals = !self.debug_normals;
-            println!("Normals debug view {:?}.", self.debug_normals);
-        }
-
-        if keyboard::is_key_pressed(ctx, KeyCode::D) {
-            self.debug_buffer = !self.debug_buffer;
-            println!("Debug buffer view {:?}.", self.debug_buffer);
-        }
+        self.debug_normals = keyboard::is_key_pressed(ctx, KeyCode::N);
+        self.debug_buffer = keyboard::is_key_pressed(ctx, KeyCode::D);
 
         let message = self.receiver.try_recv();
         if let Ok(message) = message {
@@ -228,10 +224,13 @@ fn main() -> GameResult {
     let args = Args::parse();
 
     // Load scene from yaml file
-    let scene = scene::Scene::load_from_file(Path::new(&args.scene_file.unwrap()));
+    let scene_folder_param = args.scene_folder.unwrap();
+    let scene_folder = Path::new(&scene_folder_param);
+    let scene = scene::Scene::load_from_folder(scene_folder);
 
     // Get settings from yaml file
-    let mut file = File::open(&args.settings_file.unwrap()).expect("Unable to open file");
+    let mut file = File::open(scene_folder.join("render_settings.yaml"))
+        .expect("Unable to open render_settings.yaml file");
     let mut contents = String::new();
     file.read_to_string(&mut contents)
         .expect("Unable to read file");
@@ -245,6 +244,7 @@ fn main() -> GameResult {
 
     let image_width = settings_yaml["film"]["image_width"].as_i64().unwrap() as u32;
     let image_height = settings_yaml["film"]["image_height"].as_i64().unwrap() as u32;
+    let window_scale = settings_yaml["window"]["scale"].as_f64().unwrap_or(1.5) as f32;
 
     let crop_start = if !settings_yaml["film"]["crop"]["start"].is_badvalue() {
         Some(yaml_array_into_point2(
@@ -309,8 +309,8 @@ fn main() -> GameResult {
             srgb: false,
         })
         .window_mode(WindowMode {
-            width: image_width as f32 * 1.5,
-            height: image_height as f32 * 1.5,
+            width: image_width as f32 * window_scale,
+            height: image_height as f32 * window_scale,
             maximized: false,
             fullscreen_type: FullscreenType::Windowed,
             borderless: false,

@@ -7,6 +7,7 @@ use lights::Light;
 use std::borrow::BorrowMut;
 
 use materials::Material;
+use objects::plane::Plane;
 //use objects::cube::Cube;
 //use objects::rectangle::Rectangle;
 //use objects::sphere::Sphere;
@@ -16,7 +17,7 @@ use surface_interaction::{Interaction, SurfaceInteraction};
 
 pub mod triangle;
 //pub mod sphere;
-//pub mod plane;
+pub mod plane;
 //pub mod cube;
 //pub mod rectangle;
 
@@ -24,6 +25,7 @@ pub mod triangle;
 pub enum Object {
     //Sphere(Sphere),
     Triangle(Triangle),
+    Plane(Plane),
     //Rectangle(Rectangle),
     //Cube(Cube),
 }
@@ -42,6 +44,7 @@ impl ObjectTrait for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.get_materials(),
             Object::Triangle(x) => x.get_materials(),
+            Object::Plane(x) => x.get_materials(),
             //Object::Rectangle(x) => x.get_materials(),
             //Object::Cube(x) => x.get_materials(),
         }
@@ -51,6 +54,7 @@ impl ObjectTrait for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.get_light(),
+            Object::Plane(x) => x.get_light(),
             //Object::Rectangle(x) => x.test_intersect(ray),
             //Object::Cube(x) => x.test_intersect(ray),
         }
@@ -60,6 +64,7 @@ impl ObjectTrait for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.test_intersect(ray),
+            Object::Plane(x) => x.test_intersect(ray),
             //Object::Rectangle(x) => x.test_intersect(ray),
             //Object::Cube(x) => x.test_intersect(ray),
         }
@@ -69,6 +74,7 @@ impl ObjectTrait for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.sample_point(),
+            Object::Plane(x) => x.sample_point(),
             //Object::Rectangle(x) => x.test_intersect(ray),
             //Object::Cube(x) => x.test_intersect(ray),
         }
@@ -78,6 +84,7 @@ impl ObjectTrait for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.pdf(interaction, wi),
+            Object::Plane(x) => x.pdf(interaction, wi),
             //Object::Rectangle(x) => x.test_intersect(ray),
             //Object::Cube(x) => x.test_intersect(ray),
         }
@@ -87,6 +94,7 @@ impl ObjectTrait for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.test_intersect(ray),
             Object::Triangle(x) => x.area(),
+            Object::Plane(x) => x.area(),
             //Object::Rectangle(x) => x.test_intersect(ray),
             //Object::Cube(x) => x.test_intersect(ray),
         }
@@ -101,6 +109,7 @@ impl Bounded for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.aabb(),
             Object::Triangle(x) => x.aabb(),
+            Object::Plane(x) => x.aabb(),
             //Object::Rectangle(x) => x.aabb(),
             //Object::Cube(x) => x.aabb(),
         }
@@ -112,6 +121,7 @@ impl BHShape for ArcObject {
         match Arc::get_mut(&mut self.0).unwrap() {
             //Object::Sphere(x) => x.set_bh_node_index(index),
             Object::Triangle(x) => x.set_bh_node_index(index),
+            Object::Plane(x) => x.set_bh_node_index(index),
             //Object::Rectangle(x) => x.set_bh_node_index(index),
             //Object::Cube(x) => x.set_bh_node_index(index),
         }
@@ -121,6 +131,7 @@ impl BHShape for ArcObject {
         match self.0.as_ref() {
             //Object::Sphere(x) => x.bh_node_index(),
             Object::Triangle(x) => x.bh_node_index(),
+            Object::Plane(x) => x.bh_node_index(),
             //Object::Rectangle(x) => x.bh_node_index(),
             //Object::Cube(x) => x.bh_node_index(),
         }

@@ -1,7 +1,8 @@
 use nalgebra::{Point3, Vector3};
 
 use bsdf::{BXDFtrait, BXDFTYPES};
-use helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
+use bsdf::helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
+use renderer::debug_write_pixel_f64;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Lambertian {

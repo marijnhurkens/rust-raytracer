@@ -4,6 +4,7 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 
 use bsdf::lambertian::Lambertian;
+use bsdf::oren_nayar::OrenNayar;
 use bsdf::specular_reflection::SpecularReflection;
 use renderer::{debug_write_pixel, debug_write_pixel_f64};
 use surface_interaction::SurfaceInteraction;
@@ -11,11 +12,13 @@ use surface_interaction::SurfaceInteraction;
 pub mod fresnel;
 pub mod lambertian;
 pub mod specular_reflection;
+pub mod oren_nayar;
+pub mod helpers;
 
 const MAX_BXDF_COUNT: usize = 5;
 
 #[derive(Copy, Clone, Debug)]
-pub struct BSDF {
+pub struct Bsdf {
     bxdfs: [Option<BXDF>; MAX_BXDF_COUNT],
     ior: f64,
     geometry_normal: Vector3<f64>,
@@ -24,9 +27,9 @@ pub struct BSDF {
     ts: Vector3<f64>,
 }
 
-impl BSDF {
-    pub fn new(surface_interaction: SurfaceInteraction, ior: Option<f64>) -> BSDF {
-        BSDF {
+impl Bsdf {
+    pub fn new(surface_interaction: SurfaceInteraction, ior: Option<f64>) -> Bsdf {
+        Bsdf {
             bxdfs: [None; MAX_BXDF_COUNT],
             ior: ior.unwrap_or(1.0),
             geometry_normal: surface_interaction.geometry_normal,
@@ -36,7 +39,7 @@ impl BSDF {
         }
     }
 
-    pub fn add(&mut self, bxdf: BXDF) -> &mut BSDF {
+    pub fn add(&mut self, bxdf: BXDF) -> &mut Bsdf {
         let slot = self.bxdfs.iter_mut().find(|x| x.is_none()).unwrap();
 
         *slot = Some(bxdf);
@@ -65,7 +68,7 @@ impl BSDF {
             })
             .collect();
 
-        if bxdfs.len() == 0 {
+        if bxdfs.is_empty() {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         }
 
@@ -198,6 +201,7 @@ bitflags! {
 pub enum BXDF {
     Lambertian(Lambertian),
     SpecularReflection(SpecularReflection),
+    OrenNayar(OrenNayar),
 }
 
 pub trait BXDFtrait {
@@ -212,6 +216,7 @@ impl BXDFtrait for BXDF {
         match self {
             BXDF::Lambertian(x) => x.get_type_flags(),
             BXDF::SpecularReflection(x) => x.get_type_flags(),
+            BXDF::OrenNayar(x) => x.get_type_flags(),
         }
     }
 
@@ -219,6 +224,7 @@ impl BXDFtrait for BXDF {
         match self {
             BXDF::Lambertian(x) => x.f(wo, wi),
             BXDF::SpecularReflection(x) => x.f(wo, wi),
+            BXDF::OrenNayar(x) => x.f(wo, wi),
         }
     }
 
@@ -226,6 +232,7 @@ impl BXDFtrait for BXDF {
         match self {
             BXDF::Lambertian(x) => x.pdf(wo, wi),
             BXDF::SpecularReflection(x) => x.pdf(wo, wi),
+            BXDF::OrenNayar(x) => x.pdf(wo, wi),
         }
     }
 
@@ -233,6 +240,7 @@ impl BXDFtrait for BXDF {
         match self {
             BXDF::Lambertian(x) => x.sample_f(_point, wo),
             BXDF::SpecularReflection(x) => x.sample_f(_point, wo),
+            BXDF::OrenNayar(x) => x.sample_f(_point, wo),
         }
     }
 }

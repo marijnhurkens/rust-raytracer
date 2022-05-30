@@ -1,6 +1,6 @@
 use nalgebra::{Point3, Vector2, Vector3};
 
-use bsdf::BSDF;
+use bsdf::Bsdf;
 use helpers::face_forward;
 
 pub struct Interaction {
@@ -10,7 +10,7 @@ pub struct Interaction {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SurfaceInteraction {
-    pub bsdf: Option<BSDF>,
+    pub bsdf: Option<Bsdf>,
     pub point: Point3<f64>,
     pub geometry_normal: Vector3<f64>,
     pub shading_normal: Vector3<f64>,

@@ -1,17 +1,19 @@
-use nalgebra::Vector3;
+use std::borrow::BorrowMut;
+
+use nalgebra::{Point3, Vector3};
 use num_traits::identities::Zero;
+use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;
-use rand::{thread_rng, Rng};
 
 use bsdf::BXDFTYPES;
 use helpers::power_heuristic;
 use lights::{Light, LightTrait};
+use lights::area::AreaLight;
 use materials::MaterialTrait;
+use Object;
 use objects::ObjectTrait;
-use renderer::{
-    check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
-    debug_write_pixel_f64, Ray, Settings,
-};
+use objects::plane::Plane;
+use renderer::{check_intersect_scene, check_intersect_scene_simple, check_light_visible, CURRENT_BOUNCE, debug_write_pixel, debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray, Settings};
 use scene::Scene;
 use surface_interaction::{Interaction, SurfaceInteraction};
 
@@ -28,6 +30,8 @@ pub fn trace(
     let mut normal = Vector3::zeros();
 
     for bounce in 0..settings.depth_limit {
+        CURRENT_BOUNCE.with(| current_bounce| *current_bounce.borrow_mut()  = bounce );
+
         let intersect = check_intersect_scene(ray, scene);
 
         // Check for an intersection
@@ -37,6 +41,22 @@ pub fn trace(
                 break;
             }
         };
+
+        // if let Object::Plane(plane) = object.0.as_ref() {
+        //
+        //     if bounce == 1 {
+        //         dbg!(surface_interaction);
+        //         panic!();
+        //     }
+        // }
+        //
+        // if let Object::Triangle(triangle) = object.0.as_ref() {
+        //
+        //     if bounce == 1 && triangle.p0 == Point3::new(-300.5, 0.0, -300.0) {
+        //         dbg!(surface_interaction);
+        //         panic!();
+        //     }
+        // }
 
         if bounce == 0 {
             normal = surface_interaction.shading_normal;
@@ -96,9 +116,12 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
     let mut direct_irradiance = Vector3::zeros();
 
     let light = scene.lights.choose(&mut rng).unwrap();
+
+    // Sample a random point on the light and calculate the irradiance at our intersection point.
     let mut irradiance_sample = light.sample_irradiance(surface_interaction);
 
-    if irradiance_sample.pdf > 0.0 || !irradiance_sample.irradiance.is_zero() {
+    // First we calculate the BSDF value for our light sample
+    if irradiance_sample.pdf > 0.0 && !irradiance_sample.irradiance.is_zero() {
         let mut f = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
             bsdf.f(surface_interaction.wo, irradiance_sample.wi, bsdf_flags)
         } else {
@@ -110,12 +133,6 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
             .dot(&surface_interaction.shading_normal)
             .abs();
 
-        let scattering_pdf = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
-            bsdf.pdf(surface_interaction.wo, irradiance_sample.wi, bsdf_flags)
-        } else {
-            0.0
-        };
-
         if !f.is_zero() {
             if !check_light_visible(surface_interaction, scene, &irradiance_sample) {
                 irradiance_sample.irradiance = Vector3::zeros();
@@ -126,9 +143,14 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
                     direct_irradiance +=
                         f.component_mul(&irradiance_sample.irradiance) / irradiance_sample.pdf;
                 } else {
+                    let scattering_pdf = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
+                        bsdf.pdf(surface_interaction.wo, irradiance_sample.wi, bsdf_flags)
+                    } else {
+                        0.0
+                    };
+
                     let weight = power_heuristic(1, irradiance_sample.pdf, 1, scattering_pdf);
-                    let light_irradiance = irradiance_sample.irradiance * weight;
-                    direct_irradiance += f.component_mul(&light_irradiance) / irradiance_sample.pdf;
+                    direct_irradiance +=  f.component_mul(&irradiance_sample.irradiance) * weight / irradiance_sample.pdf;
                 }
             }
         }
@@ -162,16 +184,17 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
 
             let mut light_irradiance = Vector3::zeros();
 
-            if let Some((object_interaction, object)) = check_intersect_scene(ray, &scene) {
-                let light_option = object.get_light();
-                if let Some(light) = light_option {
-                    if let Light::Area(light) = light.as_ref() {
-                        // we've hit an area light
-                        let interaction = Interaction {
-                            point: object_interaction.point,
-                            normal: object_interaction.shading_normal,
-                        };
-                        light_irradiance = light.irradiance_at_point(&interaction, -wi);
+            if let Some((object_interaction, object)) = check_intersect_scene(ray, scene) {
+                if let Some(found_light_arc) = object.get_light() {
+                    if std::ptr::eq(light.as_ref(), found_light_arc.as_ref()) {
+                        if let Light::Area(light) = light.as_ref() {
+                            // we've hit OUR area light
+                            let interaction = Interaction {
+                                point: object_interaction.point,
+                                normal: object_interaction.shading_normal,
+                            };
+                            light_irradiance = light.irradiance_at_point(&interaction, -wi);
+                        }
                     }
                 }
             } else {
