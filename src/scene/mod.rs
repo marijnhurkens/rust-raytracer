@@ -10,13 +10,14 @@ use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
 use lights::area::AreaLight;
+use lights::distant::DistantLight;
 use lights::Light;
 use materials::matte::MatteMaterial;
 use materials::Material;
+use objects::plane::Plane;
 use objects::triangle::Triangle;
 use objects::ArcObject;
 use Object;
-use objects::plane::Plane;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -55,86 +56,25 @@ impl Scene {
 
         let (mut objects, meshes) = load_model(world_model_file.as_path(), up_axis);
 
-        let light_height = 10.0;
-        let triangle_light_mesh = Arc::new(Mesh {
-            positions: vec![-3.5, light_height, -3.0, 3.5, light_height, -3.0, 0.0, light_height, 3.5],
-            normals: vec![0.0, -1.0, 0.0, 0.0, -1.0, 0.0, 0.0, -1.0, 0.0],
-            texcoords: vec![],
-            indices: vec![],
-            num_face_indices: vec![],
-            material_id: None,
-        });
-
-        let triangle_light = Arc::new(Light::Area(AreaLight::new(
-            ArcObject(Arc::new(Object::Triangle(Triangle::new(
-                triangle_light_mesh.clone(),
-                0,
-                1,
-                2,
-                vec![],
-                None,
-            )))),
-            Vector3::repeat(25.0),
+        let distant_light = Arc::new(Light::Distant(DistantLight::new(
+            Point3::origin(),
+            1e20,
+            Vector3::new(0.4, 1.0, 0.4),
+            Vector3::repeat(6.0),
         )));
 
-        let triangle_light_object = ArcObject(Arc::new(Object::Triangle(Triangle::new(
-            triangle_light_mesh,
-            0,
-            1,
-            2,
-            vec![Material::MatteMaterial(MatteMaterial::new(
-                Vector3::repeat(1.0),
-                20.0,
-            ))],
-            Some(triangle_light.clone()),
-        ))));
+        let lights: Vec<Arc<Light>> = vec![distant_light];
 
-        let lights: Vec<Arc<Light>> = vec![triangle_light];
-
-        objects.push(triangle_light_object);
-
-        // let floor_mesh = Arc::new(Mesh {
-        //     positions: vec![-300.5, 0.0, -300.0, 300.5, 0.0, -300.0, 0.0, 0.0, 300.5],
-        //     normals: vec![0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
-        //     texcoords: vec![],
-        //     indices: vec![],
-        //     num_face_indices: vec![],
-        //     material_id: None,
-        // });
-        //
-        // let floor = ArcObject(Arc::new(Object::Triangle(Triangle::new(
-        //     floor_mesh,
-        //     0,
-        //     1,
-        //     2,
-        //     vec![Material::MatteMaterial(MatteMaterial::new(
-        //         Vector3::repeat(1.0),
-        //         20.0,
-        //     ))],
-        //     None,
-        // ))));
-
-        //
         let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
             Point3::origin(),
-            Vector3::new(0.0,1.0,0.0),
+            Vector3::new(0.0, 1.0, 0.0),
             vec![Material::MatteMaterial(MatteMaterial::new(
                 Vector3::repeat(1.0),
                 20.0,
-            ))],
-        ))));
-
-        let ceil = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::new(0.0,15.0,0.0),
-            Vector3::new(0.0,-1.0,0.0),
-            vec![Material::MatteMaterial(MatteMaterial::new(
-                Vector3::repeat(1.0),
-                0.0,
             ))],
         ))));
 
         objects.push(floor);
-        objects.push(ceil);
 
         // Build scene
         println!("Building BVH...");
@@ -155,6 +95,8 @@ impl Scene {
         self.objects.push(o);
     }
 }
+
+//fn load_lights()
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
     dbg!(model_file);
@@ -200,7 +142,7 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                     material.diffuse[2] as f64,
                 )
             } else {
-                Vector3::repeat(0.5)
+                Vector3::repeat(0.8)
             };
 
             // let specular = Vector3::new(

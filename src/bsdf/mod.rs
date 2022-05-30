@@ -71,7 +71,7 @@ impl Bsdf {
         if bxdfs.is_empty() {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         }
-
+,
         let wo = self.world_to_local(wo_world);
 
         let (wi, pdf, f) = bxdfs

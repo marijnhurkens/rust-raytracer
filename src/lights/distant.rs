@@ -1,34 +1,36 @@
 use std::f64::consts::PI;
-
-use nalgebra::Vector3;
+use std::fmt::DebugSet;
 use nalgebra::{distance_squared, Point3};
-
+use nalgebra::Vector3;
 use lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
 use renderer::Ray;
 use surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug)]
-pub struct PointLight {
-    position: Point3<f64>,
+pub struct DistantLight {
+    world_center: Point3<f64>,
+    world_radius: f64,
+    direction: Vector3<f64>,
     intensity: Vector3<f64>,
 }
 
-impl LightTrait for PointLight {
+impl LightTrait for DistantLight {
     fn is_delta(&self) -> bool {
         true
     }
 
     // Sample_Li
     fn sample_irradiance(&self, interaction: &SurfaceInteraction) -> LightIrradianceSample {
-        let wi = (self.get_position() - interaction.point).normalize();
+        let wi = self.direction;
         let pdf = 1.0;
-        let irradiance = self.intensity / distance_squared(&self.position, &interaction.point);
+
+        let point_outside = interaction.point + self.direction * (2.0 * self.world_radius);
 
         LightIrradianceSample {
-            point: self.get_position(),
+            point: point_outside,
             wi,
             pdf,
-            irradiance,
+            irradiance: self.intensity,
         }
     }
 
@@ -44,26 +46,21 @@ impl LightTrait for PointLight {
 
     // Pdf_Le()
     fn pdf_emitting(&self, ray: Ray, light_normal: Vector3<f64>) -> LightEmittingPdf {
-        LightEmittingPdf {
-            pdf_position: 0.0,
-            pdf_direction: 1.0 / (PI.powi(4)),
-        }
+        unimplemented!();
     }
 
     fn power(&self) -> Vector3<f64> {
-        4.0 * PI * self.intensity
+        self.world_radius * self.world_radius * PI * self.intensity
     }
 }
 
-impl PointLight {
-    pub fn new(position: Point3<f64>, intensity: Vector3<f64>) -> Self {
+impl DistantLight {
+    pub fn new(world_center: Point3<f64>, world_radius: f64, direction: Vector3<f64>, intensity: Vector3<f64>) -> Self {
         Self {
-            position,
+            world_center,
+            world_radius,
+            direction: direction.normalize(),
             intensity,
         }
-    }
-
-    fn get_position(&self) -> Point3<f64> {
-        self.position
     }
 }

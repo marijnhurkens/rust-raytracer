@@ -1,17 +1,20 @@
 use nalgebra::{Point3, Vector3};
 
 use lights::area::AreaLight;
+use lights::distant::DistantLight;
 use lights::point::PointLight;
 use renderer::Ray;
 use surface_interaction::{Interaction, SurfaceInteraction};
 
 pub mod area;
 pub mod point;
+pub mod distant;
 
 #[derive(Debug)]
 pub enum Light {
     Point(PointLight),
     Area(AreaLight),
+    Distant(DistantLight),
 }
 
 pub trait LightTrait {
@@ -47,6 +50,7 @@ impl LightTrait for Light {
         match self {
             Light::Point(x) => x.is_delta(),
             Light::Area(x) => x.is_delta(),
+            Light::Distant(x) => x.is_delta(),
         }
     }
 
@@ -55,6 +59,7 @@ impl LightTrait for Light {
         match self {
             Light::Point(x) => x.sample_irradiance(interaction),
             Light::Area(x) => x.sample_irradiance(interaction),
+            Light::Distant(x) => x.sample_irradiance(interaction),
         }
     }
 
@@ -63,6 +68,7 @@ impl LightTrait for Light {
         match self {
             Light::Point(x) => x.sample_emitting(),
             Light::Area(x) => x.sample_emitting(),
+            Light::Distant(x) => x.sample_emitting(),
         }
     }
 
@@ -71,6 +77,7 @@ impl LightTrait for Light {
         match self {
             Light::Point(x) => x.pdf_incidence(interaction, wi),
             Light::Area(x) => x.pdf_incidence(interaction, wi),
+            Light::Distant(x) => x.pdf_incidence(interaction, wi),
         }
     }
 
@@ -79,6 +86,7 @@ impl LightTrait for Light {
         match self {
             Light::Point(x) => x.pdf_emitting(ray, light_normal),
             Light::Area(x) => x.pdf_emitting(ray, light_normal),
+            Light::Distant(x) => x.pdf_emitting(ray, light_normal),
         }
     }
 
@@ -86,6 +94,7 @@ impl LightTrait for Light {
         match self {
             Light::Point(x) => x.power(),
             Light::Area(x) => x.power(),
+            Light::Distant(x) => x.power(),
         }
     }
 }
