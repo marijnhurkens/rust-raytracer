@@ -38,12 +38,10 @@ pub fn trace(
 
         let intersect = check_intersect_scene(ray, scene);
 
-        if bounce == 0 || specular_bounce {
-            if intersect.is_none() {
-                for light in &scene.lights
-                {
-                    l += contribution.component_mul(&light.environment_emitting(ray));
-                }
+        if (bounce == 0 || specular_bounce) && intersect.is_none() {
+            for light in &scene.lights
+            {
+                l += contribution.component_mul(&light.environment_emitting(ray));
             }
         }
 

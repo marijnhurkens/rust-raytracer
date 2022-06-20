@@ -73,7 +73,7 @@ impl Scene {
             Point3::origin(),
             Vector3::new(0.0, 1.0, 0.0),
             vec![Material::MatteMaterial(MatteMaterial::new(
-                Vector3::repeat(1.0),
+                Vector3::repeat(0.2),
                 20.0,
             ))],
         ))));

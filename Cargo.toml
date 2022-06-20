@@ -2,6 +2,7 @@
 name = "rust-raytracer"
 version = "0.1.0"
 authors = ["Marijn Hurkens <marijnhurkens@gmail.com>"]
+edition = "2021"
 
 [dependencies]
 lazy_static = "1.4"
