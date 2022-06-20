@@ -10,10 +10,10 @@ use crate::renderer::{debug_write_pixel, debug_write_pixel_f64};
 use crate::surface_interaction::SurfaceInteraction;
 
 pub mod fresnel;
-pub mod lambertian;
-pub mod specular_reflection;
-pub mod oren_nayar;
 pub mod helpers;
+pub mod lambertian;
+pub mod oren_nayar;
+pub mod specular_reflection;
 
 const MAX_BXDF_COUNT: usize = 5;
 
@@ -78,9 +78,9 @@ impl Bsdf {
         if bxdfs.is_empty() {
             return BsdfSampleResult {
                 wi: Vector3::zeros(),
-                pdf:  0.0,
+                pdf: 0.0,
                 f: Vector3::zeros(),
-                sampled_flags: BXDFTYPES::NONE
+                sampled_flags: BXDFTYPES::NONE,
             };
         }
 
@@ -181,13 +181,11 @@ fn bump_shadowing_term(
     let g =
         (normal_geometry.dot(&wi) / normal_shading.dot(&wi)) * normal_geometry.dot(&normal_shading);
 
-    if g >= 1.0
-    {
+    if g >= 1.0 {
         return 1.0;
     }
 
-    if g < 0.0
-    {
+    if g < 0.0 {
         return 0.0;
     }
 

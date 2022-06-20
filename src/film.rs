@@ -204,7 +204,6 @@ impl Film {
                     bucket.pixels[pixel_index].sum_weight += filter_weight;
                     // todo: average or throw away?
                     bucket.pixels[pixel_index].normal = sample.normal;
-
                 }
             }
         }

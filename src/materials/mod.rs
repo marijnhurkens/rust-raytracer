@@ -8,7 +8,7 @@ pub mod plastic;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Material {
     MatteMaterial(MatteMaterial),
-    PlasticMaterial(PlasticMaterial)
+    PlasticMaterial(PlasticMaterial),
 }
 
 pub trait MaterialTrait {

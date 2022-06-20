@@ -8,7 +8,6 @@ use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
 use num_traits::Zero;
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlasticMaterial {
     pub diffuse: Vector3<f64>,

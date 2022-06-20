@@ -5,7 +5,9 @@ use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
 
-use crate::helpers::{coordinate_system, gamma, max_dimension_vec_3, permute, uniform_sample_triangle};
+use crate::helpers::{
+    coordinate_system, gamma, max_dimension_vec_3, permute, uniform_sample_triangle,
+};
 use crate::lights::area::AreaLight;
 use crate::lights::Light;
 use crate::materials::Material;
@@ -285,9 +287,8 @@ impl ObjectTrait for Triangle {
 
         let (_, surface_interaction) = intersect_object.unwrap();
 
-        nalgebra::distance_squared(&interaction.point, &surface_interaction.point) /
-            (surface_interaction.shading_normal.dot(&-wi).abs() * self.area())
-
+        nalgebra::distance_squared(&interaction.point, &surface_interaction.point)
+            / (surface_interaction.shading_normal.dot(&-wi).abs() * self.area())
     }
 
     fn get_light(&self) -> Option<&Arc<Light>> {
@@ -367,8 +368,8 @@ mod tests {
     use crate::materials;
     use crate::materials::Material;
     use crate::objects::triangle::Triangle;
-    use crate::renderer::Ray;
     use crate::objects::ObjectTrait;
+    use crate::renderer::Ray;
 
     #[test]
     fn it_tests_intersects() {

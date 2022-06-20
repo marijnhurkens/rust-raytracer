@@ -6,7 +6,7 @@ use std::sync::Arc;
 use bvh::bvh::BVH;
 use indicatif::ProgressBar;
 use nalgebra::{Point3, Vector3};
-use tobj::Mesh;
+use tobj::{LoadOptions, Mesh};
 use yaml_rust::YamlLoader;
 
 use crate::lights::area::AreaLight;
@@ -65,8 +65,6 @@ impl Scene {
             Vector3::repeat(5.0),
         )));
 
-
-
         let lights: Vec<Arc<Light>> = vec![distant_light];
 
         let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
@@ -104,7 +102,18 @@ impl Scene {
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
     dbg!(model_file);
-    let (models, materials) = tobj::load_obj(model_file, true).expect("Failed to load file");
+    let (models, materials) = tobj::load_obj(
+        model_file,
+        &LoadOptions {
+            single_index: true,
+            triangulate: true,
+            ignore_points: true,
+            ignore_lines: true,
+        },
+    )
+    .expect("Failed to load file");
+
+    let materials = materials.unwrap();
 
     dbg!(&materials);
     let mut triangles: Vec<ArcObject> = vec![];
@@ -115,12 +124,6 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         println!("model[{}].name = \'{}\'", i, m.name);
         println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
 
-        println!(
-            "Size of model[{}].num_face_indices: {}",
-            i,
-            mesh.num_face_indices.len()
-        );
-
         // Normals and texture coordinates are also loaded, but not printed in this example
         println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
         println!("model[{}].indices: {}", i, mesh.indices.len());
@@ -129,7 +132,6 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
             i,
             mesh.indices.len() / 3
         );
-        println!("model[{}].faces: {}", i, mesh.num_face_indices.len());
         println!("model[{}].normals: {}", i, mesh.normals.len() / 3);
 
         assert_eq!(mesh.indices.len() % 3, 0);

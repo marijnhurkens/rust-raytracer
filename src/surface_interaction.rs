@@ -52,5 +52,4 @@ impl SurfaceInteraction {
             p_error,
         }
     }
-
 }

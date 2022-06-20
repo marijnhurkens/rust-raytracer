@@ -7,8 +7,8 @@ use crate::renderer::Ray;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 pub mod area;
-pub mod point;
 pub mod distant;
+pub mod point;
 
 #[derive(Debug)]
 pub enum Light {

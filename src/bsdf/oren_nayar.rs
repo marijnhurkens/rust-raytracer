@@ -1,7 +1,9 @@
-use std::f64::consts::FRAC_1_PI;
 use nalgebra::{Point3, Vector3};
+use std::f64::consts::FRAC_1_PI;
 
-use crate::bsdf::helpers::{abs_cos_theta, cos_phi, get_cosine_weighted_in_hemisphere, same_hemisphere, sin_phi, sin_theta};
+use crate::bsdf::helpers::{
+    abs_cos_theta, cos_phi, get_cosine_weighted_in_hemisphere, same_hemisphere, sin_phi, sin_theta,
+};
 use crate::bsdf::{BXDFtrait, BXDFTYPES};
 
 #[derive(Debug, Clone, Copy)]
@@ -55,9 +57,7 @@ impl BXDFtrait for OrenNayar {
             tan_beta = sin_theta_o / abs_cos_theta(wo);
         }
 
-        self.reflectance_color
-            * FRAC_1_PI
-            * (self.a + self.b * max_cos * sin_alpha * tan_beta)
+        self.reflectance_color * FRAC_1_PI * (self.a + self.b * max_cos * sin_alpha * tan_beta)
     }
 
     fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {

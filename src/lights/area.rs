@@ -4,10 +4,10 @@ use std::sync::Arc;
 use nalgebra::Vector3;
 
 use crate::lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
-use crate::Object;
 use crate::objects::{ArcObject, ObjectTrait};
 use crate::renderer::{debug_write_pixel_f64, Ray};
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
+use crate::Object;
 
 #[derive(Debug)]
 pub struct AreaLight {
@@ -37,7 +37,7 @@ impl LightTrait for AreaLight {
             point: light_interaction.point,
             wi,
             pdf,
-            irradiance
+            irradiance,
         }
     }
 
@@ -45,7 +45,6 @@ impl LightTrait for AreaLight {
     fn sample_emitting(&self) -> LightEmittingSample {
         todo!()
     }
-
 
     // Pdf_Li()
     fn pdf_incidence(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
@@ -67,31 +66,23 @@ impl LightTrait for AreaLight {
     fn power(&self) -> Vector3<f64> {
         self.intensity * self.area() * PI
     }
-
-
 }
 
 impl AreaLight {
     pub fn new(object: ArcObject, intensity: Vector3<f64>) -> Self {
-        Self {
-            object,
-            intensity,
-        }
+        Self { object, intensity }
     }
 
-    fn area(&self) -> f64
-    {
+    fn area(&self) -> f64 {
         self.object.area()
     }
 
     /// L()
-    pub fn irradiance_at_point(&self, interaction: &Interaction, wo: Vector3<f64>) -> Vector3<f64>
-    {
+    pub fn irradiance_at_point(&self, interaction: &Interaction, wo: Vector3<f64>) -> Vector3<f64> {
         if interaction.normal.dot(&wo) > 0.0 {
             self.intensity
         } else {
             Vector3::zeros()
         }
     }
-
 }

@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![warn(clippy::all, clippy::cargo)]
 
 use std::fs::File;
 use std::io::Read;
@@ -21,9 +22,9 @@ use yaml_rust::YamlLoader;
 
 use denoise::denoise;
 use film::{Film, FilterMethod};
-use crate::helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
-use crate::objects::Object;
-use crate::renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
+use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
+use objects::Object;
+use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
 use sampler::{Sampler, SamplerMethod};
 
 mod bsdf;

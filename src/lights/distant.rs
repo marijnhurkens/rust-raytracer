@@ -1,10 +1,10 @@
-use std::f64::consts::PI;
-use std::fmt::DebugSet;
-use nalgebra::{distance_squared, Point3};
-use nalgebra::Vector3;
 use crate::lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
 use crate::renderer::Ray;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
+use nalgebra::Vector3;
+use nalgebra::{distance_squared, Point3};
+use std::f64::consts::PI;
+use std::fmt::DebugSet;
 
 #[derive(Debug)]
 pub struct DistantLight {
@@ -59,7 +59,12 @@ impl LightTrait for DistantLight {
 }
 
 impl DistantLight {
-    pub fn new(world_center: Point3<f64>, world_radius: f64, direction: Vector3<f64>, intensity: Vector3<f64>) -> Self {
+    pub fn new(
+        world_center: Point3<f64>,
+        world_radius: f64,
+        direction: Vector3<f64>,
+        intensity: Vector3<f64>,
+    ) -> Self {
         Self {
             world_center,
             world_radius,

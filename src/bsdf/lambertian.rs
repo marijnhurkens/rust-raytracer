@@ -1,7 +1,7 @@
 use nalgebra::{Point3, Vector3};
 
-use crate::bsdf::{BXDFtrait, BXDFTYPES};
 use crate::bsdf::helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
+use crate::bsdf::{BXDFtrait, BXDFTYPES};
 use crate::renderer::debug_write_pixel_f64;
 
 #[derive(Debug, Clone, Copy)]
@@ -11,9 +11,7 @@ pub struct Lambertian {
 
 impl Lambertian {
     pub fn new(reflectance_color: Vector3<f64>) -> Self {
-        Lambertian {
-            reflectance_color,
-        }
+        Lambertian { reflectance_color }
     }
 }
 

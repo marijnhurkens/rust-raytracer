@@ -1,18 +1,23 @@
 [package]
 name = "rust-raytracer"
+description = "A Raytracer in Rust"
+license = "MIT"
 version = "0.1.0"
 authors = ["Marijn Hurkens <marijnhurkens@gmail.com>"]
 edition = "2021"
+repository = "https://github.com/marijnhurkens/rust-raytracer"
+keywords = ["raytracer"]
+categories = []
 
 [dependencies]
 lazy_static = "1.4"
-image = "0.23"
+image = "0.24"
 ggez = "0.7.0"
 rand = "0.8.5"
-nalgebra = "0.30.1"
+nalgebra = "0.31"
 bvh = "0.6"
-tobj = "2.0"
-indicatif = "0.15"
+tobj = "3.2"
+indicatif = "0.16"
 sobol = "1.0.2"
 yaml-rust = "0.4"
 oidn = "1.4.2"

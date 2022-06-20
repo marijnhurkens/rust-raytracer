@@ -1,10 +1,10 @@
-use nalgebra::Vector3;
-use num_traits::Zero;
-use crate::bsdf::{Bsdf, BXDF};
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::oren_nayar::OrenNayar;
+use crate::bsdf::{Bsdf, BXDF};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
+use nalgebra::Vector3;
+use num_traits::Zero;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatteMaterial {
@@ -24,10 +24,10 @@ impl MatteMaterial {
 impl MaterialTrait for MatteMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
         let mut bsdf = Bsdf::new(*si, None);
-        let sigma = self.roughness.clamp(0.0,90.0);
+        let sigma = self.roughness.clamp(0.0, 90.0);
 
         if !self.reflectance_color.is_zero() {
-            if sigma == 0.0  {
+            if sigma == 0.0 {
                 let lambertian = Lambertian::new(self.reflectance_color);
                 bsdf.add(BXDF::Lambertian(lambertian));
             } else {

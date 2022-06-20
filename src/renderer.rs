@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -7,7 +8,6 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
-use lazy_static::lazy_static;
 
 use nalgebra::{Point2, Point3, Vector3};
 
