@@ -1,11 +1,11 @@
 use nalgebra::Vector3;
 
-use bsdf::fresnel::DielectricFresnel;
-use bsdf::lambertian::Lambertian;
-use bsdf::specular_reflection::SpecularReflection;
-use bsdf::{Bsdf, BXDF};
-use materials::MaterialTrait;
-use surface_interaction::SurfaceInteraction;
+use crate::bsdf::fresnel::DielectricFresnel;
+use crate::bsdf::lambertian::Lambertian;
+use crate::bsdf::specular_reflection::SpecularReflection;
+use crate::bsdf::{Bsdf, BXDF};
+use crate::materials::MaterialTrait;
+use crate::surface_interaction::SurfaceInteraction;
 use num_traits::Zero;
 
 

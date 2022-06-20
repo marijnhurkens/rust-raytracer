@@ -4,15 +4,15 @@ use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector2, Vector3};
 
-use helpers::coordinate_system;
-use lights::Light;
-use materials::Material;
-use objects::ObjectTrait;
-use renderer;
-use renderer::{
+use crate::helpers::coordinate_system;
+use crate::lights::Light;
+use crate::materials::Material;
+use crate::objects::ObjectTrait;
+use crate::renderer;
+use crate::renderer::{
     debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray,
 };
-use surface_interaction::{Interaction, SurfaceInteraction};
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug, Clone)]
 pub struct Plane {

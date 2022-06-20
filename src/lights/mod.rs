@@ -1,10 +1,10 @@
 use nalgebra::{Point3, Vector3};
 
-use lights::area::AreaLight;
-use lights::distant::DistantLight;
-use lights::point::PointLight;
-use renderer::Ray;
-use surface_interaction::{Interaction, SurfaceInteraction};
+use crate::lights::area::AreaLight;
+use crate::lights::distant::DistantLight;
+use crate::lights::point::PointLight;
+use crate::renderer::Ray;
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 pub mod area;
 pub mod point;

@@ -1,6 +1,6 @@
-use materials::matte::MatteMaterial;
-use materials::plastic::PlasticMaterial;
-use surface_interaction::SurfaceInteraction;
+use crate::materials::matte::MatteMaterial;
+use crate::materials::plastic::PlasticMaterial;
+use crate::surface_interaction::SurfaceInteraction;
 
 pub mod matte;
 pub mod plastic;

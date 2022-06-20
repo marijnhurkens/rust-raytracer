@@ -4,9 +4,9 @@ use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector3};
 
-use materials::Material;
-use renderer::{Ray};
-use surface_interaction::SurfaceInteraction;
+use crate::materials::Material;
+use crate::renderer::{Ray};
+use crate::surface_interaction::SurfaceInteraction;
 
 #[derive(Debug)]
 pub struct Cube {

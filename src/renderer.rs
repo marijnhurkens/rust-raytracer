@@ -7,19 +7,20 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
+use lazy_static::lazy_static;
 
 use nalgebra::{Point2, Point3, Vector3};
 
-use camera::Camera;
-use film::{Bucket, Film};
-use lights::LightIrradianceSample;
-use objects::ObjectTrait;
-use objects::{ArcObject, Object};
-use sampler::Sampler;
-use scene::Scene;
-use surface_interaction::SurfaceInteraction;
-use tracer::trace;
-use SamplerMethod;
+use crate::camera::Camera;
+use crate::film::{Bucket, Film};
+use crate::lights::LightIrradianceSample;
+use crate::objects::ObjectTrait;
+use crate::objects::{ArcObject, Object};
+use crate::sampler::Sampler;
+use crate::scene::Scene;
+use crate::surface_interaction::SurfaceInteraction;
+use crate::tracer::trace;
+use crate::SamplerMethod;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {

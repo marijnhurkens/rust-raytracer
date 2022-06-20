@@ -5,14 +5,14 @@ use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
 
-use helpers::{coordinate_system, gamma, max_dimension_vec_3, permute, uniform_sample_triangle};
-use lights::area::AreaLight;
-use lights::Light;
-use materials::Material;
-use objects::ObjectTrait;
-use renderer;
-use renderer::{check_intersect_scene, debug_write_pixel, Ray};
-use surface_interaction::{Interaction, SurfaceInteraction};
+use crate::helpers::{coordinate_system, gamma, max_dimension_vec_3, permute, uniform_sample_triangle};
+use crate::lights::area::AreaLight;
+use crate::lights::Light;
+use crate::materials::Material;
+use crate::objects::ObjectTrait;
+use crate::renderer;
+use crate::renderer::{check_intersect_scene, debug_write_pixel, Ray};
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
@@ -364,11 +364,11 @@ mod tests {
     use nalgebra::{Point3, Vector3};
     use tobj::Mesh;
 
-    use materials;
-    use materials::Material;
-    use objects::triangle::Triangle;
-    use renderer::Ray;
-    use objects::ObjectTrait;
+    use crate::materials;
+    use crate::materials::Material;
+    use crate::objects::triangle::Triangle;
+    use crate::renderer::Ray;
+    use crate::objects::ObjectTrait;
 
     #[test]
     fn it_tests_intersects() {

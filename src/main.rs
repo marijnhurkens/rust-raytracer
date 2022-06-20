@@ -1,21 +1,5 @@
 #![allow(unused)]
 
-extern crate bitflags;
-extern crate bvh;
-extern crate clap;
-extern crate core;
-extern crate ggez;
-extern crate image;
-extern crate indicatif;
-#[macro_use]
-extern crate lazy_static;
-extern crate nalgebra;
-extern crate num_traits;
-extern crate rand;
-extern crate sobol;
-extern crate tobj;
-extern crate yaml_rust;
-
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -37,9 +21,9 @@ use yaml_rust::YamlLoader;
 
 use denoise::denoise;
 use film::{Film, FilterMethod};
-use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
-use objects::Object;
-use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
+use crate::helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
+use crate::objects::Object;
+use crate::renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
 use sampler::{Sampler, SamplerMethod};
 
 mod bsdf;

@@ -2,9 +2,9 @@ use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Matrix3, Point3, Vector2, Vector3};
 
-use materials::Material;
-use renderer;
-use surface_interaction::SurfaceInteraction;
+use crate::materials::Material;
+use crate::renderer;
+use crate::surface_interaction::SurfaceInteraction;
 
 // RECTANGLE
 #[derive(Debug)]

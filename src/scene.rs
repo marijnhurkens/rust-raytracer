@@ -9,17 +9,17 @@ use nalgebra::{Point3, Vector3};
 use tobj::Mesh;
 use yaml_rust::YamlLoader;
 
-use lights::area::AreaLight;
-use lights::distant::DistantLight;
-use lights::point::PointLight;
-use lights::Light;
-use materials::matte::MatteMaterial;
-use materials::plastic::PlasticMaterial;
-use materials::Material;
-use objects::plane::Plane;
-use objects::triangle::Triangle;
-use objects::ArcObject;
-use Object;
+use crate::lights::area::AreaLight;
+use crate::lights::distant::DistantLight;
+use crate::lights::point::PointLight;
+use crate::lights::Light;
+use crate::materials::matte::MatteMaterial;
+use crate::materials::plastic::PlasticMaterial;
+use crate::materials::Material;
+use crate::objects::plane::Plane;
+use crate::objects::triangle::Triangle;
+use crate::objects::ArcObject;
+use crate::Object;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,

@@ -1,7 +1,7 @@
 use nalgebra::{Point3, Vector2, Vector3};
 
-use bsdf::Bsdf;
-use helpers::face_forward;
+use crate::bsdf::Bsdf;
+use crate::helpers::face_forward;
 
 pub struct Interaction {
     pub point: Point3<f64>,

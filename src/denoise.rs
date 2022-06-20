@@ -1,6 +1,6 @@
 use image::ImageBuffer;
 
-use Film;
+use crate::Film;
 
 pub fn denoise(film: &mut Film) -> &mut Film {
     let image_width = film.image_size.x;

@@ -1,8 +1,8 @@
 use std::f64::consts::FRAC_1_PI;
 use nalgebra::{Point3, Vector3};
 
-use bsdf::helpers::{abs_cos_theta, cos_phi, get_cosine_weighted_in_hemisphere, same_hemisphere, sin_phi, sin_theta};
-use bsdf::{BXDFtrait, BXDFTYPES};
+use crate::bsdf::helpers::{abs_cos_theta, cos_phi, get_cosine_weighted_in_hemisphere, same_hemisphere, sin_phi, sin_theta};
+use crate::bsdf::{BXDFtrait, BXDFTYPES};
 
 #[derive(Debug, Clone, Copy)]
 pub struct OrenNayar {

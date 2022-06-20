@@ -5,21 +5,21 @@ use num_traits::identities::Zero;
 use rand::prelude::SliceRandom;
 use rand::{thread_rng, Rng};
 
-use bsdf::{BsdfSampleResult, BXDFTYPES};
-use helpers::power_heuristic;
-use lights::area::AreaLight;
-use lights::{Light, LightTrait};
-use materials::MaterialTrait;
-use objects::plane::Plane;
-use objects::ObjectTrait;
-use renderer::{
+use crate::bsdf::{BsdfSampleResult, BXDFTYPES};
+use crate::helpers::power_heuristic;
+use crate::lights::area::AreaLight;
+use crate::lights::{Light, LightTrait};
+use crate::materials::MaterialTrait;
+use crate::objects::plane::Plane;
+use crate::objects::ObjectTrait;
+use crate::renderer::{
     check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
     debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray,
     Settings, CURRENT_BOUNCE,
 };
-use scene::Scene;
-use surface_interaction::{Interaction, SurfaceInteraction};
-use Object;
+use crate::scene::Scene;
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
+use crate::Object;
 
 pub fn trace(
     settings: &Settings,

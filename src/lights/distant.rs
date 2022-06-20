@@ -2,9 +2,9 @@ use std::f64::consts::PI;
 use std::fmt::DebugSet;
 use nalgebra::{distance_squared, Point3};
 use nalgebra::Vector3;
-use lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
-use renderer::Ray;
-use surface_interaction::{Interaction, SurfaceInteraction};
+use crate::lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
+use crate::renderer::Ray;
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug)]
 pub struct DistantLight {

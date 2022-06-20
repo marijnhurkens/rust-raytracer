@@ -1,10 +1,10 @@
 use nalgebra::Vector3;
 use num_traits::Zero;
-use bsdf::{Bsdf, BXDF};
-use bsdf::lambertian::Lambertian;
-use bsdf::oren_nayar::OrenNayar;
-use materials::MaterialTrait;
-use surface_interaction::SurfaceInteraction;
+use crate::bsdf::{Bsdf, BXDF};
+use crate::bsdf::lambertian::Lambertian;
+use crate::bsdf::oren_nayar::OrenNayar;
+use crate::materials::MaterialTrait;
+use crate::surface_interaction::SurfaceInteraction;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatteMaterial {

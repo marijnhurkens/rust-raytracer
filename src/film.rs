@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use image::{ImageBuffer, Rgb};
 use nalgebra::{Point2, Vector2, Vector3};
 
-use helpers::Bounds;
-use renderer::SampleResult;
+use crate::helpers::Bounds;
+use crate::renderer::SampleResult;
 
 #[derive(PartialEq)]
 pub enum FilterMethod {

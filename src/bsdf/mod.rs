@@ -3,11 +3,11 @@ use nalgebra::{Point3, Vector3};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 
-use bsdf::lambertian::Lambertian;
-use bsdf::oren_nayar::OrenNayar;
-use bsdf::specular_reflection::SpecularReflection;
-use renderer::{debug_write_pixel, debug_write_pixel_f64};
-use surface_interaction::SurfaceInteraction;
+use crate::bsdf::lambertian::Lambertian;
+use crate::bsdf::oren_nayar::OrenNayar;
+use crate::bsdf::specular_reflection::SpecularReflection;
+use crate::renderer::{debug_write_pixel, debug_write_pixel_f64};
+use crate::surface_interaction::SurfaceInteraction;
 
 pub mod fresnel;
 pub mod lambertian;

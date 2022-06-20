@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use nalgebra::Vector3;
 
-use lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
-use Object;
-use objects::{ArcObject, ObjectTrait};
-use renderer::{debug_write_pixel_f64, Ray};
-use surface_interaction::{Interaction, SurfaceInteraction};
+use crate::lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
+use crate::Object;
+use crate::objects::{ArcObject, ObjectTrait};
+use crate::renderer::{debug_write_pixel_f64, Ray};
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug)]
 pub struct AreaLight {

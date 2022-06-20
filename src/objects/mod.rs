@@ -1,19 +1,20 @@
+use std::borrow::BorrowMut;
 use std::sync::Arc;
+
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector3};
-use lights::area::AreaLight;
-use lights::Light;
-use std::borrow::BorrowMut;
 
-use materials::Material;
-use objects::plane::Plane;
-//use objects::cube::Cube;
-//use objects::rectangle::Rectangle;
-//use objects::sphere::Sphere;
-use objects::triangle::Triangle;
-use renderer;
-use surface_interaction::{Interaction, SurfaceInteraction};
+use crate::lights::area::AreaLight;
+use crate::lights::Light;
+use crate::materials::Material;
+use crate::objects::plane::Plane;
+//use crate::objects::cube::Cube;
+//use crate::objects::rectangle::Rectangle;
+//use crate::objects::sphere::Sphere;
+use crate::objects::triangle::Triangle;
+use crate::renderer;
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 pub mod triangle;
 //pub mod sphere;
@@ -102,7 +103,7 @@ impl ObjectTrait for ArcObject {
 }
 
 #[derive(Debug)]
-pub struct ArcObject (pub Arc<Object>);
+pub struct ArcObject(pub Arc<Object>);
 
 impl Bounded for ArcObject {
     fn aabb(&self) -> AABB {

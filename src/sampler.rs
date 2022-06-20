@@ -1,12 +1,13 @@
 use std::f64::consts::PI;
 
+use lazy_static::lazy_static;
 use nalgebra::Point2;
 use rand::*;
 use sobol::params::JoeKuoD6;
 use sobol::Sobol;
-use camera::Camera;
 
-use renderer::*;
+use crate::camera::Camera;
+use crate::renderer::Ray;
 
 #[derive(Debug, Copy, Clone)]
 pub enum SamplerMethod {
