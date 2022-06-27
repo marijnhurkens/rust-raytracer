@@ -1,7 +1,8 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Mul;
 
-use nalgebra::{ClosedSub, Point2, Point3, Scalar, Vector2, Vector3};
+use nalgebra::{ArrayStorage, ClosedSub, Point2, Point3, Scalar, U1, U3, Vector2, Vector3};
+use nalgebra::indexing::MatrixIndex;
 use rand::{thread_rng, Rng};
 use yaml_rust::Yaml;
 
@@ -180,7 +181,7 @@ pub fn yaml_into_u32(yaml: &Yaml) -> u32 {
     yaml.as_i64().unwrap() as u32
 }
 
-pub fn max_dimension_vec_3(v: Vector3<f64>) -> usize {
+pub fn max_dimension_vec_3<T: Scalar + PartialOrd>(v: Vector3<T>) -> usize {
     if v.x > v.y {
         if v.x > v.z {
             0
@@ -194,8 +195,30 @@ pub fn max_dimension_vec_3(v: Vector3<f64>) -> usize {
     }
 }
 
-pub fn permute(v: Vector3<f64>, x: usize, y: usize, z: usize) -> Vector3<f64> {
+pub fn permute< T: Copy>(v: Vector3<T>, x: usize, y: usize, z: usize) -> Vector3<T>
+{
     Vector3::new(v[x], v[y], v[z])
+}
+
+pub fn concentric_sample_disk() -> Point2<f64> {
+    let mut rng = thread_rng();
+
+    let u_offset = Point2::new(rng.gen::<f64>(), rng.gen::<f64>()) * 2.0 - Vector2::new(1.0, 1.0);
+
+    if u_offset.x == 0.0 && u_offset.y == 0.0 {
+        return Point2::new(0.0, 0.0);
+    }
+
+    let (theta, r);
+    if u_offset.x.abs() > u_offset.y.abs() {
+        r = u_offset.x;
+        theta = FRAC_PI_4 * (u_offset.y / u_offset.x);
+    } else {
+        r = u_offset.y;
+        theta = FRAC_PI_2 - FRAC_PI_4 * (u_offset.x / u_offset.y);
+    }
+
+    r * Point2::new(theta.cos(), theta.sin())
 }
 
 #[cfg(test)]
@@ -210,8 +233,6 @@ mod tests {
 
         let ratio = get_fresnel_ratio(normal, angle_of_incidence, ior);
 
-        println!("{}", ratio);
-
         assert!(ratio > 0.03999999);
         assert!(ratio < 0.04000001);
     }
@@ -224,7 +245,6 @@ mod tests {
 
         let ratio = get_fresnel_ratio(normal, angle_of_incidence, ior);
 
-        println!("{}", ratio);
         assert!(ratio > 0.99999999);
         assert!(ratio < 1.00000001);
     }
@@ -237,8 +257,23 @@ mod tests {
 
         let ratio = get_fresnel_ratio(normal, angle_of_incidence, ior);
 
-        println!("{}", ratio);
         assert!(ratio > 0.499999);
         assert!(ratio < 0.500001);
+    }
+
+    #[test]
+    fn test_max_dimension_vec_3() {
+        let vec = Vector3::new(1,3,2);
+        let res = max_dimension_vec_3(vec);
+        assert_eq!(1, res);
+    }
+
+    #[test]
+    fn test_permute() {
+        let input = Vector3::new(1, 2, 3);
+
+        let res = permute(input, 2, 1, 0);
+
+        assert_eq!(Vector3::new(3, 2, 1), res);
     }
 }

@@ -367,6 +367,7 @@ mod tests {
 
     use crate::materials;
     use crate::materials::Material;
+    use crate::materials::matte::MatteMaterial;
     use crate::objects::triangle::Triangle;
     use crate::objects::ObjectTrait;
     use crate::renderer::Ray;
@@ -375,11 +376,14 @@ mod tests {
     fn it_tests_intersects() {
         let mesh = Mesh {
             positions: vec![-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0],
+            vertex_color: vec![],
             normals: vec![0.6, 0.0, -1.0, 0.0, 0.5, -1.0, 0.4, 0.0, -1.0],
             texcoords: vec![],
             indices: vec![],
-            num_face_indices: vec![],
+            face_arities: vec![],
+            texcoord_indices: vec![],
             material_id: None,
+            normal_indices: vec![]
         };
 
         let triangle = Triangle::new(
@@ -387,7 +391,7 @@ mod tests {
             0,
             1,
             2,
-            vec![Material::MatteMaterial(materials::MatteMaterial::new(
+            vec![Material::MatteMaterial(MatteMaterial::new(
                 Vector3::new(1.0, 1.0, 1.0),
                 100.0,
             ))],
@@ -415,7 +419,5 @@ mod tests {
         );
 
         assert_eq!(2.0, distance);
-
-        dbg!(i);
     }
 }

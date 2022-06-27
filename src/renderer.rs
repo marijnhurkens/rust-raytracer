@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -9,6 +8,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::SystemTime;
 
+use lazy_static::lazy_static;
 use nalgebra::{Point2, Point3, Vector3};
 
 use crate::camera::Camera;
@@ -16,21 +16,16 @@ use crate::film::{Bucket, Film};
 use crate::lights::LightIrradianceSample;
 use crate::objects::ObjectTrait;
 use crate::objects::{ArcObject, Object};
-use crate::sampler::Sampler;
+use crate::sampler::SobolSampler;
 use crate::scene::Scene;
 use crate::surface_interaction::SurfaceInteraction;
 use crate::tracer::trace;
-use crate::SamplerMethod;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Settings {
-    pub denoise: bool,
     pub thread_count: u32,
     pub depth_limit: u32,
     pub max_samples: u32,
-    pub min_samples: u32,
-    pub gamma: f64,
-    pub sampler: Sampler,
 }
 
 pub struct DebugBuffer {
@@ -40,26 +35,6 @@ pub struct DebugBuffer {
 }
 
 lazy_static! {
-    pub static ref SETTINGS: RwLock<Settings> = {
-        RwLock::new(Settings {
-            denoise: false,
-            thread_count: 8,
-            depth_limit: 4,
-            max_samples: 32,
-            min_samples: 16,
-            gamma: 1.2,
-            sampler: Sampler::new(
-                SamplerMethod::Random,
-                Camera::new(
-                    Point3::new(0.0, 0.0, -1.0),
-                    Point3::new(0.0, 0.0, 0.0),
-                    80.0,
-                ),
-                80,
-                80,
-            ),
-        })
-    };
     pub static ref DEBUG_BUFFER: RwLock<DebugBuffer> = {
         RwLock::new(DebugBuffer {
             width: 0,
@@ -108,99 +83,26 @@ pub struct Intersection {
 #[derive(Debug, Copy, Clone)]
 pub struct SampleResult {
     pub radiance: Vector3<f64>,
-    pub pixel_location: Point2<f64>,
+    pub p_film: Point2<f64>,
     pub normal: Vector3<f64>,
-}
-
-lazy_static! {
-    pub static ref STATS: RwLock<Stats> = {
-        let stats = Stats {
-            rays_done: 0,
-            threads: HashMap::new(),
-        };
-
-        RwLock::new(stats)
-    };
-}
-
-pub fn debug_write_pixel(val: Vector3<f64>) {
-    let mut buffer = DEBUG_BUFFER.write().unwrap();
-    let mut index = 0;
-    CURRENT_Y.with(|y| {
-        CURRENT_X.with(|x| {
-            index = *y.borrow() * buffer.height + *x.borrow();
-            index *= 3;
-        });
-    });
-    buffer.buffer[index as usize] = val.x;
-    buffer.buffer[(index + 1) as usize] = val.y;
-    buffer.buffer[(index + 2) as usize] = val.z;
-}
-
-pub fn debug_write_pixel_f64(val: f64) {
-    let mut buffer = DEBUG_BUFFER.write().unwrap();
-    let mut index = 0;
-    CURRENT_Y.with(|y| {
-        CURRENT_X.with(|x| {
-            index = *y.borrow() * buffer.height + *x.borrow();
-            index *= 3;
-        });
-    });
-    buffer.buffer[index as usize] = val;
-    buffer.buffer[(index + 1) as usize] = val;
-    buffer.buffer[(index + 2) as usize] = val;
-}
-
-pub fn debug_write_pixel_on_bounce(val: Vector3<f64>, bounce: u32) {
-    if CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow() != bounce) {
-        return;
-    }
-
-    let mut buffer = DEBUG_BUFFER.write().unwrap();
-    let mut index = 0;
-    CURRENT_Y.with(|y| {
-        CURRENT_X.with(|x| {
-            index = *y.borrow() * buffer.height + *x.borrow();
-            index *= 3;
-        });
-    });
-    buffer.buffer[index as usize] = val.x;
-    buffer.buffer[(index + 1) as usize] = val.y;
-    buffer.buffer[(index + 2) as usize] = val.z;
-}
-
-pub fn debug_write_pixel_f64_on_bounce(val: f64, bounce: u32) {
-    if CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow() != bounce) {
-        return;
-    }
-
-    let mut buffer = DEBUG_BUFFER.write().unwrap();
-    let mut index = 0;
-    CURRENT_Y.with(|y| {
-        CURRENT_X.with(|x| {
-            index = *y.borrow() * buffer.height + *x.borrow();
-            index *= 3;
-        });
-    });
-    buffer.buffer[index as usize] = val;
-    buffer.buffer[(index + 1) as usize] = val;
-    buffer.buffer[(index + 2) as usize] = val;
 }
 
 pub fn render(
     scene: Scene,
-    film: Arc<RwLock<Film>>,
+    settings: Settings,
+    sampler: SobolSampler,
+    camera: Arc<Camera>,
 ) -> (Vec<JoinHandle<()>>, Receiver<ThreadMessage>) {
     let scene = Arc::new(scene);
     let mut threads: Vec<JoinHandle<()>> = vec![];
-    let settings = SETTINGS.read().unwrap();
 
     let (sender, receiver): (Sender<ThreadMessage>, Receiver<ThreadMessage>) = mpsc::channel();
 
     // thread id is used to divide the work
     for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
-        let thread_film = film.clone();
+        let thread_camera = camera.clone();
+        let mut thread_sampler = sampler.clone();
 
         let thread_sender = sender.clone();
 
@@ -218,7 +120,7 @@ pub fn render(
             let mut samples_done = 0;
 
             loop {
-                let bucket = thread_film.write().unwrap().get_bucket();
+                let bucket = thread_camera.film.write().unwrap().get_bucket();
 
                 match bucket {
                     Some(bucket) => {
@@ -226,17 +128,25 @@ pub fn render(
                         let mut bucket_lock = bucket.try_lock().unwrap();
 
                         // returns false if thread was requested to stop
-                        if !render_work(&mut bucket_lock, &thread_scene) {
+                        if !render_work(
+                            &mut bucket_lock,
+                            &thread_scene,
+                            &settings,
+                            &mut thread_sampler,
+                            &thread_camera,
+                        ) {
                             return;
                         }
 
                         samples_done += bucket_lock.samples.len();
-                        thread_film
+                        thread_camera
+                            .film
                             .read()
                             .unwrap()
                             .write_bucket_pixels(&mut bucket_lock);
                         // keep the write lock as short as possible
-                        thread_film
+                        thread_camera
+                            .film
                             .write()
                             .unwrap()
                             .merge_bucket_pixels_to_image_buffer(&mut bucket_lock);
@@ -269,27 +179,30 @@ pub fn render(
     (threads, receiver)
 }
 
-fn render_work(bucket: &mut Bucket, scene: &Scene) -> bool {
-    let settings = SETTINGS.read().unwrap();
-
+fn render_work(
+    bucket: &mut Bucket,
+    scene: &Scene,
+    settings: &Settings,
+    sampler: &mut SobolSampler,
+    camera: &Arc<Camera>,
+) -> bool {
     for y in bucket.sample_bounds.p_min.y..bucket.sample_bounds.p_max.y {
         for x in bucket.sample_bounds.p_min.x..bucket.sample_bounds.p_max.x {
             CURRENT_X.with(|current_x| *current_x.borrow_mut() = x);
             CURRENT_Y.with(|current_y| *current_y.borrow_mut() = y);
 
-            let samples = settings.sampler.get_samples(settings.max_samples, x, y);
+            let mut sample_results: Vec<SampleResult> =
+                Vec::with_capacity(settings.max_samples as usize);
 
-            let mut sample_results: Vec<SampleResult> = Vec::with_capacity(samples.len());
-
-            for sample in samples {
-                let (mut new_pixel_color, normal) = trace(&settings, sample.ray, scene).unwrap();
-
-                // new_pixel_color = new_pixel_color
-                //     .simd_clamp(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0));
+            for _ in 0..settings.max_samples {
+                let camera_sample = sampler.get_camera_sample(Point2::new(x as f64, y as f64));
+                let ray = camera.generate_ray(camera_sample);
+                debug_write_pixel((ray.direction * 0.5) + Vector3::repeat(0.5));
+                let (radiance, normal) = trace(settings, ray, scene).unwrap();
 
                 sample_results.push(SampleResult {
-                    radiance: new_pixel_color,
-                    pixel_location: sample.pixel_position,
+                    radiance,
+                    p_film: camera_sample.p_film,
                     normal,
                 });
             }
@@ -383,4 +296,79 @@ pub fn check_light_visible(
     }
 
     true
+}
+
+lazy_static! {
+    pub static ref STATS: RwLock<Stats> = {
+        let stats = Stats {
+            rays_done: 0,
+            threads: HashMap::new(),
+        };
+
+        RwLock::new(stats)
+    };
+}
+
+pub fn debug_write_pixel(val: Vector3<f64>) {
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val.x;
+    buffer.buffer[(index + 1) as usize] = val.y;
+    buffer.buffer[(index + 2) as usize] = val.z;
+}
+
+pub fn debug_write_pixel_f64(val: f64) {
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val;
+    buffer.buffer[(index + 1) as usize] = val;
+    buffer.buffer[(index + 2) as usize] = val;
+}
+
+pub fn debug_write_pixel_on_bounce(val: Vector3<f64>, bounce: u32) {
+    if CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow() != bounce) {
+        return;
+    }
+
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val.x;
+    buffer.buffer[(index + 1) as usize] = val.y;
+    buffer.buffer[(index + 2) as usize] = val.z;
+}
+
+pub fn debug_write_pixel_f64_on_bounce(val: f64, bounce: u32) {
+    if CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow() != bounce) {
+        return;
+    }
+
+    let mut buffer = DEBUG_BUFFER.write().unwrap();
+    let mut index = 0;
+    CURRENT_Y.with(|y| {
+        CURRENT_X.with(|x| {
+            index = *y.borrow() * buffer.height + *x.borrow();
+            index *= 3;
+        });
+    });
+    buffer.buffer[index as usize] = val;
+    buffer.buffer[(index + 1) as usize] = val;
+    buffer.buffer[(index + 2) as usize] = val;
 }

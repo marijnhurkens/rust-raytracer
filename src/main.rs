@@ -1,6 +1,8 @@
 #![allow(unused)]
 #![warn(clippy::all, clippy::cargo)]
 
+extern crate core;
+
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -17,15 +19,19 @@ use ggez::graphics::{self, Color, DrawParam};
 use ggez::input::keyboard;
 use ggez::{event, GameError};
 use ggez::{Context, GameResult};
-use nalgebra::Vector2;
+use nalgebra::{Point2, Vector2};
 use yaml_rust::YamlLoader;
 
 use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
-use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER, SETTINGS};
-use sampler::{Sampler, SamplerMethod};
+use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER};
+use crate::camera::Camera;
+use crate::helpers::Bounds;
+
+use crate::renderer::Settings;
+use crate::sampler::SobolSampler;
 
 mod bsdf;
 mod camera;
@@ -55,6 +61,7 @@ struct MainState {
     running_threads: usize,
     finished: bool,
     denoised: bool,
+    should_denoise: bool,
     debug_normals: bool,
     debug_buffer: bool,
 }
@@ -65,6 +72,7 @@ impl MainState {
         threads: Vec<JoinHandle<()>>,
         receiver: Receiver<ThreadMessage>,
         running_threads: usize,
+        should_denoise: bool,
     ) -> GameResult<MainState> {
         Ok(MainState {
             redraw: true,
@@ -73,6 +81,7 @@ impl MainState {
             receiver,
             running_threads,
             finished: false,
+            should_denoise,
             denoised: false,
             debug_normals: false,
             debug_buffer: false,
@@ -91,8 +100,6 @@ impl event::EventHandler<GameError> for MainState {
             self.redraw = true;
         }
 
-        let settings = SETTINGS.read().unwrap();
-
         self.debug_normals = keyboard::is_key_pressed(ctx, KeyCode::N);
         self.debug_buffer = keyboard::is_key_pressed(ctx, KeyCode::D);
 
@@ -107,7 +114,7 @@ impl event::EventHandler<GameError> for MainState {
             println!("All work is done.");
             self.finished = true;
 
-            if !self.denoised && settings.denoise {
+            if !self.denoised && self.should_denoise {
                 print!("Denoising...");
                 let mut film = self.film.write().unwrap();
                 denoise(&mut film);
@@ -221,31 +228,32 @@ fn main() -> GameResult {
         .expect("Unable to read file");
     let settings_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
 
-    let camera = camera::Camera::new(
-        yaml_array_into_point3(&settings_yaml["camera"]["position"]),
-        yaml_array_into_point3(&settings_yaml["camera"]["target"]),
-        settings_yaml["camera"]["fov"].as_f64().unwrap(),
-    );
+    let settings = Settings {
+        thread_count: yaml_into_u32(&settings_yaml["renderer"]["threads"]),
+        depth_limit: yaml_into_u32(&settings_yaml["renderer"]["depth_limit"]),
+        max_samples: yaml_into_u32(&settings_yaml["sampler"]["max_samples"]),
+    };
 
     let image_width = settings_yaml["film"]["image_width"].as_i64().unwrap() as u32;
     let image_height = settings_yaml["film"]["image_height"].as_i64().unwrap() as u32;
+    let aspect_ratio = image_width as f64 / image_height as f64;
     let window_scale = settings_yaml["window"]["scale"].as_f64().unwrap_or(1.5) as f32;
-
     let crop_start = if !settings_yaml["film"]["crop"]["start"].is_badvalue() {
-        Some(yaml_array_into_point2(
-            &settings_yaml["film"]["crop"]["start"],
-        ))
+        yaml_array_into_point2(&settings_yaml["film"]["crop"]["start"], )
     } else {
-        None
+       Point2::origin()
     };
-
     let crop_end = if !settings_yaml["film"]["crop"]["end"].is_badvalue() {
-        Some(yaml_array_into_point2(
+        yaml_array_into_point2(
             &settings_yaml["film"]["crop"]["end"],
-        ))
+        )
     } else {
-        None
+        Point2::new(
+            settings_yaml["film"]["image_width"].as_i64().unwrap() as u32,
+            settings_yaml["film"]["image_height"].as_i64().unwrap() as u32
+        )
     };
+    let should_denoise = settings_yaml["film"]["denoise"].as_bool().unwrap_or(false);
 
     let film = Arc::new(RwLock::new(Film::new(
         Vector2::new(image_width, image_height),
@@ -253,26 +261,26 @@ fn main() -> GameResult {
             settings_yaml["film"]["bucket_width"].as_i64().unwrap() as u32,
             settings_yaml["film"]["bucket_height"].as_i64().unwrap() as u32,
         ),
-        crop_start,
-        crop_end,
+        Some(crop_start),
+        Some(crop_end),
         FilterMethod::from_str(settings_yaml["film"]["filter_method"].as_str().unwrap()).unwrap(),
         settings_yaml["film"]["filter_radius"].as_f64().unwrap(),
     )));
 
-    {
-        let mut settings = SETTINGS.write().unwrap();
-        settings.denoise = settings_yaml["film"]["denoise"].as_bool().unwrap();
-        settings.max_samples = yaml_into_u32(&settings_yaml["sampler"]["max_samples"]);
-        settings.min_samples = yaml_into_u32(&settings_yaml["sampler"]["min_samples"]);
-        settings.depth_limit = yaml_into_u32(&settings_yaml["renderer"]["depth_limit"]);
-        settings.thread_count = yaml_into_u32(&settings_yaml["renderer"]["threads"]);
-        settings.sampler = Sampler::new(
-            SamplerMethod::from_str(settings_yaml["sampler"]["method"].as_str().unwrap()).unwrap(),
-            camera,
-            image_width,
-            image_height,
-        )
-    }
+    let camera = camera::Camera::new(
+        yaml_array_into_point3(&settings_yaml["camera"]["position"]),
+        yaml_array_into_point3(&settings_yaml["camera"]["target"]),
+        aspect_ratio,
+        settings_yaml["camera"]["fov"].as_f64().unwrap(),
+        0.1,
+        Bounds {
+            p_min: Point2::new(-1.0,-1.0),
+            p_max: Point2::new(1.0,1.0),
+        },
+        film.clone(),
+    );
+
+    let sampler = SobolSampler::new();
 
     {
         let mut debug_buffer = DEBUG_BUFFER.write().unwrap();
@@ -283,7 +291,7 @@ fn main() -> GameResult {
 
     // Start the render threads
     println!("Start rendering...");
-    let (threads, receiver) = renderer::render(scene, film.clone());
+    let (threads, receiver) = renderer::render(scene, settings, sampler, Arc::new(camera) );
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {
@@ -310,7 +318,7 @@ fn main() -> GameResult {
 
     let (ctx, event_loop) = cb.build()?;
     let running_threads = threads.len();
-    let state = MainState::new(film, threads, receiver, running_threads)?;
+    let state = MainState::new(film, threads, receiver, running_threads, should_denoise)?;
 
     event::run(ctx, event_loop, state)
 }

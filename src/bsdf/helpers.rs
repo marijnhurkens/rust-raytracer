@@ -53,29 +53,8 @@ pub fn same_hemisphere(a: Vector3<f64>, b: Vector3<f64>) -> bool {
 }
 
 pub fn get_cosine_weighted_in_hemisphere() -> Vector3<f64> {
-    let d = concentric_sample_disk();
+    let d = crate::helpers::concentric_sample_disk();
     let z = f64::max(0.0, 1.0 - d.x * d.x - d.y * d.y).sqrt();
 
     Vector3::new(d.x, d.y, z)
-}
-
-fn concentric_sample_disk() -> Point2<f64> {
-    let mut rng = thread_rng();
-
-    let u_offset = Point2::new(rng.gen::<f64>(), rng.gen::<f64>()) * 2.0 - Vector2::new(1.0, 1.0);
-
-    if u_offset.x == 0.0 && u_offset.y == 0.0 {
-        return Point2::new(0.0, 0.0);
-    }
-
-    let (theta, r);
-    if u_offset.x.abs() > u_offset.y.abs() {
-        r = u_offset.x;
-        theta = FRAC_PI_4 * (u_offset.y / u_offset.x);
-    } else {
-        r = u_offset.y;
-        theta = FRAC_PI_2 - FRAC_PI_4 * (u_offset.x / u_offset.y);
-    }
-
-    r * Point2::new(theta.cos(), theta.sin())
 }

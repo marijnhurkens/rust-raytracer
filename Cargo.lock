@@ -2458,6 +2458,7 @@ dependencies = [
 name = "rust-raytracer"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "bitflags",
  "bvh",
  "clap",

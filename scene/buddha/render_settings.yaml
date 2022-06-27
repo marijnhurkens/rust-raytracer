@@ -1,8 +1,8 @@
 film:
   image_width: 1500
   image_height: 1500
-  bucket_width: 64
-  bucket_height: 64
+  bucket_width: 128
+  bucket_height: 128
   filter_radius: 1.8
   filter_method: none
   denoise: true
@@ -10,16 +10,16 @@ film:
 #    start: [200,50]
 #    end: [300,200]
 camera:
-  position: [10.0,4.0,-4.0]
+  position: [0.0,2.0,-3.0]
   target: [0.0,4.0,0.0]
-  fov: 50.0
+  fov: 90.0
+  aperture: 1.0
 sampler:
-  max_samples: 12
-  min_samples: 0
+  max_samples: 24
   method: sobol
 renderer:
   depth_limit: 8
-  threads: 10
+  threads: 8
 scene:
   background_color: [1.0,1.0,1.0]
 window:
