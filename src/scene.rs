@@ -67,16 +67,16 @@ impl Scene {
 
         let lights: Vec<Arc<Light>> = vec![distant_light];
 
-        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::origin(),
-            Vector3::new(0.0, 1.0, 0.0),
-            vec![Material::MatteMaterial(MatteMaterial::new(
-                Vector3::repeat(0.2),
-                20.0,
-            ))],
-        ))));
-
-        objects.push(floor);
+        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+        //     Point3::origin(),
+        //     Vector3::new(0.0, 1.0, 0.0),
+        //     vec![Material::MatteMaterial(MatteMaterial::new(
+        //         Vector3::repeat(0.2),
+        //         20.0,
+        //     ))],
+        // ))));
+        //
+        // objects.push(floor);
 
         // Build scene
         println!("Building BVH...");
@@ -174,10 +174,15 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 //          //ior: material.optical_density as f64,
                 //          //refraction: 1.0 - material.dissolve as f64,
                 // ))],
+                // vec![Material::PlasticMaterial(PlasticMaterial::new(
+                //     Vector3::new(0.4, 0.0, 0.0),
+                //     Vector3::repeat(1.0),
+                //     20.0,
+                // ))],
                 vec![Material::PlasticMaterial(PlasticMaterial::new(
-                    Vector3::new(0.4, 0.0, 0.0),
-                    Vector3::repeat(1.0),
-                    20.0,
+                    Vector3::new(0.7, 0.7, 0.7),
+                    Vector3::repeat(0.99),
+                    0.0001,
                 ))],
                 None,
             );

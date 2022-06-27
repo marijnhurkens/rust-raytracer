@@ -1,12 +1,16 @@
 use nalgebra::Vector3;
+use num_traits::Zero;
 
-use crate::bsdf::fresnel::DielectricFresnel;
+use crate::bsdf::helpers::fresnel::DielectricFresnel;
+use crate::bsdf::helpers::microfacet_distribution::{
+    MicrofacetDistribution, TrowbridgeReitzDistribution,
+};
 use crate::bsdf::lambertian::Lambertian;
+use crate::bsdf::microfacet_reflection::MicrofacetReflection;
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::bsdf::{Bsdf, BXDF};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
-use num_traits::Zero;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlasticMaterial {
@@ -35,8 +39,11 @@ impl MaterialTrait for PlasticMaterial {
 
         if !self.specular.is_zero() {
             let fresnel = DielectricFresnel::new(1.0, 1.5);
-            bsdf.add(BXDF::SpecularReflection(SpecularReflection::new(
+            let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
+            let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
+            bsdf.add(BXDF::MicrofacetReflection(MicrofacetReflection::new(
                 self.specular,
+                distribution,
                 fresnel,
             )));
         }

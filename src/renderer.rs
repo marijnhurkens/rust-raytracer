@@ -197,7 +197,6 @@ fn render_work(
             for _ in 0..settings.max_samples {
                 let camera_sample = sampler.get_camera_sample(Point2::new(x as f64, y as f64));
                 let ray = camera.generate_ray(camera_sample);
-                debug_write_pixel((ray.direction * 0.5) + Vector3::repeat(0.5));
                 let (radiance, normal) = trace(settings, ray, scene).unwrap();
 
                 sample_results.push(SampleResult {

@@ -272,7 +272,7 @@ fn main() -> GameResult {
         yaml_array_into_point3(&settings_yaml["camera"]["target"]),
         aspect_ratio,
         settings_yaml["camera"]["fov"].as_f64().unwrap(),
-        0.1,
+        settings_yaml["camera"]["aperture"].as_f64().unwrap(),
         Bounds {
             p_min: Point2::new(-1.0,-1.0),
             p_max: Point2::new(1.0,1.0),

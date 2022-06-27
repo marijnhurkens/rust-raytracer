@@ -4,16 +4,17 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 
 use crate::bsdf::lambertian::Lambertian;
+use crate::bsdf::microfacet_reflection::MicrofacetReflection;
 use crate::bsdf::oren_nayar::OrenNayar;
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::renderer::{debug_write_pixel, debug_write_pixel_f64};
 use crate::surface_interaction::SurfaceInteraction;
 
-pub mod fresnel;
 pub mod helpers;
 pub mod lambertian;
 pub mod oren_nayar;
 pub mod specular_reflection;
+pub mod microfacet_reflection;
 
 const MAX_BXDF_COUNT: usize = 5;
 
@@ -90,7 +91,7 @@ impl Bsdf {
         let (wi, pdf, f) = bxdf.sample_f(Point3::new(1.0, 1.0, 1.0), wo);
 
         let wi_world = self.local_to_world(wi);
-        //debug_write_pixel_f64(pdf);
+
         BsdfSampleResult {
             wi: wi_world,
             pdf,
@@ -206,7 +207,9 @@ bitflags! {
         const DIFFUSE = 0b00000100;
         const SPECULAR = 0b00001000;
         const TRANSMISSION = 0b00010000;
-        const ALL = Self::REFLECTION.bits | Self::REFRACTION.bits | Self::DIFFUSE.bits | Self::SPECULAR.bits;
+        const GLOSSY= 0b00100000;
+        const ALL = Self::REFLECTION.bits | Self::REFRACTION.bits | Self::DIFFUSE.bits |
+        Self::SPECULAR.bits | Self::GLOSSY.bits;
         const NONE = 0b00000000;
     }
 }
@@ -216,6 +219,7 @@ pub enum BXDF {
     Lambertian(Lambertian),
     SpecularReflection(SpecularReflection),
     OrenNayar(OrenNayar),
+    MicrofacetReflection(MicrofacetReflection),
 }
 
 pub trait BXDFtrait {
@@ -231,6 +235,7 @@ impl BXDFtrait for BXDF {
             BXDF::Lambertian(x) => x.get_type_flags(),
             BXDF::SpecularReflection(x) => x.get_type_flags(),
             BXDF::OrenNayar(x) => x.get_type_flags(),
+            BXDF::MicrofacetReflection(x) => x.get_type_flags(),
         }
     }
 
@@ -239,6 +244,7 @@ impl BXDFtrait for BXDF {
             BXDF::Lambertian(x) => x.f(wo, wi),
             BXDF::SpecularReflection(x) => x.f(wo, wi),
             BXDF::OrenNayar(x) => x.f(wo, wi),
+            BXDF::MicrofacetReflection(x) => x.f(wo, wi),
         }
     }
 
@@ -247,6 +253,7 @@ impl BXDFtrait for BXDF {
             BXDF::Lambertian(x) => x.pdf(wo, wi),
             BXDF::SpecularReflection(x) => x.pdf(wo, wi),
             BXDF::OrenNayar(x) => x.pdf(wo, wi),
+            BXDF::MicrofacetReflection(x) => x.pdf(wo, wi),
         }
     }
 
@@ -255,6 +262,7 @@ impl BXDFtrait for BXDF {
             BXDF::Lambertian(x) => x.sample_f(_point, wo),
             BXDF::SpecularReflection(x) => x.sample_f(_point, wo),
             BXDF::OrenNayar(x) => x.sample_f(_point, wo),
+            BXDF::MicrofacetReflection(x) => x.sample_f(_point, wo),
         }
     }
 }
