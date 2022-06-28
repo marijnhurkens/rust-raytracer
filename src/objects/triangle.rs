@@ -115,6 +115,11 @@ impl ObjectTrait for Triangle {
     fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
+
+    fn get_light(&self) -> Option<&Arc<Light>> {
+        self.light.as_ref()
+    }
+
     fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
         let p0 = self.p0;
         let p1 = self.p1;
@@ -249,8 +254,8 @@ impl ObjectTrait for Triangle {
         ))
     }
 
-    fn sample_point(&self) -> Interaction {
-        let sample = uniform_sample_triangle();
+    fn sample_point(&self, sample: Vec<f64>) -> Interaction {
+        let sample = uniform_sample_triangle(sample);
 
         let point = sample.x * self.p0
             + sample.y * self.p1.coords
@@ -264,13 +269,6 @@ impl ObjectTrait for Triangle {
             point,
             normal: shading_normal,
         }
-    }
-
-    fn area(&self) -> f64 {
-        let p0p1 = self.p1 - self.p0;
-        let p0p2 = self.p2 - self.p0;
-
-        0.5 * p0p1.cross(&p0p2).magnitude()
     }
 
     fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
@@ -291,8 +289,11 @@ impl ObjectTrait for Triangle {
             / (surface_interaction.shading_normal.dot(&-wi).abs() * self.area())
     }
 
-    fn get_light(&self) -> Option<&Arc<Light>> {
-        self.light.as_ref()
+    fn area(&self) -> f64 {
+        let p0p1 = self.p1 - self.p0;
+        let p0p2 = self.p2 - self.p0;
+
+        0.5 * p0p1.cross(&p0p2).magnitude()
     }
 }
 
@@ -366,8 +367,8 @@ mod tests {
     use tobj::Mesh;
 
     use crate::materials;
-    use crate::materials::Material;
     use crate::materials::matte::MatteMaterial;
+    use crate::materials::Material;
     use crate::objects::triangle::Triangle;
     use crate::objects::ObjectTrait;
     use crate::renderer::Ray;
@@ -383,7 +384,7 @@ mod tests {
             face_arities: vec![],
             texcoord_indices: vec![],
             material_id: None,
-            normal_indices: vec![]
+            normal_indices: vec![],
         };
 
         let triangle = Triangle::new(

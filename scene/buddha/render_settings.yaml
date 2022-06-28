@@ -5,7 +5,7 @@ film:
   bucket_height: 128
   filter_radius: 1.8
   filter_method: none
-  denoise: false
+  denoise: true
   crop:
 #    start: [200,50]
 #    end: [300,200]

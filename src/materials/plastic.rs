@@ -37,6 +37,7 @@ impl MaterialTrait for PlasticMaterial {
             bsdf.add(BXDF::Lambertian(Lambertian::new(self.diffuse)));
         }
 
+        // todo: bug in microfacets, creates spots
         if !self.specular.is_zero() {
             let fresnel = DielectricFresnel::new(1.0, 1.5);
             let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);

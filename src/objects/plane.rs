@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{AABB, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector2, Vector3};
 
@@ -59,6 +59,7 @@ impl ObjectTrait for Plane {
         let p_hit = ray.point + ray.direction * distance + self.normal * 1e-9;
         //let (sn, ss, ts) = coordinate_system(self.normal);
 
+        // todo: fix?
         let ss = Vector3::new(1.0, -0.0, 0.0);
         let ts = Vector3::new(0.0, 0.0, -1.0);
 
@@ -78,7 +79,7 @@ impl ObjectTrait for Plane {
         ))
     }
 
-    fn sample_point(&self) -> Interaction {
+    fn sample_point(&self, _: Vec<f64>) -> Interaction {
         unimplemented!();
     }
 

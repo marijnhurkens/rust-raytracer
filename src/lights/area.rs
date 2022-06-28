@@ -21,8 +21,8 @@ impl LightTrait for AreaLight {
     }
 
     /// Sample_Li()
-    fn sample_irradiance(&self, surface_interaction: &SurfaceInteraction) -> LightIrradianceSample {
-        let light_interaction = self.object.sample_point();
+    fn sample_irradiance(&self, surface_interaction: &SurfaceInteraction, sample: Vec<f64>) -> LightIrradianceSample {
+        let light_interaction = self.object.sample_point(sample);
         let wi = (light_interaction.point - surface_interaction.point).normalize();
 
         let interaction = Interaction {

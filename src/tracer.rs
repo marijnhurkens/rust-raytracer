@@ -19,12 +19,13 @@ use crate::renderer::{
 };
 use crate::scene::Scene;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
-use crate::Object;
+use crate::{Object, SobolSampler};
 
 pub fn trace(
     settings: &Settings,
     starting_ray: Ray,
     scene: &Scene,
+    sampler: &mut SobolSampler,
 ) -> Option<(Vector3<f64>, Vector3<f64>)> {
     let mut rng = thread_rng();
     let mut l = Vector3::new(0.0, 0.0, 0.0);
@@ -60,7 +61,7 @@ pub fn trace(
             material.compute_scattering_functions(&mut surface_interaction);
         }
 
-        let light_irradiance = uniform_sample_light(scene, &surface_interaction);
+        let light_irradiance = uniform_sample_light(scene, &surface_interaction, sampler);
 
         l += contribution.component_mul(&light_irradiance);
 
@@ -105,7 +106,7 @@ pub fn trace(
     Some((l, normal))
 }
 
-fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction) -> Vector3<f64> {
+fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction, sampler: &mut SobolSampler) -> Vector3<f64> {
     let mut rng = thread_rng();
     let bsdf_flags = BXDFTYPES::ALL & !BXDFTYPES::SPECULAR;
 
@@ -114,7 +115,10 @@ fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction)
     let light = scene.lights.choose(&mut rng).unwrap();
 
     // Sample a random point on the light and calculate the irradiance at our intersection point.
-    let mut irradiance_sample = light.sample_irradiance(surface_interaction);
+    let u_light = sampler.get_3d();
+    // todo: fix, black spots when pulling samples here
+    //let u_light = vec!(1.0,1.0);
+    let mut irradiance_sample = light.sample_irradiance(surface_interaction, u_light);
 
     // First we calculate the BSDF value for our light sample
     if irradiance_sample.pdf > 0.0 && !irradiance_sample.irradiance.is_zero() {

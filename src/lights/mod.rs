@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point3, Vector2, Vector3};
 
 use crate::lights::area::AreaLight;
 use crate::lights::distant::DistantLight;
@@ -19,7 +19,7 @@ pub enum Light {
 
 pub trait LightTrait {
     fn is_delta(&self) -> bool;
-    fn sample_irradiance(&self, interaction: &SurfaceInteraction) -> LightIrradianceSample;
+    fn sample_irradiance(&self, interaction: &SurfaceInteraction, sample: Vec<f64>) -> LightIrradianceSample;
     fn sample_emitting(&self) -> LightEmittingSample;
     fn pdf_incidence(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64;
     fn pdf_emitting(&self, ray: Ray, light_normal: Vector3<f64>) -> LightEmittingPdf;
@@ -56,11 +56,11 @@ impl LightTrait for Light {
     }
 
     /// Sample_Li()
-    fn sample_irradiance(&self, interaction: &SurfaceInteraction) -> LightIrradianceSample {
+    fn sample_irradiance(&self, interaction: &SurfaceInteraction, sample: Vec<f64>) -> LightIrradianceSample {
         match self {
-            Light::Point(x) => x.sample_irradiance(interaction),
-            Light::Area(x) => x.sample_irradiance(interaction),
-            Light::Distant(x) => x.sample_irradiance(interaction),
+            Light::Point(x) => x.sample_irradiance(interaction, sample),
+            Light::Area(x) => x.sample_irradiance(interaction, sample),
+            Light::Distant(x) => x.sample_irradiance(interaction, sample),
         }
     }
 

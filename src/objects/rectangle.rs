@@ -1,33 +1,61 @@
+use std::sync::Arc;
+
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Matrix3, Point3, Vector2, Vector3};
 
+use crate::helpers::coordinate_system;
+use crate::lights::Light;
 use crate::materials::Material;
+use crate::objects::ObjectTrait;
 use crate::renderer;
-use crate::surface_interaction::SurfaceInteraction;
+use crate::renderer::Ray;
+use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 // RECTANGLE
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Rectangle {
     pub position: Point3<f64>,
     pub side_a: Vector3<f64>,
     pub side_b: Vector3<f64>,
     pub materials: Vec<Material>,
+    pub light: Option<Arc<Light>>,
     pub node_index: usize,
 }
 
 impl Rectangle {
+    pub fn new(
+        position: Point3<f64>,
+        side_a: Vector3<f64>,
+        side_b: Vector3<f64>,
+        materials: Vec<Material>,
+        light: Option<Arc<Light>>,
+    ) -> Self {
+        Rectangle {
+            position,
+            side_a,
+            side_b,
+            materials,
+            light,
+            node_index: 0,
+        }
+    }
+
     fn get_normal(&self) -> Vector3<f64> {
-        self.side_a.cross(&self.side_b)
+        self.side_a.cross(&self.side_b).normalize()
     }
 }
 
-impl Rectangle {
-    pub fn get_materials(&self) -> &Vec<Material> {
+impl ObjectTrait for Rectangle {
+    fn get_materials(&self) -> &Vec<Material> {
         &self.materials
     }
 
-    pub fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
+    fn get_light(&self) -> Option<&Arc<Light>> {
+        self.light.as_ref()
+    }
+
+    fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
         let normal = self.get_normal();
         let denom = normal.dot(&ray.direction);
 
@@ -43,7 +71,6 @@ impl Rectangle {
             return None;
         }
 
-        //println!("test");
         // point on intersection plane
         let p = ray.point + (ray.direction * distance);
 
@@ -60,23 +87,62 @@ impl Rectangle {
         let x_transformed = m * (d - b);
         let p_transformed = m * (p - b);
 
-        if p_transformed.x > 0.0
-            && p_transformed.y > 0.0
-            && p_transformed.x < x_transformed.x
-            && p_transformed.y < x_transformed.y
+        if p_transformed.x <= 0.0
+            && p_transformed.y <= 0.0
+            && p_transformed.x > x_transformed.x
+            && p_transformed.y > x_transformed.y
         {
-            return Some((
-                distance,
-                SurfaceInteraction::new(
-                    ray.point + ray.direction * distance,
-                    normal,
-                    -ray.direction,
-                    Vector2::zeros(),
-                ),
-            ));
+            return None;
         }
 
-        None
+        let (sn, ss, ts) = coordinate_system(normal);
+
+        Some((
+            distance,
+            SurfaceInteraction::new(
+                ray.point + ray.direction * distance,
+                normal,
+                -ray.direction,
+                Vector2::zeros(),
+                ss,
+                ts,
+                ss,
+                ts,
+                Vector3::zeros(),
+            ),
+        ))
+    }
+
+    fn sample_point(&self, sample: Vec<f64>) -> Interaction {
+        let point = self.position + (self.side_a * sample[0]) + (self.side_b * sample[1]);
+
+        Interaction {
+            point,
+            normal: self.get_normal(),
+        }
+    }
+
+    // todo: duplicate code with triangle
+    fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
+        let ray = Ray {
+            point: interaction.point + wi * 1e-9,
+            direction: wi,
+        };
+
+        let intersect_object = self.test_intersect(ray);
+
+        if intersect_object.is_none() {
+            return 0.0;
+        }
+
+        let (_, surface_interaction) = intersect_object.unwrap();
+
+        nalgebra::distance_squared(&interaction.point, &surface_interaction.point)
+            / (surface_interaction.shading_normal.dot(&-wi).abs() * self.area())
+    }
+
+    fn area(&self) -> f64 {
+        self.side_b.magnitude() * self.side_b.magnitude()
     }
 }
 
@@ -91,8 +157,8 @@ impl Bounded for Rectangle {
         let max_z = self.position.z.max(pos_opposite.z);
 
         AABB::with_bounds(
-            bvh::nalgebra::Point3::new(min_x as f32, min_y as f32, min_z as f32),
-            bvh::nalgebra::Point3::new(max_x as f32, max_y as f32, max_z as f32),
+            bvh::Point3::new(min_x as f32, min_y as f32, min_z as f32),
+            bvh::Point3::new(max_x as f32, max_y as f32, max_z as f32),
         )
     }
 }

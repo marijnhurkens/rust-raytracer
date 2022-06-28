@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -9,6 +10,7 @@ use nalgebra::{Point3, Vector3};
 use tobj::{LoadOptions, Mesh};
 use yaml_rust::YamlLoader;
 
+use crate::helpers::yaml_array_into_vector3;
 use crate::lights::area::AreaLight;
 use crate::lights::distant::DistantLight;
 use crate::lights::point::PointLight;
@@ -17,9 +19,10 @@ use crate::materials::matte::MatteMaterial;
 use crate::materials::plastic::PlasticMaterial;
 use crate::materials::Material;
 use crate::objects::plane::Plane;
+use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
-use crate::Object;
+use crate::{yaml_array_into_point3, Object};
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -58,25 +61,64 @@ impl Scene {
 
         let (mut objects, meshes) = load_model(world_model_file.as_path(), up_axis);
 
-        let distant_light = Arc::new(Light::Distant(DistantLight::new(
+        let mut lights: Vec<Arc<Light>> = vec![];
+
+        for light_config in scene_yaml["lights"].clone() {
+            let l_type = light_config["type"].as_str().unwrap();
+
+            if l_type == "area" {
+                let l_pos = yaml_array_into_point3(&light_config["position"]);
+                let l_side_a = yaml_array_into_vector3(&light_config["side_a"]);
+                let l_side_b = yaml_array_into_vector3(&light_config["side_b"]);
+                let l_intensity = yaml_array_into_vector3(&light_config["intensity"]);
+
+                let light_rectangle = ArcObject(Arc::new(Object::Rectangle(Rectangle::new(
+                    l_pos,
+                    l_side_a,
+                    l_side_b,
+                    vec![],
+                    None,
+                ))));
+
+                let light = Arc::new(Light::Area(AreaLight::new(light_rectangle, l_intensity)));
+
+                let light_rectangle = ArcObject(Arc::new(Object::Rectangle(Rectangle::new(
+                    l_pos,
+                    l_side_a,
+                    l_side_b,
+                    vec![Material::MatteMaterial(MatteMaterial::new(
+                        Vector3::repeat(0.9),
+                        20.0,
+                    ))],
+                    Some(light.clone()),
+                ))));
+
+                lights.push(light);
+                objects.push(light_rectangle);
+            }
+
+            if l_type == "distant" {
+                let light = Arc::new(Light::Distant(DistantLight::new(
+                    Point3::origin(),
+                    1e20,
+                    yaml_array_into_vector3(&light_config["direction"]),
+                    yaml_array_into_vector3(&light_config["intensity"]),
+                )));
+
+                lights.push(light);
+            }
+        }
+
+        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
             Point3::origin(),
-            1e20,
-            Vector3::new(0.4, 1.0, 0.4),
-            Vector3::repeat(5.0),
-        )));
+            Vector3::new(0.0, 1.0, 0.0),
+            vec![Material::MatteMaterial(MatteMaterial::new(
+                Vector3::repeat(0.2),
+                20.0,
+            ))],
+        ))));
 
-        let lights: Vec<Arc<Light>> = vec![distant_light];
-
-        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-        //     Point3::origin(),
-        //     Vector3::new(0.0, 1.0, 0.0),
-        //     vec![Material::MatteMaterial(MatteMaterial::new(
-        //         Vector3::repeat(0.2),
-        //         20.0,
-        //     ))],
-        // ))));
-        //
-        // objects.push(floor);
+        objects.push(floor);
 
         // Build scene
         println!("Building BVH...");
@@ -174,16 +216,16 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 //          //ior: material.optical_density as f64,
                 //          //refraction: 1.0 - material.dissolve as f64,
                 // ))],
-                // vec![Material::PlasticMaterial(PlasticMaterial::new(
-                //     Vector3::new(0.4, 0.0, 0.0),
-                //     Vector3::repeat(1.0),
-                //     20.0,
-                // ))],
                 vec![Material::PlasticMaterial(PlasticMaterial::new(
-                    Vector3::new(0.7, 0.7, 0.7),
-                    Vector3::repeat(0.99),
-                    0.0001,
+                    Vector3::new(0.4, 0.0, 0.0),
+                    Vector3::repeat(0.0),
+                    20.0,
                 ))],
+                // vec![Material::PlasticMaterial(PlasticMaterial::new(
+                //     Vector3::new(0.7, 0.7, 0.7),
+                //     Vector3::repeat(0.99),
+                //     0.0001,
+                // ))],
                 None,
             );
 

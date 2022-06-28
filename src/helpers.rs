@@ -43,11 +43,8 @@ pub fn get_random_in_unit_sphere() -> Vector3<f64> {
     vec
 }
 
-// todo: add sampler input
-pub fn uniform_sample_triangle() -> Point2<f64> {
-    let mut rng = thread_rng();
-
-    let point = Point2::new(rng.gen::<f64>(), rng.gen::<f64>());
+pub fn uniform_sample_triangle(sample: Vec<f64>) -> Point2<f64> {
+    let point = Point2::from_slice(&sample);
     let su0 = point.x.sqrt();
 
     Point2::new(1.0 - su0, point.y * su0)
