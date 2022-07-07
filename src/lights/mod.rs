@@ -19,10 +19,26 @@ pub enum Light {
 
 pub trait LightTrait {
     fn is_delta(&self) -> bool;
-    fn sample_irradiance(&self, interaction: &SurfaceInteraction, sample: Vec<f64>) -> LightIrradianceSample;
+
+    // L()
+    fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64>;
+
+    // Sample_Li()
+    fn sample_irradiance(
+        &self,
+        interaction: &SurfaceInteraction,
+        sample: Vec<f64>,
+    ) -> LightIrradianceSample;
+
+    // Sample_Le()
     fn sample_emitting(&self) -> LightEmittingSample;
+
+    // Pdf_Li()
     fn pdf_incidence(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64;
+
+    // Pdf_Le()
     fn pdf_emitting(&self, ray: Ray, light_normal: Vector3<f64>) -> LightEmittingPdf;
+
     fn environment_emitting(&self, ray: Ray) -> Vector3<f64>;
     fn power(&self) -> Vector3<f64>;
 }
@@ -55,8 +71,20 @@ impl LightTrait for Light {
         }
     }
 
+    fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64> {
+        match self {
+            Light::Point(x) => x.emitting(interaction, w),
+            Light::Area(x) => x.emitting(interaction, w),
+            Light::Distant(x) => x.emitting(interaction, w),
+        }
+    }
+
     /// Sample_Li()
-    fn sample_irradiance(&self, interaction: &SurfaceInteraction, sample: Vec<f64>) -> LightIrradianceSample {
+    fn sample_irradiance(
+        &self,
+        interaction: &SurfaceInteraction,
+        sample: Vec<f64>,
+    ) -> LightIrradianceSample {
         match self {
             Light::Point(x) => x.sample_irradiance(interaction, sample),
             Light::Area(x) => x.sample_irradiance(interaction, sample),

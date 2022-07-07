@@ -1,48 +1,53 @@
 use std::borrow::BorrowMut;
 
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point2, Point3, Vector3};
 use num_traits::identities::Zero;
+use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;
-use rand::{thread_rng, Rng};
 
+use crate::{Object, SobolSampler};
 use crate::bsdf::{BsdfSampleResult, BXDFTYPES};
 use crate::helpers::power_heuristic;
-use crate::lights::area::AreaLight;
 use crate::lights::{Light, LightTrait};
+use crate::lights::area::AreaLight;
 use crate::materials::MaterialTrait;
-use crate::objects::plane::Plane;
 use crate::objects::ObjectTrait;
-use crate::renderer::{
-    check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
-    debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray,
-    Settings, CURRENT_BOUNCE,
-};
+use crate::objects::plane::Plane;
+use crate::renderer::{check_intersect_scene, check_intersect_scene_simple, check_light_visible, CURRENT_BOUNCE, debug_write_pixel, debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray, SampleResult, Settings};
 use crate::scene::Scene;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
-use crate::{Object, SobolSampler};
 
 pub fn trace(
-    settings: &Settings,
     starting_ray: Ray,
+    point_film: Point2<f64>,
+    settings: &Settings,
     scene: &Scene,
     sampler: &mut SobolSampler,
-) -> Option<(Vector3<f64>, Vector3<f64>)> {
+) -> SampleResult {
     let mut rng = thread_rng();
     let mut l = Vector3::new(0.0, 0.0, 0.0);
     let mut contribution = Vector3::new(1.0, 1.0, 1.0);
     let mut specular_bounce = false;
     let mut ray = starting_ray;
     let mut normal = Vector3::zeros();
+    let mut albedo = Vector3::zeros();
 
     for bounce in 0..settings.depth_limit {
         CURRENT_BOUNCE.with(|current_bounce| *current_bounce.borrow_mut() = bounce);
 
         let intersect = check_intersect_scene(ray, scene);
 
-        if (bounce == 0 || specular_bounce) && intersect.is_none() {
-            for light in &scene.lights {
-                l += contribution.component_mul(&light.environment_emitting(ray));
+        if bounce == 0 || specular_bounce {
+            if let Some((interaction, object)) = intersect {
+                if let Some(light) = object.get_light() {
+                    l += contribution.component_mul(&light.emitting(&interaction, -ray.direction));
+                }
+            } else {
+                for light in &scene.lights {
+                    l += contribution.component_mul(&light.environment_emitting(ray));
+                }
             }
+
         }
 
         // Check for an intersection
@@ -55,6 +60,7 @@ pub fn trace(
 
         if bounce == 0 {
             normal = surface_interaction.shading_normal;
+            albedo = object.get_materials()[0].get_albedo()
         }
 
         for material in object.get_materials() {
@@ -103,7 +109,12 @@ pub fn trace(
         }
     }
 
-    Some((l, normal))
+    SampleResult {
+        radiance: l,
+        p_film: point_film,
+        normal,
+        albedo,
+    }
 }
 
 fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction, sampler: &mut SobolSampler) -> Vector3<f64> {

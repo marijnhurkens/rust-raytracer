@@ -51,4 +51,8 @@ impl MaterialTrait for PlasticMaterial {
 
         si.bsdf = Some(bsdf);
     }
+
+    fn get_albedo(&self) -> Vector3<f64> {
+        self.diffuse
+    }
 }

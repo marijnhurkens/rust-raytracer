@@ -37,4 +37,8 @@ impl MaterialTrait for MatteMaterial {
         }
         si.bsdf = Some(bsdf);
     }
+
+    fn get_albedo(&self) -> Vector3<f64> {
+        self.reflectance_color
+    }
 }

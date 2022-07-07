@@ -56,10 +56,13 @@ impl Scene {
             .expect("Unable to read file");
         let scene_yaml = &YamlLoader::load_from_str(&contents).unwrap()[0];
 
-        let world_model_file = path.join(Path::new(scene_yaml["world"]["file"].as_str().unwrap()));
-        let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
-
-        let (mut objects, meshes) = load_model(world_model_file.as_path(), up_axis);
+        let (mut objects, meshes) = if let Some(filename) = scene_yaml["world"]["file"].as_str() {
+            let world_model_file = path.join(Path::new(filename));
+            let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
+            load_model(world_model_file.as_path(), up_axis)
+        } else {
+            (vec!(), vec!())
+        };
 
         let mut lights: Vec<Arc<Light>> = vec![];
 
@@ -217,9 +220,9 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 //          //refraction: 1.0 - material.dissolve as f64,
                 // ))],
                 vec![Material::PlasticMaterial(PlasticMaterial::new(
-                    Vector3::new(0.4, 0.0, 0.0),
-                    Vector3::repeat(0.0),
-                    20.0,
+                    Vector3::new(0.6, 0.6, 0.6),
+                    Vector3::repeat(1.0),
+                    0.01,
                 ))],
                 // vec![Material::PlasticMaterial(PlasticMaterial::new(
                 //     Vector3::new(0.7, 0.7, 0.7),

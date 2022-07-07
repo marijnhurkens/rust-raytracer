@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
-use nalgebra::{Matrix3, Point3, Vector2, Vector3};
+use nalgebra::{Matrix3, Point3, SimdPartialOrd, Vector2, Vector3};
 
 use crate::helpers::coordinate_system;
 use crate::lights::Light;
 use crate::materials::Material;
 use crate::objects::ObjectTrait;
 use crate::renderer;
-use crate::renderer::Ray;
+use crate::renderer::{debug_write_pixel, debug_write_pixel_f64, Ray};
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 // RECTANGLE
@@ -59,39 +59,26 @@ impl ObjectTrait for Rectangle {
         let normal = self.get_normal();
         let denom = normal.dot(&ray.direction);
 
-        if denom.abs() < 1e-4 {
+        if denom.abs() < 1e-9 {
             return None;
         }
 
         let v = self.position - ray.point;
-
         let distance = v.dot(&normal) / denom;
 
-        if distance < 0.0001 {
+        if distance < 1e-9 {
             return None;
         }
 
         // point on intersection plane
         let p = ray.point + (ray.direction * distance);
 
-        let a = self.position;
-        let b = self.position + self.side_a;
-        let c = self.position + self.side_a + self.side_b;
-        let d = self.position + self.side_b;
+        let p0p = p - self.position;
 
-        let m1 = a - b;
-        let m2 = c - b;
-        let m3 = m1.cross(&m2);
-        let m = Matrix3::from_columns(&[m1, m2, m3]).try_inverse().unwrap();
+        let a = p0p.dot(&self.side_a) / self.side_a.dot(&self.side_a);
+        let b = p0p.dot(&self.side_b) / self.side_b.dot(&self.side_b);
 
-        let x_transformed = m * (d - b);
-        let p_transformed = m * (p - b);
-
-        if p_transformed.x <= 0.0
-            && p_transformed.y <= 0.0
-            && p_transformed.x > x_transformed.x
-            && p_transformed.y > x_transformed.y
-        {
+        if !(0.0..=1.0).contains(&a) || !(0.0..=1.0).contains(&b) {
             return None;
         }
 
@@ -100,7 +87,7 @@ impl ObjectTrait for Rectangle {
         Some((
             distance,
             SurfaceInteraction::new(
-                ray.point + ray.direction * distance,
+                p,
                 normal,
                 -ray.direction,
                 Vector2::zeros(),
@@ -149,16 +136,12 @@ impl ObjectTrait for Rectangle {
 impl Bounded for Rectangle {
     fn aabb(&self) -> AABB {
         let pos_opposite = self.position + self.side_a + self.side_b;
-        let min_x = self.position.x.min(pos_opposite.x);
-        let min_y = self.position.y.min(pos_opposite.y);
-        let min_z = self.position.z.min(pos_opposite.z);
-        let max_x = self.position.x.max(pos_opposite.x);
-        let max_y = self.position.y.max(pos_opposite.y);
-        let max_z = self.position.z.max(pos_opposite.z);
+        let min = self.position.simd_min(pos_opposite);
+        let max = self.position.simd_max(pos_opposite);
 
         AABB::with_bounds(
-            bvh::Point3::new(min_x as f32, min_y as f32, min_z as f32),
-            bvh::Point3::new(max_x as f32, max_y as f32, max_z as f32),
+            bvh::Point3::new(min.x as f32, min.y as f32, min.z as f32),
+            bvh::Point3::new(max.x as f32, max.y as f32, max.z as f32),
         )
     }
 }

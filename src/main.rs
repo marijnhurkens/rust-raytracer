@@ -30,7 +30,7 @@ use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER};
 use crate::camera::Camera;
 use crate::helpers::Bounds;
 
-use crate::renderer::Settings;
+use crate::renderer::{debug_write_pixel_f64, Settings};
 use crate::sampler::SobolSampler;
 
 mod bsdf;
@@ -63,6 +63,7 @@ struct MainState {
     denoised: bool,
     should_denoise: bool,
     debug_normals: bool,
+    debug_albedo: bool,
     debug_buffer: bool,
 }
 
@@ -85,6 +86,7 @@ impl MainState {
             denoised: false,
             debug_normals: false,
             debug_buffer: false,
+            debug_albedo: false,
         })
     }
 }
@@ -101,6 +103,7 @@ impl event::EventHandler<GameError> for MainState {
         }
 
         self.debug_normals = keyboard::is_key_pressed(ctx, KeyCode::N);
+        self.debug_albedo = keyboard::is_key_pressed(ctx, KeyCode::A);
         self.debug_buffer = keyboard::is_key_pressed(ctx, KeyCode::D);
 
         let message = self.receiver.try_recv();
@@ -140,12 +143,20 @@ impl event::EventHandler<GameError> for MainState {
         if self.debug_normals {
             let mut i = 0;
             film.pixels.clone().iter().for_each(|pixel| {
-                //
                 let scaled_normal =
                     (pixel.normal * 0.5 + nalgebra::Vector3::new(0.5, 0.5, 0.5)) * 255.0;
                 output[i] = scaled_normal.x as u8;
                 output[i + 1] = scaled_normal.y as u8;
                 output[i + 2] = scaled_normal.z as u8;
+                output[i + 3] = 255;
+                i += 4;
+            });
+        } else if self.debug_albedo {
+            let mut i = 0;
+            film.pixels.clone().iter().for_each(|pixel| {
+                output[i] = (pixel.albedo.x * 255.0) as u8;
+                output[i + 1] = (pixel.albedo.y * 255.0) as u8;
+                output[i + 2] = (pixel.albedo.z * 255.0) as u8;
                 output[i + 3] = 255;
                 i += 4;
             });

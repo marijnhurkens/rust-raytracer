@@ -85,6 +85,7 @@ pub struct SampleResult {
     pub radiance: Vector3<f64>,
     pub p_film: Point2<f64>,
     pub normal: Vector3<f64>,
+    pub albedo: Vector3<f64>,
 }
 
 pub fn render(
@@ -197,13 +198,10 @@ fn render_work(
             for _ in 0..settings.max_samples {
                 let camera_sample = sampler.get_camera_sample(Point2::new(x as f64, y as f64));
                 let ray = camera.generate_ray(camera_sample);
-                let (radiance, normal) = trace(settings, ray, scene, sampler).unwrap();
 
-                sample_results.push(SampleResult {
-                    radiance,
-                    p_film: camera_sample.p_film,
-                    normal,
-                });
+                sample_results.push(
+                    trace(ray,camera_sample.p_film, settings,  scene, sampler)
+                );
             }
 
             bucket.add_samples(&sample_results);

@@ -45,6 +45,7 @@ pub struct Pixel {
     pub sum_weight: f64,
     pub sum_radiance: Vector3<f64>,
     pub normal: Vector3<f64>,
+    pub albedo: Vector3<f64>,
 }
 
 pub struct Film {
@@ -78,6 +79,7 @@ impl Film {
                 sum_weight: 0.0,
                 sum_radiance: Vector3::new(0.0, 0.0, 0.0),
                 normal: Vector3::new(0.0, 0.0, 0.0),
+                albedo: Vector3::new(0.0, 0.0, 0.0),
             });
         }
 
@@ -156,6 +158,7 @@ impl Film {
                 bucket.pixels[pixel_index].sum_weight += 1.0;
                 // todo: average or throw away?
                 bucket.pixels[pixel_index].normal = sample.normal;
+                bucket.pixels[pixel_index].albedo = sample.albedo;
                 continue;
             }
 
@@ -204,6 +207,7 @@ impl Film {
                     bucket.pixels[pixel_index].sum_weight += filter_weight;
                     // todo: average or throw away?
                     bucket.pixels[pixel_index].normal = sample.normal;
+                    bucket.pixels[pixel_index].albedo = sample.albedo;
                 }
             }
         }
@@ -221,6 +225,7 @@ impl Film {
             self.pixels[film_pixel_index].sum_weight += pixel.sum_weight;
             self.pixels[film_pixel_index].sum_radiance += pixel.sum_radiance;
             self.pixels[film_pixel_index].normal += pixel.normal;
+            self.pixels[film_pixel_index].albedo += pixel.albedo;
 
             if self.pixels[film_pixel_index].sum_weight < f64::EPSILON {
                 self.image_buffer
@@ -231,10 +236,12 @@ impl Film {
             let radiance = self.pixels[film_pixel_index].sum_radiance
                 / self.pixels[film_pixel_index].sum_weight;
 
+            let rgb = xyz_to_rgb(radiance);
+
             let pixel_color_rgb = image::Rgb([
-                ((radiance.x) * 255.0) as u8,
-                ((radiance.y) * 255.0) as u8,
-                ((radiance.z) * 255.0) as u8,
+                ((rgb.x) * 255.0) as u8,
+                ((rgb.y) * 255.0) as u8,
+                ((rgb.z) * 255.0) as u8,
             ]);
 
             self.image_buffer
@@ -298,6 +305,7 @@ impl Film {
                         sum_weight: 0.0,
                         sum_radiance: Vector3::new(0.0, 0.0, 0.0),
                         normal: Vector3::new(0.0, 0.0, 0.0),
+                        albedo: Vector3::new(0.0, 0.0, 0.0),
                     });
                 }
 
@@ -346,4 +354,22 @@ fn evaluate_mitchell_1d(input: f64) -> f64 {
         + (-18.0 + 12.0 * _b + 6.0 * _c) * x * x
         + (6.0 - 2.0 * _b))
         * (1.0 / 6.0)
+}
+//
+// inline void XYZToRGB(const Float xyz[3], Float rgb[3]) {
+// rgb[0] =  3.240479f*xyz[0] - 1.537150f*xyz[1] - 0.498535f*xyz[2];
+// rgb[1] = -0.969256f*xyz[0] + 1.875991f*xyz[1] + 0.041556f*xyz[2];
+// rgb[2] =  0.055648f*xyz[0] - 0.204043f*xyz[1] + 1.057311f*xyz[2];
+// }
+
+fn xyz_to_rgb(xyz: Vector3<f64>) -> Vector3<f64> {
+    let x = xyz.x;
+    let y = xyz.y;
+    let z = xyz.z;
+
+    let r = 3.240479 * x - 1.537150 * y - 0.498535 * z;
+    let g = -0.969256 * x + 1.875991 * y + 0.041556 * z;
+    let b = 0.055648 * x - 0.204043 * y + 1.057311 * z;
+
+    Vector3::new(r, g, b)
 }
