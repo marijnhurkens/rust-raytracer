@@ -23,6 +23,7 @@ use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
+use crate::materials::mirror::MirrorMaterial;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -89,7 +90,7 @@ impl Scene {
                     l_pos,
                     l_side_a,
                     l_side_b,
-                    vec![Material::MatteMaterial(MatteMaterial::new(
+                    vec![Material::Matte(MatteMaterial::new(
                         Vector3::repeat(0.9),
                         20.0,
                     ))],
@@ -115,7 +116,7 @@ impl Scene {
         let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
             Point3::origin(),
             Vector3::new(0.0, 1.0, 0.0),
-            vec![Material::MatteMaterial(MatteMaterial::new(
+            vec![Material::Matte(MatteMaterial::new(
                 Vector3::repeat(0.2),
                 20.0,
             ))],
@@ -219,10 +220,10 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 //          //ior: material.optical_density as f64,
                 //          //refraction: 1.0 - material.dissolve as f64,
                 // ))],
-                vec![Material::PlasticMaterial(PlasticMaterial::new(
-                    Vector3::new(0.6, 0.6, 0.6),
+                vec![Material::Mirror(MirrorMaterial::new(
                     Vector3::repeat(1.0),
-                    0.01,
+                    // Vector3::repeat(1.0),
+                    // 0.01,
                 ))],
                 // vec![Material::PlasticMaterial(PlasticMaterial::new(
                 //     Vector3::new(0.7, 0.7, 0.7),

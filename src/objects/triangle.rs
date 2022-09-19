@@ -19,10 +19,6 @@ use crate::surface_interaction::{Interaction, SurfaceInteraction};
 #[derive(Debug, Clone)]
 pub struct Triangle {
     pub mesh: Arc<Mesh>,
-
-    // pub v0_index: usize,
-    // pub v1_index: usize,
-    // pub v2_index: usize,
     pub p0: Point3<f64>,
     p1: Point3<f64>,
     p2: Point3<f64>,
@@ -197,29 +193,33 @@ impl ObjectTrait for Triangle {
 
         let determinant = duv02.x * duv12.y - duv02.y * duv12.x;
 
-        let dpdu;
-        let dpdv;
-
-        if determinant == 0.0 {
-            (_, dpdu, dpdv) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
+        let (dpdu, dpdv) = if determinant == 0.0 {
+            let (_, u, v) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
+            (u,v)
         } else {
             let inv_det = 1.0 / determinant;
-            dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
-            dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
-        }
+            let dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
+            let dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
+            (dpdu, dpdv)
+        };
 
         let p0_normal = self.n0;
         let p1_normal = self.n1;
         let p2_normal = self.n2;
         let shading_normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
-        let mut ss = dpdu.normalize();
-        let mut ts = shading_normal.cross(&ss);
-        if ts.magnitude_squared() > 0.0 {
-            ts = ts.normalize();
-            ss = ts.cross(&shading_normal);
-        } else {
-            (_, ss, ts) = coordinate_system(shading_normal);
-        }
+
+        let (ss, ts) = {
+            let mut ss = dpdu.normalize();
+            let mut ts = shading_normal.cross(&ss);
+            if ts.magnitude_squared() > 0.0 {
+                ts = ts.normalize();
+                ss = ts.cross(&shading_normal);
+                (ss, ts)
+            } else {
+                let (_, ss, ts) = coordinate_system(shading_normal);
+                (ss, ts)
+            }
+        };
 
         let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
 
@@ -301,6 +301,7 @@ fn project_on_plane(p: Point3<f64>, origin: Point3<f64>, normal: Vector3<f64>) -
     p - (p - origin).dot(&normal) * normal
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compute_shading_position(
     p_hit: Point3<f64>,
     v0: Point3<f64>,
@@ -392,7 +393,7 @@ mod tests {
             0,
             1,
             2,
-            vec![Material::MatteMaterial(MatteMaterial::new(
+            vec![Material::Matte(MatteMaterial::new(
                 Vector3::new(1.0, 1.0, 1.0),
                 100.0,
             ))],

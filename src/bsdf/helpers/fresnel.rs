@@ -1,22 +1,50 @@
-// todo: create enum 
+#[derive(Debug, Clone, Copy)]
+pub enum Fresnel {
+    Noop(FresnelNoop),
+    Dielectric(FresnelDielectric),
+}
 
-pub trait Fresnel {
+pub trait FresnelTrait {
     fn evaluate(&self, cos_i: f64) -> f64;
 }
 
+impl FresnelTrait for Fresnel {
+    fn evaluate(&self, cos_i: f64) -> f64 {
+        match self {
+            Fresnel::Noop(x) => x.evaluate(cos_i),
+            Fresnel::Dielectric(x) => x.evaluate(cos_i),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
-pub struct DielectricFresnel {
+pub struct FresnelNoop {}
+
+impl FresnelNoop {
+    pub fn new() -> Self {
+        FresnelNoop {}
+    }
+}
+
+impl FresnelTrait for FresnelNoop {
+    fn evaluate(&self, cos_theta_i: f64) -> f64 {
+        1.0
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct FresnelDielectric {
     eta_i: f64,
     eta_t: f64,
 }
 
-impl DielectricFresnel {
+impl FresnelDielectric {
     pub fn new(eta_i: f64, eta_t: f64) -> Self {
-        DielectricFresnel { eta_i, eta_t }
+        FresnelDielectric { eta_i, eta_t }
     }
 }
 
-impl Fresnel for DielectricFresnel {
+impl FresnelTrait for FresnelDielectric {
     fn evaluate(&self, cos_theta_i: f64) -> f64 {
         let mut eta_i = self.eta_i;
         let mut eta_t = self.eta_t;

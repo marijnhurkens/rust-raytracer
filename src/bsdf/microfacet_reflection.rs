@@ -6,21 +6,21 @@ use crate::helpers::vector_reflect;
 
 use super::{BXDFtrait, BXDFTYPES};
 use super::helpers::abs_cos_theta;
-use super::helpers::fresnel::{DielectricFresnel, Fresnel};
+use super::helpers::fresnel::{FresnelDielectric, FresnelTrait};
 use super::helpers::microfacet_distribution::{MicrofacetDistribution, TrowbridgeReitzDistribution};
 
 #[derive(Debug, Copy, Clone)]
 pub struct MicrofacetReflection {
     reflectance_color: Vector3<f64>,
     distribution: TrowbridgeReitzDistribution,
-    fresnel: DielectricFresnel,
+    fresnel: FresnelDielectric,
 }
 
 impl MicrofacetReflection {
     pub fn new(
         reflectance_color: Vector3<f64>,
         distribution: TrowbridgeReitzDistribution,
-        fresnel: DielectricFresnel,
+        fresnel: FresnelDielectric,
     ) -> Self {
         MicrofacetReflection {
             reflectance_color,

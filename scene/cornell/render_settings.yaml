@@ -15,10 +15,10 @@ camera:
   fov: 38.0
   aperture: 0.0
 sampler:
-  max_samples: 16
+  max_samples: 64
   method: sobol
 renderer:
-  depth_limit: 4
+  depth_limit: 32
   threads: 10
 scene:
   background_color: [0.9,0.9,0.9]

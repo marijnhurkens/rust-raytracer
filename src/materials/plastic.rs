@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use num_traits::Zero;
 
-use crate::bsdf::helpers::fresnel::DielectricFresnel;
+use crate::bsdf::helpers::fresnel::FresnelDielectric;
 use crate::bsdf::helpers::microfacet_distribution::{
     MicrofacetDistribution, TrowbridgeReitzDistribution,
 };
@@ -39,7 +39,7 @@ impl MaterialTrait for PlasticMaterial {
 
         // todo: bug in microfacets, creates spots
         if !self.specular.is_zero() {
-            let fresnel = DielectricFresnel::new(1.0, 1.5);
+            let fresnel = FresnelDielectric::new(1.0, 1.5);
             let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
             let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
             //

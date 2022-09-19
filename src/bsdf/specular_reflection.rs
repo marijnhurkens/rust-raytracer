@@ -2,16 +2,16 @@ use nalgebra::{Point3, Vector3};
 
 use crate::bsdf::helpers::{abs_cos_theta, cos_theta};
 use crate::bsdf::{BXDFtrait, BXDFTYPES};
-use crate::bsdf::helpers::fresnel::{DielectricFresnel, Fresnel};
+use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric, FresnelTrait};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpecularReflection {
     reflectance_color: Vector3<f64>,
-    fresnel: DielectricFresnel,
+    fresnel: Fresnel,
 }
 
 impl SpecularReflection {
-    pub fn new(reflectance_color: Vector3<f64>, fresnel: DielectricFresnel) -> Self {
+    pub fn new(reflectance_color: Vector3<f64>, fresnel: Fresnel) -> Self {
         SpecularReflection {
             reflectance_color,
             fresnel,
