@@ -42,6 +42,11 @@ impl MaterialTrait for PlasticMaterial {
             let fresnel = DielectricFresnel::new(1.0, 1.5);
             let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
             let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
+            //
+            // bsdf.add(BXDF::SpecularReflection(SpecularReflection::new(
+            //     self.specular,
+            //     fresnel,
+            // )));
             bsdf.add(BXDF::MicrofacetReflection(MicrofacetReflection::new(
                 self.specular,
                 distribution,

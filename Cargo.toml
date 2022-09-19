@@ -7,7 +7,7 @@ authors = ["Marijn Hurkens <marijnhurkens@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/marijnhurkens/rust-raytracer"
 keywords = ["raytracer"]
-categories = []
+categories = ["graphics"]
 
 [dependencies]
 lazy_static = "1.4"
@@ -17,7 +17,7 @@ rand = "0.8.5"
 nalgebra = "0.31"
 bvh = "0.6"
 tobj = "3.2"
-indicatif = "0.16"
+indicatif = "0.17"
 sobol = "1.0.2"
 yaml-rust = "0.4"
 oidn = "1.4.2"
@@ -30,9 +30,9 @@ approx = "0.5.1"
 bvh = {git = "https://github.com/dbenson24/bvh", branch = "master" }
 
 [profile.release]
-#opt-level = 3
+#opt-level = 2
 #lto = "fat"
-#rustflags = "-C target-cpu=native"
+#rustflags = ["-C target-cpu=native"]
 debug = true
 
 #[env]

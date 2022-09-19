@@ -1,12 +1,13 @@
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point2, Point3, Vector3};
 use num_traits::Zero;
+
 use crate::bsdf::helpers::{get_cosine_weighted_in_hemisphere, same_hemisphere};
+use crate::helpers::vector_reflect;
 
 use super::{BXDFtrait, BXDFTYPES};
 use super::helpers::abs_cos_theta;
 use super::helpers::fresnel::{DielectricFresnel, Fresnel};
 use super::helpers::microfacet_distribution::{MicrofacetDistribution, TrowbridgeReitzDistribution};
-
 
 #[derive(Debug, Copy, Clone)]
 pub struct MicrofacetReflection {
@@ -52,21 +53,43 @@ impl BXDFtrait for MicrofacetReflection {
     }
 
     fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
-        // todo: check if correct, copied from lambertian
-        if same_hemisphere(wo, wi) {
-            abs_cos_theta(wi) * std::f64::consts::FRAC_1_PI
-        } else {
-            0.0
+        if !same_hemisphere(wo, wi) {
+            return 0.0;
         }
+
+        let wh = (wi + wo).normalize();
+
+        self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh))
     }
 
-    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
-        // todo: check if correct, copied from lambertian
-        let mut wi = get_cosine_weighted_in_hemisphere();
-        if wo.z < 0.0 {
-            wi.z = -wi.z;
+    fn sample_f(&self, sample_2: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+        ///   // Sample microfacet orientation $\wh$ and reflected direction $\wi$
+        //     if (wo.z == 0) return 0.;
+        //     Vector3f wh = distribution->Sample_wh(wo, u);
+        //     if (Dot(wo, wh) < 0) return 0.;   // Should be rare
+        //     *wi = Reflect(wo, wh);
+        //     if (!SameHemisphere(wo, *wi)) return Spectrum(0.f);
+        //
+        //     // Compute PDF of _wi_ for microfacet reflection
+        //     *pdf = distribution->Pdf(wo, wh) / (4 * Dot(wo, wh));
+        //     return f(wo, *wi);
+        if wo.z == 0.0 {
+            return (Vector3::zeros(), 0.0, Vector3::zeros());
         }
 
-        (wi, self.pdf(wo, wi), self.f(wo, wi))
+        let wh = self.distribution.sample_wh(wo, Point2::new(sample_2.x, sample_2.y));
+
+        if wo.dot(&wh) < 0.0 {
+            return (Vector3::zeros(), 0.0, Vector3::zeros());
+        }
+
+        let wi = vector_reflect(wo, wh);
+        if !same_hemisphere(wo, wi) {
+            return (Vector3::zeros(), 0.0, Vector3::zeros());
+        }
+
+        let pdf = self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh));
+
+        (wi, pdf, self.f(wo, wi))
     }
 }

@@ -13,13 +13,13 @@ pub fn denoise(film: &mut Film) -> &mut Film {
         .iter()
         .enumerate()
         .for_each(|(i, pixel)| {
-            normal_map[i] = pixel.normal.x as f32;
-            normal_map[i + 1] = pixel.normal.y as f32;
-            normal_map[i + 2] = pixel.normal.z as f32;
+            normal_map[i * 3] = pixel.normal.x as f32;
+            normal_map[i * 3 + 1] = pixel.normal.y as f32;
+            normal_map[i * 3 + 2] = pixel.normal.z as f32;
 
-            albedo_map[i] = pixel.albedo.x as f32;
-            albedo_map[i + 1] = pixel.albedo.y as f32;
-            albedo_map[i + 2] = pixel.albedo.z as f32;
+            albedo_map[i * 3] = pixel.albedo.x as f32;
+            albedo_map[i * 3 + 1] = pixel.albedo.y as f32;
+            albedo_map[i * 3 + 2] = pixel.albedo.z as f32;
         });
 
     let temp = film.image_buffer.clone();
@@ -35,7 +35,7 @@ pub fn denoise(film: &mut Film) -> &mut Film {
     oidn::RayTracing::new(&device)
         .srgb(true)
         .albedo_normal(&albedo_map[..], &normal_map[..])
-        //.clean_aux(true)
+        .clean_aux(true)
         .image_dimensions(image_width as usize, image_height as usize)
         .filter(&input_img[..], &mut filter_output[..])
         .expect("Filter config error!");

@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 use nalgebra::{Point3, Vector3};
 use rand::prelude::SliceRandom;
-use rand::thread_rng;
+use rand::{Rng, thread_rng};
 
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::microfacet_reflection::MicrofacetReflection;
@@ -88,7 +88,7 @@ impl Bsdf {
         let wo = self.world_to_local(wo_world);
 
         let bxdf = bxdfs.choose(&mut rng).unwrap();
-        let (wi, pdf, f) = bxdf.sample_f(Point3::new(1.0, 1.0, 1.0), wo);
+        let (wi, pdf, f) = bxdf.sample_f(Point3::new(rng.gen(), rng.gen(), rng.gen()), wo);
 
         let wi_world = self.local_to_world(wi);
 

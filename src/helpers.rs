@@ -118,16 +118,7 @@ pub fn get_refract_ray(
     angle_of_incidence: Vector3<f64>,
     ior: f64,
 ) -> Option<Vector3<f64>> {
-    let mut cosi = angle_of_incidence.dot(&normal);
-
-    // clamp
-    if cosi > 1.0 {
-        cosi = 1.0
-    }
-
-    if cosi < -1.0 {
-        cosi = -1.0;
-    }
+    let mut cosi = angle_of_incidence.dot(&normal).clamp(-1.0, 1.0);
 
     let mut etai = 1.0;
     let mut etat = ior;
@@ -216,6 +207,10 @@ pub fn concentric_sample_disk() -> Point2<f64> {
     }
 
     r * Point2::new(theta.cos(), theta.sin())
+}
+
+pub fn spherical_direction(sin_theta: f64, cos_theta: f64, phi: f64) -> Vector3<f64> {
+    Vector3::new(sin_theta * phi.cos(), sin_theta * phi.cos(), cos_theta)
 }
 
 #[cfg(test)]

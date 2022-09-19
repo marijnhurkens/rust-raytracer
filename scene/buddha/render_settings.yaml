@@ -5,7 +5,7 @@ film:
   bucket_height: 128
   filter_radius: 1.8
   filter_method: none
-  denoise: true
+  denoise: false
   crop:
 #    start: [200,50]
 #    end: [300,200]
@@ -15,7 +15,7 @@ camera:
   fov: 90.0
   aperture: 0.0
 sampler:
-  max_samples: 128
+  max_samples: 32
   method: sobol
 renderer:
   depth_limit: 12

@@ -121,7 +121,7 @@ impl Scene {
             ))],
         ))));
 
-        objects.push(floor);
+       // objects.push(floor);
 
         // Build scene
         println!("Building BVH...");
@@ -146,7 +146,7 @@ impl Scene {
 //fn load_lights()
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
-    dbg!(model_file);
+    //dbg!(model_file);
     let (models, materials) = tobj::load_obj(
         model_file,
         &LoadOptions {
@@ -160,24 +160,24 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
 
     let materials = materials.unwrap();
 
-    dbg!(&materials);
+    //dbg!(&materials);
     let mut triangles: Vec<ArcObject> = vec![];
     let mut meshes = vec![];
 
     for (i, m) in models.iter().enumerate() {
         let mesh = Arc::new(m.mesh.clone());
         println!("model[{}].name = \'{}\'", i, m.name);
-        println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
+        //println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
 
         // Normals and texture coordinates are also loaded, but not printed in this example
-        println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
-        println!("model[{}].indices: {}", i, mesh.indices.len());
-        println!(
-            "model[{}].expected_triangles: {}",
-            i,
-            mesh.indices.len() / 3
-        );
-        println!("model[{}].normals: {}", i, mesh.normals.len() / 3);
+        // println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
+        // println!("model[{}].indices: {}", i, mesh.indices.len());
+        // println!(
+        //     "model[{}].expected_triangles: {}",
+        //     i,
+        //     mesh.indices.len() / 3
+        // );
+        // println!("model[{}].normals: {}", i, mesh.normals.len() / 3);
 
         assert_eq!(mesh.indices.len() % 3, 0);
 

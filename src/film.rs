@@ -7,7 +7,7 @@ use nalgebra::{Point2, Vector2, Vector3};
 use crate::helpers::Bounds;
 use crate::renderer::SampleResult;
 
-#[derive(PartialEq)]
+#[derive(Eq, PartialEq)]
 pub enum FilterMethod {
     None,
     Gaussian,
@@ -72,6 +72,7 @@ impl Film {
         filter_method: FilterMethod,
         filter_radius: f64,
     ) -> Film {
+        let mut filter_radius = filter_radius;
         let mut pixels = vec![];
 
         for _ in 0..(image_size.x * image_size.y) {
@@ -86,24 +87,28 @@ impl Film {
         let mut filter_table = vec![];
         let filter_table_size: usize = 16;
 
-        for y in 0..filter_table_size {
-            for x in 0..filter_table_size {
-                let x_pos = (x as f64 + 0.5) * filter_radius / filter_table_size as f64;
-                let y_pos = (y as f64 + 0.5) * filter_radius / filter_table_size as f64;
-                let evaluate_point = Point2::new(x_pos, y_pos);
+        if filter_method != FilterMethod::None {
+            for y in 0..filter_table_size {
+                for x in 0..filter_table_size {
+                    let x_pos = (x as f64 + 0.5) * filter_radius / filter_table_size as f64;
+                    let y_pos = (y as f64 + 0.5) * filter_radius / filter_table_size as f64;
+                    let evaluate_point = Point2::new(x_pos, y_pos);
 
-                match filter_method {
-                    FilterMethod::Gaussian => filter_table.push(evaluate_gaussian(
-                        evaluate_point,
-                        filter_radius,
-                        GAUSSIAN_ALPHA,
-                    )),
-                    FilterMethod::Mitchell => {
-                        filter_table.push(evaluate_mitchell(evaluate_point, filter_radius))
+                    match filter_method {
+                        FilterMethod::Gaussian => filter_table.push(evaluate_gaussian(
+                            evaluate_point,
+                            filter_radius,
+                            GAUSSIAN_ALPHA,
+                        )),
+                        FilterMethod::Mitchell => {
+                            filter_table.push(evaluate_mitchell(evaluate_point, filter_radius))
+                        }
+                        FilterMethod::None => {}
                     }
-                    FilterMethod::None => {}
                 }
             }
+        } else {
+            filter_radius = 0.0;
         }
 
         let mut film = Film {
@@ -147,7 +152,7 @@ impl Film {
 
         for sample in samples.iter() {
             // compute pixel influence raster
-            let pixel_discrete = sample.p_film - Point2::new(0.5, 0.5);
+            let pixel_discrete = sample.p_film;// - Point2::new(0.5, 0.5);
 
             if self.filter_method == FilterMethod::None {
                 let bucket_x = pixel_discrete.x as u32 - bucket.pixel_bounds.p_min.x;
@@ -355,12 +360,6 @@ fn evaluate_mitchell_1d(input: f64) -> f64 {
         + (6.0 - 2.0 * _b))
         * (1.0 / 6.0)
 }
-//
-// inline void XYZToRGB(const Float xyz[3], Float rgb[3]) {
-// rgb[0] =  3.240479f*xyz[0] - 1.537150f*xyz[1] - 0.498535f*xyz[2];
-// rgb[1] = -0.969256f*xyz[0] + 1.875991f*xyz[1] + 0.041556f*xyz[2];
-// rgb[2] =  0.055648f*xyz[0] - 0.204043f*xyz[1] + 1.057311f*xyz[2];
-// }
 
 fn xyz_to_rgb(xyz: Vector3<f64>) -> Vector3<f64> {
     let x = xyz.x;
