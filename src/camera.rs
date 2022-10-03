@@ -52,7 +52,7 @@ impl Camera {
         };
 
         let direction = target - position;
-        let focal_distance = focal_distance.unwrap_or(direction.magnitude());
+        let focal_distance = focal_distance.unwrap_or_else(|| direction.magnitude());
 
         let world_up = Vector3::y();
 
