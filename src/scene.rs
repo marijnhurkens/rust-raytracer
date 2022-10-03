@@ -221,7 +221,7 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 vec![Material::Plastic(PlasticMaterial::new(
                     Vector3::new(0.18, 0.13, 0.08),
                     Vector3::repeat(1.0),
-                    0.001,
+                    0.03,
                 ))],
                 // vec![Material::PlasticMaterial(PlasticMaterial::new(
                 //     Vector3::new(0.7, 0.7, 0.7),

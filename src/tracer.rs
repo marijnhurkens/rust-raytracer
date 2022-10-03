@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 
-use nalgebra::{Point2, Point3, Vector3};
+use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 use num_traits::identities::Zero;
 use rand::prelude::SliceRandom;
 use rand::{thread_rng, Rng};
@@ -70,7 +70,11 @@ pub fn trace(
             material.compute_scattering_functions(&mut surface_interaction);
         }
 
-        let light_irradiance = uniform_sample_light(scene, &surface_interaction, sampler);
+        let mut light_irradiance = uniform_sample_light(scene, &surface_interaction, sampler);
+
+        // if bounce > 0 {
+        //     light_irradiance = light_irradiance.simd_clamp(Vector3::zeros(), Vector3::repeat(10.0));
+        // }
 
         l += contribution.component_mul(&light_irradiance);
 
