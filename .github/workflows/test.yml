@@ -24,7 +24,7 @@ jobs:
           tar -xf oidn.tar.gz -C ~/oidn
       - name: Build
         run: |
-          sudo cp ~/oidn/lib/* /usr/lib
+          sudo cp -a ~/oidn/lib/. /usr/lib/
           export OIDN_DIR=~/oidn
           cargo build
       - name: Fmt
