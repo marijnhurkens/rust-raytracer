@@ -30,6 +30,8 @@ jobs:
       - name: Fmt
         run: cargo fmt -- --check
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: |
+          export OIDN_DIR=~/oidn/oidn-1.4.3.x86_64.linux
+          cargo clippy -- -D warnings
       - name: Tests
         run: cargo test --verbose
