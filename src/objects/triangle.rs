@@ -195,7 +195,7 @@ impl ObjectTrait for Triangle {
 
         let (dpdu, dpdv) = if determinant == 0.0 {
             let (_, u, v) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
-            (u,v)
+            (u, v)
         } else {
             let inv_det = 1.0 / determinant;
             let dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;

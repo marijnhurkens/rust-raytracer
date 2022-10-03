@@ -22,13 +22,13 @@ use ggez::{Context, GameResult};
 use nalgebra::{Point2, Vector2};
 use yaml_rust::YamlLoader;
 
+use crate::camera::Camera;
+use crate::helpers::Bounds;
 use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
 use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER};
-use crate::camera::Camera;
-use crate::helpers::Bounds;
 
 use crate::renderer::{debug_write_pixel_f64, Settings};
 use crate::sampler::SobolSampler;
@@ -250,18 +250,16 @@ fn main() -> GameResult {
     let aspect_ratio = image_width as f64 / image_height as f64;
     let window_scale = settings_yaml["window"]["scale"].as_f64().unwrap_or(1.5) as f32;
     let crop_start = if !settings_yaml["film"]["crop"]["start"].is_badvalue() {
-        yaml_array_into_point2(&settings_yaml["film"]["crop"]["start"], )
+        yaml_array_into_point2(&settings_yaml["film"]["crop"]["start"])
     } else {
-       Point2::origin()
+        Point2::origin()
     };
     let crop_end = if !settings_yaml["film"]["crop"]["end"].is_badvalue() {
-        yaml_array_into_point2(
-            &settings_yaml["film"]["crop"]["end"],
-        )
+        yaml_array_into_point2(&settings_yaml["film"]["crop"]["end"])
     } else {
         Point2::new(
             settings_yaml["film"]["image_width"].as_i64().unwrap() as u32,
-            settings_yaml["film"]["image_height"].as_i64().unwrap() as u32
+            settings_yaml["film"]["image_height"].as_i64().unwrap() as u32,
         )
     };
     let should_denoise = settings_yaml["film"]["denoise"].as_bool().unwrap_or(false);
@@ -286,8 +284,8 @@ fn main() -> GameResult {
         settings_yaml["camera"]["aperture"].as_f64().unwrap(),
         settings_yaml["camera"]["focal_distance"].as_f64(),
         Bounds {
-            p_min: Point2::new(-1.0,-1.0),
-            p_max: Point2::new(1.0,1.0),
+            p_min: Point2::new(-1.0, -1.0),
+            p_max: Point2::new(1.0, 1.0),
         },
         film.clone(),
     );
@@ -303,7 +301,7 @@ fn main() -> GameResult {
 
     // Start the render threads
     println!("Start rendering...");
-    let (threads, receiver) = renderer::render(scene, settings, sampler, Arc::new(camera) );
+    let (threads, receiver) = renderer::render(scene, settings, sampler, Arc::new(camera));
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {

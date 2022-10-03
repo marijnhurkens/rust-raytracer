@@ -5,10 +5,12 @@ use crate::bsdf::helpers::{get_cosine_weighted_in_hemisphere, same_hemisphere};
 use crate::helpers::vector_reflect;
 use crate::renderer::{debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce};
 
-use super::{BXDFtrait, BXDFTYPES};
 use super::helpers::abs_cos_theta;
 use super::helpers::fresnel::{FresnelDielectric, FresnelTrait};
-use super::helpers::microfacet_distribution::{MicrofacetDistribution, TrowbridgeReitzDistribution};
+use super::helpers::microfacet_distribution::{
+    MicrofacetDistribution, TrowbridgeReitzDistribution,
+};
+use super::{BXDFtrait, BXDFTYPES};
 
 #[derive(Debug, Copy, Clone)]
 pub struct MicrofacetReflection {
@@ -45,12 +47,14 @@ impl BXDFtrait for MicrofacetReflection {
 
         let wh = wi + wo;
 
-        if wh.is_zero() { return Vector3::zeros(); }
+        if wh.is_zero() {
+            return Vector3::zeros();
+        }
 
         let wh = wh.normalize();
         let f = self.fresnel.evaluate(wi.dot(&wh));
-        self.reflectance_color * self.distribution.d(wh) * self.distribution.g(wo, wi) * f /
-            (4.0 * cos_theta_i * cos_theta_o)
+        self.reflectance_color * self.distribution.d(wh) * self.distribution.g(wo, wi) * f
+            / (4.0 * cos_theta_i * cos_theta_o)
     }
 
     fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
@@ -63,7 +67,11 @@ impl BXDFtrait for MicrofacetReflection {
         self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh))
     }
 
-    fn sample_f(&self, sample_2: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+    fn sample_f(
+        &self,
+        sample_2: Point3<f64>,
+        wo: Vector3<f64>,
+    ) -> (Vector3<f64>, f64, Vector3<f64>) {
         ///   // Sample microfacet orientation $\wh$ and reflected direction $\wi$
         //     if (wo.z == 0) return 0.;
         //     Vector3f wh = distribution->Sample_wh(wo, u);
@@ -78,7 +86,9 @@ impl BXDFtrait for MicrofacetReflection {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         }
 
-        let wh = self.distribution.sample_wh(wo, Point2::new(sample_2.x, sample_2.y));
+        let wh = self
+            .distribution
+            .sample_wh(wo, Point2::new(sample_2.x, sample_2.y));
 
         if wo.dot(&wh) < 0.0 {
             return (Vector3::zeros(), 0.0, Vector3::zeros());

@@ -199,9 +199,7 @@ fn render_work(
                 let camera_sample = sampler.get_camera_sample(Point2::new(x as f64, y as f64));
                 let ray = camera.generate_ray(camera_sample);
 
-                sample_results.push(
-                    trace(ray,camera_sample.p_film, settings,  scene, sampler)
-                );
+                sample_results.push(trace(ray, camera_sample.p_film, settings, scene, sampler));
             }
 
             bucket.add_samples(&sample_results);

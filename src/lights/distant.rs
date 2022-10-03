@@ -21,11 +21,11 @@ impl LightTrait for DistantLight {
         true
     }
 
-    fn emitting(&self, interaction: &SurfaceInteraction,  w: Vector3<f64>) -> Vector3<f64> {
+    fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64> {
         unimplemented!();
     }
 
-        // Sample_Li
+    // Sample_Li
     fn sample_irradiance(
         &self,
         interaction: &SurfaceInteraction,

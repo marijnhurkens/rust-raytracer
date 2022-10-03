@@ -18,12 +18,16 @@ impl LightTrait for PointLight {
         true
     }
 
-    fn emitting(&self, interaction: &SurfaceInteraction,  w: Vector3<f64>) -> Vector3<f64> {
+    fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64> {
         unimplemented!();
     }
 
     // Sample_Li
-    fn sample_irradiance(&self, interaction: &SurfaceInteraction, _: Vec<f64>) -> LightIrradianceSample {
+    fn sample_irradiance(
+        &self,
+        interaction: &SurfaceInteraction,
+        _: Vec<f64>,
+    ) -> LightIrradianceSample {
         let wi = (self.get_position() - interaction.point).normalize();
         let pdf = 1.0;
         let irradiance = self.intensity / distance_squared(&self.position, &interaction.point);

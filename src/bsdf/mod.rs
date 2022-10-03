@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 use nalgebra::{Point3, Vector3};
 use rand::prelude::SliceRandom;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::microfacet_reflection::MicrofacetReflection;
@@ -12,9 +12,9 @@ use crate::surface_interaction::SurfaceInteraction;
 
 pub mod helpers;
 pub mod lambertian;
+pub mod microfacet_reflection;
 pub mod oren_nayar;
 pub mod specular_reflection;
-pub mod microfacet_reflection;
 
 const MAX_BXDF_COUNT: usize = 5;
 

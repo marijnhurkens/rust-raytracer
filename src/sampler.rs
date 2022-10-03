@@ -59,29 +59,25 @@ impl SobolSampler {
         let sobol_3d = Sobol::<f64>::new(3, &sobol_params);
 
         SobolSampler {
-           sobol_1d,
-           sobol_2d,
-           sobol_3d,
+            sobol_1d,
+            sobol_2d,
+            sobol_3d,
         }
     }
 
-    pub fn get_1d(&mut self) -> f64
-    {
+    pub fn get_1d(&mut self) -> f64 {
         self.sobol_1d.next().unwrap().pop().unwrap()
     }
 
-    pub fn get_2d(&mut self) -> Vec<f64>
-    {
+    pub fn get_2d(&mut self) -> Vec<f64> {
         self.sobol_2d.next().unwrap()
     }
 
-    pub fn get_3d(&mut self) -> Vec<f64>
-    {
+    pub fn get_3d(&mut self) -> Vec<f64> {
         self.sobol_3d.next().unwrap()
     }
 
-    pub fn get_camera_sample(&mut self, pixel_pos: Point2<f64>) -> CameraSample
-    {
+    pub fn get_camera_sample(&mut self, pixel_pos: Point2<f64>) -> CameraSample {
         let p_film = pixel_pos + Point2::from_slice(&self.sobol_2d.next().unwrap()).coords;
 
         CameraSample {

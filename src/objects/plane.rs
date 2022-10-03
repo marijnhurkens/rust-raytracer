@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{AABB, Bounded};
+use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector2, Vector3};
 

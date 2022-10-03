@@ -1,8 +1,8 @@
 use nalgebra::{Point3, Vector3};
 
+use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric, FresnelTrait};
 use crate::bsdf::helpers::{abs_cos_theta, cos_theta};
 use crate::bsdf::{BXDFtrait, BXDFTYPES};
-use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric, FresnelTrait};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpecularReflection {

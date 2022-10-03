@@ -152,7 +152,7 @@ impl Film {
 
         for sample in samples.iter() {
             // compute pixel influence raster
-            let pixel_discrete = sample.p_film;// - Point2::new(0.5, 0.5);
+            let pixel_discrete = sample.p_film; // - Point2::new(0.5, 0.5);
 
             if self.filter_method == FilterMethod::None {
                 let bucket_x = pixel_discrete.x as u32 - bucket.pixel_bounds.p_min.x;

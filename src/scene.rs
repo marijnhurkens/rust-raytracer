@@ -16,6 +16,7 @@ use crate::lights::distant::DistantLight;
 use crate::lights::point::PointLight;
 use crate::lights::Light;
 use crate::materials::matte::MatteMaterial;
+use crate::materials::mirror::MirrorMaterial;
 use crate::materials::plastic::PlasticMaterial;
 use crate::materials::Material;
 use crate::objects::plane::Plane;
@@ -23,7 +24,6 @@ use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
-use crate::materials::mirror::MirrorMaterial;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -62,7 +62,7 @@ impl Scene {
             let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
             load_model(world_model_file.as_path(), up_axis)
         } else {
-            (vec!(), vec!())
+            (vec![], vec![])
         };
 
         let mut lights: Vec<Arc<Light>> = vec![];
@@ -220,8 +220,8 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 // ))],
                 vec![Material::Plastic(PlasticMaterial::new(
                     Vector3::new(0.18, 0.13, 0.08),
-                     Vector3::repeat(1.0),
-                     0.001,
+                    Vector3::repeat(1.0),
+                    0.001,
                 ))],
                 // vec![Material::PlasticMaterial(PlasticMaterial::new(
                 //     Vector3::new(0.7, 0.7, 0.7),

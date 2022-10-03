@@ -1,8 +1,8 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::ops::Mul;
 
-use nalgebra::{ArrayStorage, ClosedSub, Point2, Point3, Scalar, U1, U3, Vector2, Vector3};
 use nalgebra::indexing::MatrixIndex;
+use nalgebra::{ArrayStorage, ClosedSub, Point2, Point3, Scalar, Vector2, Vector3, U1, U3};
 use rand::{thread_rng, Rng};
 use yaml_rust::Yaml;
 
@@ -183,8 +183,7 @@ pub fn max_dimension_vec_3<T: Scalar + PartialOrd>(v: Vector3<T>) -> usize {
     }
 }
 
-pub fn permute< T: Copy>(v: Vector3<T>, x: usize, y: usize, z: usize) -> Vector3<T>
-{
+pub fn permute<T: Copy>(v: Vector3<T>, x: usize, y: usize, z: usize) -> Vector3<T> {
     Vector3::new(v[x], v[y], v[z])
 }
 
@@ -255,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_max_dimension_vec_3() {
-        let vec = Vector3::new(1,3,2);
+        let vec = Vector3::new(1, 3, 2);
         let res = max_dimension_vec_3(vec);
         assert_eq!(1, res);
     }
