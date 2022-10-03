@@ -3,7 +3,7 @@ name: Rust
 on: [ push ]
 
 jobs:
-  dependencies:
+  CI:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,7 +23,7 @@ jobs:
           tar -xf oidn.tar.gz -C ~/oidn
       - name: Build
         run: |
-          export OIDN_DIR=~/oidn
+          export OIDN_DIR=~/oidn/lib
           cargo build
       - name: Fmt
         run: cargo fmt -- --check
