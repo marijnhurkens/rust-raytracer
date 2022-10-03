@@ -42,6 +42,7 @@ impl Camera {
         aspect_ratio: f64,
         fov: f64,
         aperture: f64,
+        focal_distance: Option<f64>,
         screen_window: Bounds<f64>,
         film: Arc<RwLock<Film>>,
     ) -> Camera {
@@ -51,7 +52,7 @@ impl Camera {
         };
 
         let direction = target - position;
-        let focal_distance = direction.magnitude();
+        let focal_distance = focal_distance.unwrap_or(direction.magnitude());
 
         let world_up = Vector3::y();
 
@@ -190,6 +191,7 @@ mod tests {
             1.0,
             90.0,
             0.0,
+            None,
             Bounds {
                 p_min: Point2::new(-1.0, -1.0),
                 p_max: Point2::new(1.0, 1.0),
@@ -225,6 +227,7 @@ mod tests {
             1.0,
             90.0,
             0.0,
+            None,
             Bounds {
                 p_min: Point2::new(-1.0, -1.0),
                 p_max: Point2::new(1.0, 1.0),

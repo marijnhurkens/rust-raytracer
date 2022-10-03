@@ -6,20 +6,22 @@ Features done:
 
 - Objects (planes, triangles)
 - Meshes
-- Obj loading
+- Obj file loading
 - Lights (point, area, distant)
 - Materials (matte, half of plastic)
+- Microfacet distribution
 - Multithreading
 - Multiple Importance Sampling
 - Denoising using OpenImage Denoise
-- Basic scene configuration
+- Basic scene format
 
 Todo:
 
-- Microfacets
 - Transmittance (BTDF)
 - File output
-- Textures
+- Textures / Env map
+- Bump mapping
+- Gltf loading maybe
 - Other things
 
 ## Build and run
@@ -28,12 +30,12 @@ You need a copy of Intel® Open Image Denoise (IOID). Grab a package from their
 [download section](https://www.openimagedenoise.org/downloads.html). Unpack this 
 somewhere. We refer to this below as the OIDN location.
 
-Export the OIDN location for the build to find the headers & libraries. For example:
-
+Export the OIDN location to your environment so the build can find the headers & libraries. For example:
 ```
 export OIDN_DIR=$HOME/Downloads/oidn-1.3.0.x86_64.linux/
 ```
 
+And then run the renderer:
 ```
 cargo run --release ./scene/buddha
 ```
@@ -41,15 +43,17 @@ cargo run --release ./scene/buddha
 
 ## Usage
 
+You have to provide a scene folder to the renderer. The scene folder should contain a `scene.yaml`
+file and a `render_settings.yaml` file
+
 ```
 rust-raytracer 
 
 USAGE:
-    rust-raytracer [ARGS]
+    rust-raytracer [SCENE_FOLDER]
 
 ARGS:
-    <SCENE_FILE>       
-    <SETTINGS_FILE>    
+    <SCENE_FOLDER>    
 
 OPTIONS:
     -h, --help    Print help information
@@ -60,9 +64,15 @@ and N for normals.
 
 ## Examples
 
-Part of PBRT book implementation:
+Using the methods described in the PBRT book:
+
+![Dragon](examples/dragon.png)
+Dragon model with a plastic microfacet material (white pixels are a bug). This render also
+shows area lights and DoF.
+
 
 ![Buddha](examples/buddha.png)
+Happy Buddha model with a specular reflection material, scene lit using one distant light.
 
 Old whitted raytracer:
 

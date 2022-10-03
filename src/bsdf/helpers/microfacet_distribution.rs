@@ -78,7 +78,7 @@ impl TrowbridgeReitzDistribution {
         let d = (b * b * tmp * tmp - (a * a - b * b) * tmp).max(0.0).sqrt();
         let slope_x_1 = b * tmp - d;
         let slope_x_2 = b * tmp + d;
-        let slope_x = if a < 0.0 || slope_x_2 > 1.0 / tan_theta {
+        let slope_x = if a < 0.0 || slope_x_2 > (1.0 / tan_theta) {
             slope_x_1
         } else {
             slope_x_2
@@ -93,6 +93,11 @@ impl TrowbridgeReitzDistribution {
         let z = (u2 * (u2 * (u2 * 0.27385 - 0.73369) + 0.46341))
             / (u2 * (u2 * (u2 * 0.093073 + 0.309420) - 1.0) + 0.597999);
         let slope_y = s * z * (1.0 + slope_x * slope_x).sqrt();
+
+        assert!(!slope_y.is_infinite());
+        assert!(!slope_y.is_nan());
+        assert!(!slope_x.is_infinite());
+        assert!(!slope_x.is_nan());
 
         (slope_x, slope_y)
     }

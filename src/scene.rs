@@ -117,12 +117,12 @@ impl Scene {
             Point3::origin(),
             Vector3::new(0.0, 1.0, 0.0),
             vec![Material::Matte(MatteMaterial::new(
-                Vector3::repeat(0.2),
-                20.0,
+                Vector3::repeat(0.7),
+                3.0,
             ))],
         ))));
 
-       // objects.push(floor);
+        objects.push(floor);
 
         // Build scene
         println!("Building BVH...");
@@ -143,8 +143,6 @@ impl Scene {
         self.objects.push(o);
     }
 }
-
-//fn load_lights()
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
     //dbg!(model_file);
@@ -220,10 +218,10 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 //          //ior: material.optical_density as f64,
                 //          //refraction: 1.0 - material.dissolve as f64,
                 // ))],
-                vec![Material::Mirror(MirrorMaterial::new(
-                    Vector3::repeat(1.0),
-                    // Vector3::repeat(1.0),
-                    // 0.01,
+                vec![Material::Plastic(PlasticMaterial::new(
+                    Vector3::new(0.18, 0.13, 0.08),
+                     Vector3::repeat(1.0),
+                     0.001,
                 ))],
                 // vec![Material::PlasticMaterial(PlasticMaterial::new(
                 //     Vector3::new(0.7, 0.7, 0.7),

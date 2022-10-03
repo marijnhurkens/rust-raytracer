@@ -3,6 +3,7 @@ use num_traits::Zero;
 
 use crate::bsdf::helpers::{get_cosine_weighted_in_hemisphere, same_hemisphere};
 use crate::helpers::vector_reflect;
+use crate::renderer::{debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce};
 
 use super::{BXDFtrait, BXDFTYPES};
 use super::helpers::abs_cos_theta;
@@ -85,11 +86,13 @@ impl BXDFtrait for MicrofacetReflection {
 
         let wi = vector_reflect(wo, wh);
         if !same_hemisphere(wo, wi) {
-            return (Vector3::zeros(), 0.0, Vector3::zeros());
+            return (wi, 0.0, Vector3::zeros());
         }
 
         let pdf = self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh));
 
-        (wi, pdf, self.f(wo, wi))
+        let f = self.f(wo, wi);
+
+        (wi, pdf, f)
     }
 }

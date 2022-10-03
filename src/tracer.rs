@@ -2,20 +2,24 @@ use std::borrow::BorrowMut;
 
 use nalgebra::{Point2, Point3, Vector3};
 use num_traits::identities::Zero;
-use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;
+use rand::{thread_rng, Rng};
 
-use crate::{Object, SobolSampler};
 use crate::bsdf::{BsdfSampleResult, BXDFTYPES};
 use crate::helpers::power_heuristic;
-use crate::lights::{Light, LightTrait};
 use crate::lights::area::AreaLight;
+use crate::lights::{Light, LightTrait};
 use crate::materials::MaterialTrait;
-use crate::objects::ObjectTrait;
 use crate::objects::plane::Plane;
-use crate::renderer::{check_intersect_scene, check_intersect_scene_simple, check_light_visible, CURRENT_BOUNCE, debug_write_pixel, debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray, SampleResult, Settings};
+use crate::objects::ObjectTrait;
+use crate::renderer::{
+    check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
+    debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray,
+    SampleResult, Settings, CURRENT_BOUNCE,
+};
 use crate::scene::Scene;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
+use crate::{Object, SobolSampler};
 
 pub fn trace(
     starting_ray: Ray,
@@ -47,7 +51,6 @@ pub fn trace(
                     l += contribution.component_mul(&light.environment_emitting(ray));
                 }
             }
-
         }
 
         // Check for an intersection
@@ -83,13 +86,18 @@ pub fn trace(
         }
 
         contribution = contribution.component_mul(
-            &(bsdf_sample.f
+            &((bsdf_sample.f
                 * bsdf_sample
                     .wi
                     .dot(&surface_interaction.shading_normal)
-                    .abs()
+                    .abs())
                 / bsdf_sample.pdf),
         );
+
+        // if contribution.max() > 300.0 {
+        //     dbg!(bsdf_sample.f, bsdf_sample.pdf);
+        //     panic!();
+        // }
 
         specular_bounce = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 
@@ -100,7 +108,7 @@ pub fn trace(
 
         // russian roulette termination
         if bounce > 3 {
-            let q = (1.0 - contribution.y).max(0.05);
+            let q = (1.0 - contribution.max()).max(0.05);
             if rng.gen::<f64>() < q {
                 break;
             }
@@ -117,7 +125,11 @@ pub fn trace(
     }
 }
 
-fn uniform_sample_light(scene: &Scene, surface_interaction: &SurfaceInteraction, sampler: &mut SobolSampler) -> Vector3<f64> {
+fn uniform_sample_light(
+    scene: &Scene,
+    surface_interaction: &SurfaceInteraction,
+    sampler: &mut SobolSampler,
+) -> Vector3<f64> {
     let mut rng = thread_rng();
     let bsdf_flags = BXDFTYPES::ALL & !BXDFTYPES::SPECULAR;
 

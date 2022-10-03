@@ -28,6 +28,7 @@ pub struct Bsdf {
     ts: Vector3<f64>,
 }
 
+#[derive(Debug)]
 pub struct BsdfSampleResult {
     pub wi: Vector3<f64>,
     pub pdf: f64,

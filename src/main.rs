@@ -284,6 +284,7 @@ fn main() -> GameResult {
         aspect_ratio,
         settings_yaml["camera"]["fov"].as_f64().unwrap(),
         settings_yaml["camera"]["aperture"].as_f64().unwrap(),
+        settings_yaml["camera"]["focal_distance"].as_f64(),
         Bounds {
             p_min: Point2::new(-1.0,-1.0),
             p_max: Point2::new(1.0,1.0),
