@@ -16,7 +16,7 @@ jobs:
           mkdir ~/oidn
           cd ~
           wget -q -O oidn.tar.gz https://github.com/OpenImageDenoise/oidn/releases/download/v1.4.3/oidn-1.4.3.x86_64.linux.tar.gz
-          tar -xf oidn.tar.gz -C ~/oidn
+          tar -xf oidn.tar.gz -C ~/oidn/
           ls -hal ~ && ls -hal oidn
           sudo cp -a ~/oidn/lib/. /usr/lib/
       - name: Install dependencies
