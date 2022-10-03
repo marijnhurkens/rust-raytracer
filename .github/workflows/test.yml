@@ -21,8 +21,8 @@ jobs:
         run: |
           mkdir ~/oidn
           cd ~
-          wget -O oidn.zip https://github.com/OpenImageDenoise/oidn/releases/download/v1.4.3/oidn-1.4.3.x86_64.linux.tar.gz
-          unzip oidn.zip ~/oidn
+          wget -q -O oidn.tar.gz https://github.com/OpenImageDenoise/oidn/releases/download/v1.4.3/oidn-1.4.3.x86_64.linux.tar.gz
+          tar -xf oidn.tar.gz -C ~/oidn
           export OIDN_DIR=~/oidn
       - name: Build
         run: cargo build
