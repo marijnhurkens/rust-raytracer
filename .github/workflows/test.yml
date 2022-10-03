@@ -7,68 +7,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: install_dependencies
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install dependencies
         run: |
           sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu `lsb_release -sc` main universe restricted multiverse"
           sudo apt-get update -y -qq
-          sudo apt-get install libsdl2-dev libasound2-dev pkg-config
+          sudo apt-get install libsdl2-dev
       - name: Download OIDN
         run: |
           mkdir ~/oidn
           cd ~
           wget -q -O oidn.tar.gz https://github.com/OpenImageDenoise/oidn/releases/download/v1.4.3/oidn-1.4.3.x86_64.linux.tar.gz
           tar -xf oidn.tar.gz -C ~/oidn
-  build:
-    runs-on: ubuntu-latest
-    needs: [dependencies]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - uses: Swatinem/rust-cache@v2
       - name: Build
         run: |
           export OIDN_DIR=~/oidn
           cargo build
-
-  fmt:
-    runs-on: ubuntu-latest
-    needs: [ dependencies ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
       - name: Fmt
         run: cargo fmt -- --check
-
-  clippy:
-    runs-on: ubuntu-latest
-    needs: [ build ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
       - name: Clippy
         run: cargo clippy -- -D warnings
-
-  tests:
-    runs-on: ubuntu-latest
-    needs: [ build ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - uses: Swatinem/rust-cache@v2
       - name: Tests
         run: cargo test --verbose
