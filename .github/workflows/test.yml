@@ -34,4 +34,6 @@ jobs:
           export OIDN_DIR=~/oidn/oidn-1.4.3.x86_64.linux
           cargo clippy -- -D warnings
       - name: Tests
-        run: cargo test --verbose
+        run: |
+          export OIDN_DIR=~/oidn/oidn-1.4.3.x86_64.linux
+          cargo test --verbose
