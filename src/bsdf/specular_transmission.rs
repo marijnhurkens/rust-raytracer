@@ -5,7 +5,7 @@ use crate::bsdf::helpers::{abs_cos_theta, cos_theta};
 use crate::bsdf::{BXDFtrait, BXDFTYPES};
 use crate::helpers::{face_forward, refract};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TransportMode {
     Radiance,
     Other,
