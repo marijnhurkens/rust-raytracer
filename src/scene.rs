@@ -24,6 +24,7 @@ use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
+use crate::materials::glass::GlassMaterial;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -218,10 +219,10 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 //          //ior: material.optical_density as f64,
                 //          //refraction: 1.0 - material.dissolve as f64,
                 // ))],
-                vec![Material::Plastic(PlasticMaterial::new(
-                    Vector3::new(0.18, 0.13, 0.08),
+                vec![Material::Glass(GlassMaterial::new(
                     Vector3::repeat(1.0),
-                    0.03,
+                    // Vector3::repeat(1.0),
+                    // 0.03,
                 ))],
                 // vec![Material::PlasticMaterial(PlasticMaterial::new(
                 //     Vector3::new(0.7, 0.7, 0.7),

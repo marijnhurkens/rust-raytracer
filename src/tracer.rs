@@ -72,6 +72,7 @@ pub fn trace(
 
         let mut light_irradiance = uniform_sample_light(scene, &surface_interaction, sampler);
 
+        // clamp indirect light?
         // if bounce > 0 {
         //     light_irradiance = light_irradiance.simd_clamp(Vector3::zeros(), Vector3::repeat(10.0));
         // }

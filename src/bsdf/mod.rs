@@ -3,10 +3,12 @@ use nalgebra::{Point3, Vector3};
 use rand::prelude::SliceRandom;
 use rand::{thread_rng, Rng};
 
+use crate::bsdf::helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::microfacet_reflection::MicrofacetReflection;
 use crate::bsdf::oren_nayar::OrenNayar;
 use crate::bsdf::specular_reflection::SpecularReflection;
+use crate::bsdf::specular_transmission::SpecularTransmission;
 use crate::renderer::{debug_write_pixel, debug_write_pixel_f64};
 use crate::surface_interaction::SurfaceInteraction;
 
@@ -15,6 +17,7 @@ pub mod lambertian;
 pub mod microfacet_reflection;
 pub mod oren_nayar;
 pub mod specular_reflection;
+pub mod specular_transmission;
 
 const MAX_BXDF_COUNT: usize = 5;
 
@@ -219,6 +222,7 @@ bitflags! {
 pub enum BXDF {
     Lambertian(Lambertian),
     SpecularReflection(SpecularReflection),
+    SpecularTransmission(SpecularTransmission),
     OrenNayar(OrenNayar),
     MicrofacetReflection(MicrofacetReflection),
 }
@@ -226,8 +230,21 @@ pub enum BXDF {
 pub trait BXDFtrait {
     fn get_type_flags(&self) -> BXDFTYPES;
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64>;
-    fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64;
-    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>);
+    fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
+        if same_hemisphere(wo, wi) {
+            abs_cos_theta(wi) * std::f64::consts::FRAC_1_PI
+        } else {
+            0.0
+        }
+    }
+    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+        let mut wi = get_cosine_weighted_in_hemisphere();
+        if wo.z < 0.0 {
+            wi.z = -wi.z;
+        }
+
+        (wi, self.pdf(wo, wi), self.f(wo, wi))
+    }
 }
 
 impl BXDFtrait for BXDF {
@@ -237,6 +254,7 @@ impl BXDFtrait for BXDF {
             BXDF::SpecularReflection(x) => x.get_type_flags(),
             BXDF::OrenNayar(x) => x.get_type_flags(),
             BXDF::MicrofacetReflection(x) => x.get_type_flags(),
+            BXDF::SpecularTransmission(x) => x.get_type_flags(),
         }
     }
 
@@ -246,6 +264,7 @@ impl BXDFtrait for BXDF {
             BXDF::SpecularReflection(x) => x.f(wo, wi),
             BXDF::OrenNayar(x) => x.f(wo, wi),
             BXDF::MicrofacetReflection(x) => x.f(wo, wi),
+            BXDF::SpecularTransmission(x) => x.f(wo, wi),
         }
     }
 
@@ -255,15 +274,17 @@ impl BXDFtrait for BXDF {
             BXDF::SpecularReflection(x) => x.pdf(wo, wi),
             BXDF::OrenNayar(x) => x.pdf(wo, wi),
             BXDF::MicrofacetReflection(x) => x.pdf(wo, wi),
+            BXDF::SpecularTransmission(x) => x.pdf(wo, wi),
         }
     }
 
-    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+    fn sample_f(&self, point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
         match self {
-            BXDF::Lambertian(x) => x.sample_f(_point, wo),
-            BXDF::SpecularReflection(x) => x.sample_f(_point, wo),
-            BXDF::OrenNayar(x) => x.sample_f(_point, wo),
-            BXDF::MicrofacetReflection(x) => x.sample_f(_point, wo),
+            BXDF::Lambertian(x) => x.sample_f(point, wo),
+            BXDF::SpecularReflection(x) => x.sample_f(point, wo),
+            BXDF::OrenNayar(x) => x.sample_f(point, wo),
+            BXDF::MicrofacetReflection(x) => x.sample_f(point, wo),
+            BXDF::SpecularTransmission(x) => x.sample_f(point, wo)
         }
     }
 }

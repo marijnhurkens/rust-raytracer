@@ -19,8 +19,8 @@ lights:
       side_a: [ -1.0,0.0,-4.0 ]
       side_b: [ 0.0,3.0,0.0 ]
       intensity: [ 7.0,6.0,6.0 ]
-#    - type: distant
-#      direction: [0.4,1.0,0.4]
-#      intensity: [6.0,6.0,6.0]
+    - type: distant
+      direction: [0.4,1.0,0.4]
+      intensity: [2.0,2.0,2.0]
 
 

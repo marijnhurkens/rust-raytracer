@@ -2,34 +2,37 @@ use nalgebra::Vector3;
 
 use crate::bsdf::helpers::fresnel::{Fresnel, FresnelNoop};
 use crate::bsdf::specular_reflection::SpecularReflection;
+use crate::bsdf::specular_transmission::{SpecularTransmission, TransportMode};
 use crate::bsdf::{Bsdf, BXDF};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MirrorMaterial {
-    reflectance_color: Vector3<f64>,
+pub struct GlassMaterial {
+    refraction_color: Vector3<f64>,
 }
 
-impl MirrorMaterial {
-    pub fn new(reflectance_color: Vector3<f64>) -> Self {
-        MirrorMaterial { reflectance_color }
+impl GlassMaterial {
+    pub fn new(refraction_color: Vector3<f64>) -> Self {
+        GlassMaterial { refraction_color }
     }
 }
 
-impl MaterialTrait for MirrorMaterial {
+impl MaterialTrait for GlassMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
         let mut bsdf = Bsdf::new(*si, None);
 
-        bsdf.add(BXDF::SpecularReflection(SpecularReflection::new(
-            self.reflectance_color,
-            Fresnel::Noop(FresnelNoop::new()),
+        bsdf.add(BXDF::SpecularTransmission(SpecularTransmission::new(
+            self.refraction_color,
+            1.0,
+            1.5,
+            TransportMode::Other,
         )));
 
         si.bsdf = Some(bsdf);
     }
 
     fn get_albedo(&self) -> Vector3<f64> {
-        self.reflectance_color
+        Vector3::zeros()
     }
 }

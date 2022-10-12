@@ -113,33 +113,29 @@ pub fn get_fresnel_ratio(normal: Vector3<f64>, angle_of_incidence: Vector3<f64>,
     fresnel_ratio
 }
 
-pub fn get_refract_ray(
-    normal: Vector3<f64>,
+pub fn refract(
     angle_of_incidence: Vector3<f64>,
+    normal: Vector3<f64>,
     ior: f64,
 ) -> Option<Vector3<f64>> {
-    let mut cosi = angle_of_incidence.dot(&normal).clamp(-1.0, 1.0);
+    let mut cos_theta_i = normal.dot(&angle_of_incidence);
 
-    let mut etai = 1.0;
-    let mut etat = ior;
-    let mut n = normal;
+    let sin_2_theta_i = 0.0f64.max(1.0 - cos_theta_i * cos_theta_i);
+    let sin_2_theta_t = ior * ior * sin_2_theta_i;
 
-    if cosi < 0.0 {
-        cosi = -cosi;
-    } else {
-        etai = ior;
-        etat = 1.0;
-        n = -normal;
+    if sin_2_theta_t > 1.0 {
+        return None;
     }
 
-    let eta = etai / etat;
-    let k = 1.0 - eta * eta * (1.0 - cosi * cosi);
-    if k < 0.0 {
-        // no refraction
-        None
-    } else {
-        Some(eta * angle_of_incidence + (eta * cosi - k.sqrt()) * n)
-    }
+    let cos_theta_t = (1.0 - sin_2_theta_t).sqrt();
+
+    Some(ior * -angle_of_incidence + (ior * cos_theta_i - cos_theta_t) * normal)
+    // Float sin2ThetaI = std::max(0.f, 1.f - cosThetaI * cosThetaI);
+    // Float sin2ThetaT = eta * eta * sin2ThetaI;
+    // <<Handle total internal reflection for transmission>>
+    // Float cosThetaT = std::sqrt(1 - sin2ThetaT);
+    //
+    // *wt = eta * -wi + (eta * cosThetaI - cosThetaT) * Vector3f(n);
 }
 
 pub fn yaml_array_into_point2(array: &Yaml) -> Point2<u32> {

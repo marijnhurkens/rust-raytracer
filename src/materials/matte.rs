@@ -1,15 +1,16 @@
+use nalgebra::Vector3;
+use num_traits::Zero;
+
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::oren_nayar::OrenNayar;
 use crate::bsdf::{Bsdf, BXDF};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
-use nalgebra::Vector3;
-use num_traits::Zero;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatteMaterial {
-    pub reflectance_color: Vector3<f64>,
-    pub roughness: f64,
+    reflectance_color: Vector3<f64>,
+    roughness: f64,
 }
 
 impl MatteMaterial {

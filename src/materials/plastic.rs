@@ -14,9 +14,9 @@ use crate::surface_interaction::SurfaceInteraction;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlasticMaterial {
-    pub diffuse: Vector3<f64>,
-    pub specular: Vector3<f64>,
-    pub roughness: f64,
+    diffuse: Vector3<f64>,
+    specular: Vector3<f64>,
+    roughness: f64,
 }
 
 impl PlasticMaterial {
