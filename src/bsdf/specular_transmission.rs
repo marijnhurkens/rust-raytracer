@@ -1,14 +1,14 @@
 use nalgebra::{Point3, Vector3};
 
-use crate::bsdf::{BXDFtrait, BXDFTYPES};
-use crate::bsdf::helpers::{abs_cos_theta, cos_theta};
 use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric, FresnelTrait};
+use crate::bsdf::helpers::{abs_cos_theta, cos_theta};
+use crate::bsdf::{BXDFtrait, BXDFTYPES};
 use crate::helpers::{face_forward, refract};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TransportMode {
     Radiance,
-    Other
+    Other,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -58,16 +58,16 @@ impl BXDFtrait for SpecularTransmission {
         };
 
         let normal = face_forward(Vector3::new(0.0, 0.0, 1.0), wo);
-        let wi = if let Some(wi) = refract( wo,  normal, eta_i / eta_t) {
+        let wi = if let Some(wi) = refract(wo, normal, eta_i / eta_t) {
             wi
         } else {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         };
 
         let fresnel_eval = self.fresnel.evaluate(cos_theta(wi));
-        let mut ft = self.refraction_color.component_mul(
-            &(Vector3::repeat(1.0) - Vector3::repeat(fresnel_eval))
-        );
+        let mut ft = self
+            .refraction_color
+            .component_mul(&(Vector3::repeat(1.0) - Vector3::repeat(fresnel_eval)));
 
         if self.mode == TransportMode::Radiance {
             ft *= (eta_i * eta_i) / (eta_t * eta_t);

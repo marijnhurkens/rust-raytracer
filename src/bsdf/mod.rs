@@ -284,7 +284,7 @@ impl BXDFtrait for BXDF {
             BXDF::SpecularReflection(x) => x.sample_f(point, wo),
             BXDF::OrenNayar(x) => x.sample_f(point, wo),
             BXDF::MicrofacetReflection(x) => x.sample_f(point, wo),
-            BXDF::SpecularTransmission(x) => x.sample_f(point, wo)
+            BXDF::SpecularTransmission(x) => x.sample_f(point, wo),
         }
     }
 }

@@ -1,15 +1,15 @@
-use nalgebra::Vector3;
 use crate::materials::glass::GlassMaterial;
+use nalgebra::Vector3;
 
 use crate::materials::matte::MatteMaterial;
 use crate::materials::mirror::MirrorMaterial;
 use crate::materials::plastic::PlasticMaterial;
 use crate::surface_interaction::SurfaceInteraction;
 
+pub mod glass;
 pub mod matte;
 pub mod mirror;
 pub mod plastic;
-pub mod glass;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Material {

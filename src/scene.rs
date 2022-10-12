@@ -15,6 +15,7 @@ use crate::lights::area::AreaLight;
 use crate::lights::distant::DistantLight;
 use crate::lights::point::PointLight;
 use crate::lights::Light;
+use crate::materials::glass::GlassMaterial;
 use crate::materials::matte::MatteMaterial;
 use crate::materials::mirror::MirrorMaterial;
 use crate::materials::plastic::PlasticMaterial;
@@ -24,7 +25,6 @@ use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
-use crate::materials::glass::GlassMaterial;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
