@@ -37,12 +37,7 @@ impl LightTrait for AreaLight {
         let light_interaction = self.object.sample_point(sample);
         let wi = (light_interaction.point - surface_interaction.point).normalize();
 
-        let interaction = Interaction {
-            point: surface_interaction.point,
-            normal: surface_interaction.shading_normal,
-        };
-
-        let pdf = self.object.pdf(&interaction, wi);
+        let pdf = self.object.pdf(&surface_interaction.into(), wi);
         let irradiance = self.irradiance_at_point(&light_interaction, -wi);
 
         LightIrradianceSample {
@@ -69,10 +64,6 @@ impl LightTrait for AreaLight {
             pdf_direction: 0.0,
             pdf_position: 0.0,
         }
-    }
-
-    fn environment_emitting(&self, ray: Ray) -> Vector3<f64> {
-        unimplemented!()
     }
 
     fn power(&self) -> Vector3<f64> {

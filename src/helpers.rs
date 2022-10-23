@@ -1,4 +1,4 @@
-use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 use std::ops::Mul;
 
 use nalgebra::indexing::MatrixIndex;
@@ -206,6 +206,20 @@ pub fn concentric_sample_disk() -> Point2<f64> {
 
 pub fn spherical_direction(sin_theta: f64, cos_theta: f64, phi: f64) -> Vector3<f64> {
     Vector3::new(sin_theta * phi.cos(), sin_theta * phi.cos(), cos_theta)
+}
+
+pub fn spherical_theta(v: Vector3<f64>) -> f64 {
+    v.z.clamp(-1.0, 1.0).acos()
+}
+
+pub fn spherical_phi(v: Vector3<f64>) -> f64 {
+    let p = v.y.atan2(v.z);
+
+    if p < 0.0 {
+        p + 2.0 * PI
+    } else {
+        p
+    }
 }
 
 #[cfg(test)]

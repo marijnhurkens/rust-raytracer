@@ -16,10 +16,10 @@ camera:
   aperture: 0.0
   focal_distance: 0.0 # camera target is used if you do not provide this field
 sampler:
-  max_samples: 32
+  max_samples: 12
   method: sobol
 renderer:
-  depth_limit: 2
+  depth_limit: 8
   threads: 10 # do not use more threads than cores available, it won't improve performance
 scene:
   background_color: [0.9,0.9,0.9]

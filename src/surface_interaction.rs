@@ -8,6 +8,24 @@ pub struct Interaction {
     pub normal: Vector3<f64>,
 }
 
+impl From<SurfaceInteraction> for Interaction {
+    fn from(s: SurfaceInteraction) -> Self {
+        Interaction {
+            point: s.point,
+            normal: s.shading_normal,
+        }
+    }
+}
+
+impl From<&SurfaceInteraction> for Interaction {
+    fn from(s: &SurfaceInteraction) -> Self {
+        Interaction {
+            point: s.point,
+            normal: s.shading_normal,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct SurfaceInteraction {
     pub bsdf: Option<Bsdf>,

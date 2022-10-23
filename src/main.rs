@@ -47,6 +47,8 @@ mod sampler;
 mod scene;
 mod surface_interaction;
 mod tracer;
+mod textures;
+
 
 #[derive(Parser, Debug)]
 struct Args {

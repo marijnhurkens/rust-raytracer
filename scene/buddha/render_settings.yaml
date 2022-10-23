@@ -12,7 +12,7 @@ film:
 camera:
   position: [0.0,4.0,-7.0]
   target: [0.0,3.5,-0.5]
-  fov: 90.0
+  fov: 140.0
   aperture: 0.0
 sampler:
   max_samples: 32
@@ -21,6 +21,6 @@ renderer:
   depth_limit: 12
   threads: 10
 scene:
-  background_color: [1.0,1.0,1.0]
+
 window:
   scale: 1.5
