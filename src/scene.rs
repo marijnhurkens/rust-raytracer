@@ -14,6 +14,7 @@ use yaml_rust::YamlLoader;
 use crate::helpers::yaml_array_into_vector3;
 use crate::lights::area::AreaLight;
 use crate::lights::distant::DistantLight;
+use crate::lights::infinite_area::InfiniteAreaLight;
 use crate::lights::point::PointLight;
 use crate::lights::Light;
 use crate::materials::glass::GlassMaterial;
@@ -26,7 +27,6 @@ use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
-use crate::lights::infinite_area::InfiniteAreaLight;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -117,19 +117,21 @@ impl Scene {
         }
 
         if let Some(environment_map) = scene_yaml["environment_map"].as_str() {
-            let image_map = Reader::open(path.join(environment_map)).expect("Environment map not found.")
-                .decode().expect("Cannot decode environment map.");
+            let image_map = Reader::open(path.join(environment_map))
+                .expect("Environment map not found.")
+                .decode()
+                .expect("Cannot decode environment map.");
             let infinite_light = Light::InfiniteArea(InfiniteAreaLight::new(
                 &Vector3::repeat(1.0),
                 image_map.to_rgb8(),
-                Matrix4::new_translation( &Vector3::new(0.0,1.0,0.0))
+                Matrix4::new_translation(&Vector3::new(0.0, 1.0, 0.0)),
             ));
 
             lights.push(Arc::new(infinite_light));
         }
 
         let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::new(0.0,-0.1,0.0),
+            Point3::new(0.0, -0.1, 0.0),
             Vector3::new(0.0, 1.0, 0.0),
             vec![Material::Matte(MatteMaterial::new(
                 Vector3::repeat(0.9),

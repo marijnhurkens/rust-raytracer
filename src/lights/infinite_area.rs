@@ -42,8 +42,11 @@ impl LightTrait for InfiniteAreaLight {
         let cos_phi = phi.cos();
         let sin_phi = phi.sin();
 
-        let wi =
-            self.light_to_world.transform_vector(&Vector3::new(sin_theta * cos_phi, sin_theta * sin_phi, cos_theta));
+        let wi = self.light_to_world.transform_vector(&Vector3::new(
+            sin_theta * cos_phi,
+            sin_theta * sin_phi,
+            cos_theta,
+        ));
 
         let ray = Ray {
             point: interaction.point,
