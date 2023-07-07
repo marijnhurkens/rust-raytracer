@@ -157,8 +157,7 @@ impl Film {
             if self.filter_method == FilterMethod::None {
                 let bucket_x = pixel_discrete.x as u32 - bucket.pixel_bounds.p_min.x;
                 let bucket_y = pixel_discrete.y as u32 - bucket.pixel_bounds.p_min.y;
-                let pixel_index =
-                    (bucket_x as u32 + bucket.pixel_bounds.vector().x * bucket_y as u32) as usize;
+                let pixel_index = (bucket_x + bucket.pixel_bounds.vector().x * bucket_y) as usize;
                 bucket.pixels[pixel_index].sum_radiance += sample.radiance;
                 bucket.pixels[pixel_index].sum_weight += 1.0;
                 // todo: average or throw away?
@@ -204,9 +203,8 @@ impl Film {
                     // convert to local bucket coordinates
                     let bucket_x = x as u32 - bucket.pixel_bounds.p_min.x;
                     let bucket_y = y as u32 - bucket.pixel_bounds.p_min.y;
-                    let pixel_index = (bucket_x as u32
-                        + bucket.pixel_bounds.vector().x * bucket_y as u32)
-                        as usize;
+                    let pixel_index =
+                        (bucket_x + bucket.pixel_bounds.vector().x * bucket_y) as usize;
 
                     bucket.pixels[pixel_index].sum_radiance += sample.radiance * filter_weight;
                     bucket.pixels[pixel_index].sum_weight += filter_weight;
@@ -233,8 +231,7 @@ impl Film {
             self.pixels[film_pixel_index].albedo += pixel.albedo;
 
             if self.pixels[film_pixel_index].sum_weight < f64::EPSILON {
-                self.image_buffer
-                    .put_pixel(x as u32, y as u32, image::Rgb([0, 0, 0]));
+                self.image_buffer.put_pixel(x, y, image::Rgb([0, 0, 0]));
                 continue;
             }
 
@@ -250,7 +247,7 @@ impl Film {
             ]);
 
             self.image_buffer
-                .put_pixel(x as u32, y as u32, pixel_color_rgb);
+                .put_pixel(x, y, pixel_color_rgb);
         }
     }
 

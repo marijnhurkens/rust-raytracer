@@ -3,7 +3,7 @@ use nalgebra::Vector3;
 use crate::bsdf::helpers::fresnel::{Fresnel, FresnelNoop};
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::bsdf::specular_transmission::{SpecularTransmission, TransportMode};
-use crate::bsdf::{Bsdf, BXDF};
+use crate::bsdf::{Bsdf, Bxdf};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
 
@@ -22,7 +22,7 @@ impl MaterialTrait for GlassMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
         let mut bsdf = Bsdf::new(*si, None);
 
-        bsdf.add(BXDF::SpecularTransmission(SpecularTransmission::new(
+        bsdf.add(Bxdf::SpecularTransmission(SpecularTransmission::new(
             self.refraction_color,
             1.0,
             1.5,

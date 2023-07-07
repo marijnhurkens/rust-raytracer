@@ -8,7 +8,7 @@ use crate::bsdf::helpers::microfacet_distribution::{
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::microfacet_reflection::MicrofacetReflection;
 use crate::bsdf::specular_reflection::SpecularReflection;
-use crate::bsdf::{Bsdf, BXDF};
+use crate::bsdf::{Bsdf, Bxdf};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
 
@@ -34,7 +34,7 @@ impl MaterialTrait for PlasticMaterial {
         let mut bsdf = Bsdf::new(*si, None);
 
         if !self.diffuse.is_zero() {
-            bsdf.add(BXDF::Lambertian(Lambertian::new(self.diffuse)));
+            bsdf.add(Bxdf::Lambertian(Lambertian::new(self.diffuse)));
         }
 
         // todo: bug in microfacets, creates spots
@@ -47,7 +47,7 @@ impl MaterialTrait for PlasticMaterial {
             //     self.specular,
             //     fresnel,
             // )));
-            bsdf.add(BXDF::MicrofacetReflection(MicrofacetReflection::new(
+            bsdf.add(Bxdf::MicrofacetReflection(MicrofacetReflection::new(
                 self.specular,
                 distribution,
                 fresnel,

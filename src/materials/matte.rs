@@ -3,7 +3,7 @@ use num_traits::Zero;
 
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::oren_nayar::OrenNayar;
-use crate::bsdf::{Bsdf, BXDF};
+use crate::bsdf::{Bsdf, Bxdf};
 use crate::materials::MaterialTrait;
 use crate::surface_interaction::SurfaceInteraction;
 
@@ -30,10 +30,10 @@ impl MaterialTrait for MatteMaterial {
         if !self.reflectance_color.is_zero() {
             if sigma == 0.0 {
                 let lambertian = Lambertian::new(self.reflectance_color);
-                bsdf.add(BXDF::Lambertian(lambertian));
+                bsdf.add(Bxdf::Lambertian(lambertian));
             } else {
                 let oren_nayar = OrenNayar::new(self.reflectance_color, self.roughness);
-                bsdf.add(BXDF::OrenNayar(oren_nayar));
+                bsdf.add(Bxdf::OrenNayar(oren_nayar));
             }
         }
         si.bsdf = Some(bsdf);

@@ -23,7 +23,7 @@ const MAX_BXDF_COUNT: usize = 5;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Bsdf {
-    bxdfs: [Option<BXDF>; MAX_BXDF_COUNT],
+    bxdfs: [Option<Bxdf>; MAX_BXDF_COUNT],
     ior: f64,
     geometry_normal: Vector3<f64>,
     shading_normal: Vector3<f64>,
@@ -51,7 +51,7 @@ impl Bsdf {
         }
     }
 
-    pub fn add(&mut self, bxdf: BXDF) -> &mut Bsdf {
+    pub fn add(&mut self, bxdf: Bxdf) -> &mut Bsdf {
         let slot = self.bxdfs.iter_mut().find(|x| x.is_none()).unwrap();
 
         *slot = Some(bxdf);
@@ -66,7 +66,7 @@ impl Bsdf {
     ) -> BsdfSampleResult {
         let mut rng = thread_rng();
 
-        let bxdfs: Vec<&BXDF> = self
+        let bxdfs: Vec<&Bxdf> = self
             .bxdfs
             .iter()
             .filter_map(|bxdf| {
@@ -219,7 +219,7 @@ bitflags! {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum BXDF {
+pub enum Bxdf {
     Lambertian(Lambertian),
     SpecularReflection(SpecularReflection),
     SpecularTransmission(SpecularTransmission),
@@ -247,44 +247,44 @@ pub trait BXDFtrait {
     }
 }
 
-impl BXDFtrait for BXDF {
+impl BXDFtrait for Bxdf {
     fn get_type_flags(&self) -> BXDFTYPES {
         match self {
-            BXDF::Lambertian(x) => x.get_type_flags(),
-            BXDF::SpecularReflection(x) => x.get_type_flags(),
-            BXDF::OrenNayar(x) => x.get_type_flags(),
-            BXDF::MicrofacetReflection(x) => x.get_type_flags(),
-            BXDF::SpecularTransmission(x) => x.get_type_flags(),
+            Bxdf::Lambertian(x) => x.get_type_flags(),
+            Bxdf::SpecularReflection(x) => x.get_type_flags(),
+            Bxdf::OrenNayar(x) => x.get_type_flags(),
+            Bxdf::MicrofacetReflection(x) => x.get_type_flags(),
+            Bxdf::SpecularTransmission(x) => x.get_type_flags(),
         }
     }
 
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64> {
         match self {
-            BXDF::Lambertian(x) => x.f(wo, wi),
-            BXDF::SpecularReflection(x) => x.f(wo, wi),
-            BXDF::OrenNayar(x) => x.f(wo, wi),
-            BXDF::MicrofacetReflection(x) => x.f(wo, wi),
-            BXDF::SpecularTransmission(x) => x.f(wo, wi),
+            Bxdf::Lambertian(x) => x.f(wo, wi),
+            Bxdf::SpecularReflection(x) => x.f(wo, wi),
+            Bxdf::OrenNayar(x) => x.f(wo, wi),
+            Bxdf::MicrofacetReflection(x) => x.f(wo, wi),
+            Bxdf::SpecularTransmission(x) => x.f(wo, wi),
         }
     }
 
     fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
         match self {
-            BXDF::Lambertian(x) => x.pdf(wo, wi),
-            BXDF::SpecularReflection(x) => x.pdf(wo, wi),
-            BXDF::OrenNayar(x) => x.pdf(wo, wi),
-            BXDF::MicrofacetReflection(x) => x.pdf(wo, wi),
-            BXDF::SpecularTransmission(x) => x.pdf(wo, wi),
+            Bxdf::Lambertian(x) => x.pdf(wo, wi),
+            Bxdf::SpecularReflection(x) => x.pdf(wo, wi),
+            Bxdf::OrenNayar(x) => x.pdf(wo, wi),
+            Bxdf::MicrofacetReflection(x) => x.pdf(wo, wi),
+            Bxdf::SpecularTransmission(x) => x.pdf(wo, wi),
         }
     }
 
     fn sample_f(&self, point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
         match self {
-            BXDF::Lambertian(x) => x.sample_f(point, wo),
-            BXDF::SpecularReflection(x) => x.sample_f(point, wo),
-            BXDF::OrenNayar(x) => x.sample_f(point, wo),
-            BXDF::MicrofacetReflection(x) => x.sample_f(point, wo),
-            BXDF::SpecularTransmission(x) => x.sample_f(point, wo),
+            Bxdf::Lambertian(x) => x.sample_f(point, wo),
+            Bxdf::SpecularReflection(x) => x.sample_f(point, wo),
+            Bxdf::OrenNayar(x) => x.sample_f(point, wo),
+            Bxdf::MicrofacetReflection(x) => x.sample_f(point, wo),
+            Bxdf::SpecularTransmission(x) => x.sample_f(point, wo),
         }
     }
 }
