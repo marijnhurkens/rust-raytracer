@@ -150,7 +150,7 @@ pub fn render(
                             .film
                             .write()
                             .unwrap()
-                            .merge_bucket_pixels_to_image_buffer(&mut bucket_lock);
+                            .merge_bucket_pixels_to_image_buffer(&bucket_lock);
                     }
                     None => {
                         break;

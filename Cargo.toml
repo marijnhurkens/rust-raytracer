@@ -12,9 +12,9 @@ categories = ["graphics"]
 [dependencies]
 lazy_static = "1.4"
 image = "0.24"
-ggez = "0.7.0"
+ggez = "0.9.0-rc0"
 rand = "0.8.5"
-nalgebra = "0.31"
+nalgebra = "0.32"
 bvh = "0.6"
 tobj = "3.2"
 indicatif = "0.17"
@@ -27,13 +27,14 @@ num-traits = "0.2"
 approx = "0.5.1"
 
 [patch.crates-io]
+ggez = { git = 'https://github.com/ggez/ggez.git', branch = "devel"  }
 bvh = {git = "https://github.com/dbenson24/bvh", branch = "master" }
 
 [profile.release]
 #opt-level = 2
-#lto = "fat"
+#lto = "thin"
 #rustflags = ["-C target-cpu=native"]
-debug = true
+#debug = true
 
 #[env]
 #OIDN_DIR="~/Downloads/oidn/"

@@ -14,22 +14,24 @@ use std::time::Duration;
 use bvh::Vector3;
 use clap::Parser;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
-use ggez::event::{run, KeyCode};
-use ggez::graphics::{self, Color, DrawParam};
+use ggez::event::run;
+use ggez::graphics::{self, Color, DrawParam, ImageEncodingFormat, ImageFormat};
 use ggez::input::keyboard;
+use ggez::input::keyboard::KeyCode;
+use ggez::winit::dpi::LogicalSize;
 use ggez::{event, GameError};
 use ggez::{Context, GameResult};
 use nalgebra::{Point2, Vector2};
 use yaml_rust::YamlLoader;
 
-use crate::camera::Camera;
-use crate::helpers::Bounds;
 use denoise::denoise;
 use film::{Film, FilterMethod};
 use helpers::{yaml_array_into_point2, yaml_array_into_point3, yaml_into_u32};
 use objects::Object;
 use renderer::{DebugBuffer, ThreadMessage, DEBUG_BUFFER};
 
+use crate::camera::Camera;
+use crate::helpers::Bounds;
 use crate::renderer::{debug_write_pixel_f64, Settings};
 use crate::sampler::SobolSampler;
 
@@ -46,9 +48,8 @@ mod renderer;
 mod sampler;
 mod scene;
 mod surface_interaction;
-mod tracer;
 mod textures;
-
+mod tracer;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -93,20 +94,20 @@ impl MainState {
     }
 }
 
-impl event::EventHandler<GameError> for MainState {
+impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if !ggez::timer::check_update_time(ctx, 30) {
+        if !ctx.time.check_update_time(30) {
             ggez::timer::sleep(Duration::from_secs_f64(1.0 / 10.0));
             return Ok(());
         }
 
-        if ggez::timer::ticks(ctx) % 7 == 0 {
+        if ctx.time.ticks() % 3 == 0 {
             self.redraw = true;
         }
 
-        self.debug_normals = keyboard::is_key_pressed(ctx, KeyCode::N);
-        self.debug_albedo = keyboard::is_key_pressed(ctx, KeyCode::A);
-        self.debug_buffer = keyboard::is_key_pressed(ctx, KeyCode::D);
+        self.debug_normals = ctx.keyboard.is_key_pressed(KeyCode::N);
+        self.debug_albedo = ctx.keyboard.is_key_pressed(KeyCode::A);
+        self.debug_buffer = ctx.keyboard.is_key_pressed(KeyCode::D);
 
         let message = self.receiver.try_recv();
         if let Ok(message) = message {
@@ -187,41 +188,47 @@ impl event::EventHandler<GameError> for MainState {
             }
         }
 
-        let image =
-            graphics::Image::from_rgba8(ctx, image_width as u16, image_height as u16, &output)?;
+        let image = graphics::Image::from_pixels(
+            ctx,
+            &output,
+            ImageFormat::Rgba8UnormSrgb,
+            image_width,
+            image_height,
+        );
 
         // now lets render our scene once in the top left and in the bottom right
-        let window_size = graphics::size(ctx);
+        let window_size = ctx.gfx.window().inner_size();
         let image_ratio = image_width as f32 / image_height as f32;
-        let window_ratio = window_size.0 as f32 / window_size.1 as f32;
+        let window_ratio = window_size.width as f32 / window_size.height as f32;
 
         let scale = if window_ratio > image_ratio {
             // window is wider, use max height
-            let scale = window_size.1 as f32 / image.height() as f32;
-            ggez::mint::Vector2 { x: scale, y: scale }
+            let scale = window_size.height as f32 / image.height() as f32;
+            ggez::glam::vec2(scale, scale)
         } else {
             // window is narrower, use max width
-            let scale = window_size.0 as f32 / image.width() as f32;
-            ggez::mint::Vector2 { x: scale, y: scale }
+            let scale = window_size.width as f32 / image.width() as f32;
+            ggez::glam::vec2(scale, scale)
         };
 
-        graphics::set_canvas(ctx, None);
-        graphics::clear(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
-        graphics::draw(
-            ctx,
-            &image,
-            DrawParam::default()
-                .dest(ggez::mint::Point2 { x: 0.0, y: 0.0 })
-                .scale(scale),
-        )?;
-        graphics::present(ctx)?;
+        let mut canvas = graphics::Canvas::from_frame(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
+        canvas.draw(&image, graphics::DrawParam::new().scale(scale));
+        canvas.finish(ctx);
 
         Ok(())
     }
 
-    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+    fn resize_event(
+        &mut self,
+        ctx: &mut Context,
+        width: f32,
+        height: f32,
+    ) -> Result<(), GameError> {
         let new_rect = graphics::Rect::new(0.0, 0.0, width, height);
-        graphics::set_screen_coordinates(ctx, new_rect).unwrap();
+        // ctx.gfx.window().set_inner_size()
+        // graphics::set_screen_coordinates(ctx, new_rect).unwrap();
+
+        Ok(())
     }
 }
 
@@ -309,7 +316,7 @@ fn main() -> GameResult {
         .window_setup(WindowSetup {
             title: "Rust Raytracer".to_string(),
             samples: NumSamples::One,
-            vsync: false,
+            vsync: true,
             icon: "".to_string(),
             srgb: false,
         })
@@ -319,13 +326,15 @@ fn main() -> GameResult {
             maximized: false,
             fullscreen_type: FullscreenType::Windowed,
             borderless: false,
-            min_width: 0.0,
-            min_height: 0.0,
+            transparent: false,
+            min_width: 1.0,
+            min_height: 1.0,
             max_width: 0.0,
             max_height: 0.0,
             resizable: true,
             visible: true,
             resize_on_scale_factor_change: true,
+            logical_size: None,
         });
 
     let (ctx, event_loop) = cb.build()?;

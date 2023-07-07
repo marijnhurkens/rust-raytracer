@@ -220,7 +220,7 @@ impl Film {
         bucket.samples = vec![];
     }
 
-    pub fn merge_bucket_pixels_to_image_buffer(&mut self, bucket: &mut Bucket) {
+    pub fn merge_bucket_pixels_to_image_buffer(&mut self, bucket: &Bucket) {
         for (index, pixel) in bucket.pixels.iter().enumerate() {
             let x = (index as u32 % bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.x;
             let y = (index as u32 / bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.y;
@@ -241,12 +241,12 @@ impl Film {
             let radiance = self.pixels[film_pixel_index].sum_radiance
                 / self.pixels[film_pixel_index].sum_weight;
 
-            let rgb = xyz_to_rgb(radiance);
+            let rgb = xyz_to_srgb(radiance);
 
             let pixel_color_rgb = image::Rgb([
-                ((rgb.x) * 255.0) as u8,
-                ((rgb.y) * 255.0) as u8,
-                ((rgb.z) * 255.0) as u8,
+                ((gamma_correct_srgb(rgb.x)) * 255.0) as u8,
+                ((gamma_correct_srgb(rgb.y)) * 255.0) as u8,
+                ((gamma_correct_srgb(rgb.z)) * 255.0) as u8,
             ]);
 
             self.image_buffer
@@ -361,7 +361,7 @@ fn evaluate_mitchell_1d(input: f64) -> f64 {
         * (1.0 / 6.0)
 }
 
-fn xyz_to_rgb(xyz: Vector3<f64>) -> Vector3<f64> {
+fn xyz_to_srgb(xyz: Vector3<f64>) -> Vector3<f64> {
     let x = xyz.x;
     let y = xyz.y;
     let z = xyz.z;
@@ -371,4 +371,16 @@ fn xyz_to_rgb(xyz: Vector3<f64>) -> Vector3<f64> {
     let b = 0.055648 * x - 0.204043 * y + 1.057311 * z;
 
     Vector3::new(r, g, b)
+}
+
+fn gamma_correct_srgb(val: f64) -> f64 {
+    if val <= 0.0 {
+        0.0
+    } else if val < 0.003_130_8 {
+        val * 12.92
+    } else if val < 1.0 {
+        val.powf(1.0 / 2.4) * 1.055 - 0.055
+    } else {
+        1.0
+    }
 }
