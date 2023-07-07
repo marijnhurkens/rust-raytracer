@@ -246,8 +246,7 @@ impl Film {
                 ((gamma_correct_srgb(rgb.z)) * 255.0) as u8,
             ]);
 
-            self.image_buffer
-                .put_pixel(x, y, pixel_color_rgb);
+            self.image_buffer.put_pixel(x, y, pixel_color_rgb);
         }
     }
 
