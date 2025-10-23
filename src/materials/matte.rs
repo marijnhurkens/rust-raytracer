@@ -24,7 +24,7 @@ impl MatteMaterial {
 
 impl MaterialTrait for MatteMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
-        let mut bsdf = Bsdf::new(*si, None);
+        let mut bsdf = si.bsdf.unwrap_or(Bsdf::new(*si, None));
         let sigma = self.roughness.clamp(0.0, 90.0);
 
         if !self.reflectance_color.is_zero() {

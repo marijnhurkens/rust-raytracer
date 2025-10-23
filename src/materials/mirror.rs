@@ -19,7 +19,7 @@ impl MirrorMaterial {
 
 impl MaterialTrait for MirrorMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
-        let mut bsdf = Bsdf::new(*si, None);
+        let mut bsdf = si.bsdf.unwrap_or(Bsdf::new(*si, None));
 
         bsdf.add(Bxdf::SpecularReflection(SpecularReflection::new(
             self.reflectance_color,

@@ -31,7 +31,7 @@ impl PlasticMaterial {
 
 impl MaterialTrait for PlasticMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
-        let mut bsdf = Bsdf::new(*si, None);
+        let mut bsdf = si.bsdf.unwrap_or(Bsdf::new(*si, None));
 
         if !self.diffuse.is_zero() {
             bsdf.add(Bxdf::Lambertian(Lambertian::new(self.diffuse)));

@@ -27,6 +27,7 @@ use crate::objects::rectangle::Rectangle;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
+use crate::objects::sphere::Sphere;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -130,16 +131,30 @@ impl Scene {
             lights.push(Arc::new(infinite_light));
         }
 
-        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::new(0.0, -0.1, 0.0),
-            Vector3::new(0.0, 1.0, 0.0),
-            vec![Material::Matte(MatteMaterial::new(
-                Vector3::repeat(0.9),
-                1.0,
-            ))],
+        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+        //     Point3::new(0.0, -0.1, 0.0),
+        //     Vector3::new(0.0, 1.0, 0.0),
+        //     vec![Material::Matte(MatteMaterial::new(
+        //         Vector3::repeat(0.9),
+        //         1.0,
+        //     ))],
+        // ))));
+        //
+        // objects.push(floor);
+
+        let sphere = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+            Point3::new(0.0, 0.0, 1.0),
+            0.3,
+            vec![
+                //Material::Glass(GlassMaterial::new(Vector3::repeat(1.0))),
+                Material::Matte(MatteMaterial::new(
+                    Vector3::new(0.0, 0.0, 0.0),
+                    0.5,
+                ))
+            ],
         ))));
 
-        objects.push(floor);
+        objects.push(sphere);
 
         // Build scene
         println!("Building BVH...");
@@ -227,29 +242,32 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 mesh.indices[3 * v] as usize,
                 mesh.indices[3 * v + 1] as usize,
                 mesh.indices[3 * v + 2] as usize,
-                // vec![Material::MatteMaterial(MatteMaterial::new(
-                //     //weight: 1.0,
-                //     color,
-                //     //specular,
-                //     20.0, //(material.shininess / 1000.0) as f64,
-                //          //ior: material.optical_density as f64,
-                //          //refraction: 1.0 - material.dissolve as f64,
-                // ))],
+                vec![
+                    Material::Matte(MatteMaterial::new(
+                    //weight: 1.0,
+                    color,
+                    //specular,
+                    20.0, //(material.shininess / 1000.0) as f64,
+                         //ior: material.optical_density as f64,
+                         //refraction: 1.0 - material.dissolve as f64,
+                )),
                 // vec![Material::Glass(GlassMaterial::new(
                 //     Vector3::repeat(1.0),
                 //     // Vector3::repeat(1.0),
                 //      //0.03,
                 // ))],
-                // vec![Material::Glass(GlassMaterial::new(
-                //     Vector3::repeat(0.6),
-                //     // Vector3::repeat(1.0),
-                //     //0.03,
-                // ))],
-                vec![Material::Plastic(PlasticMaterial::new(
-                    Vector3::new(0.7, 0.7, 0.7),
-                    Vector3::repeat(1.0),
-                    0.05,
-                ))],
+
+//                     Material::Glass(GlassMaterial::new(
+//                         Vector3::repeat(0.6),
+//                         // Vector3::repeat(1.0),
+//                         //0.03,
+//                     )),
+                    // Material::Plastic(PlasticMaterial::new(
+                    //     Vector3::new(0.2, 0.2, 0.7),
+                    //     Vector3::repeat(1.0),
+                    //     0.1,
+                    // )),
+                ],
                 None,
             );
 
@@ -264,6 +282,8 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
 
         bar.finish();
     }
+
+
 
     (triangles, meshes)
 }

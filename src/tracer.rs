@@ -72,14 +72,10 @@ pub fn trace(
 
         let mut light_irradiance = uniform_sample_light(scene, &surface_interaction, sampler);
 
-        // clamp indirect light?
-        // if bounce > 0 {
-        //     light_irradiance = light_irradiance.simd_clamp(Vector3::zeros(), Vector3::repeat(10.0));
-        // }
-
         l += contribution.component_mul(&light_irradiance);
 
         let wo = -ray.direction;
+
         let bsdf_sample = surface_interaction
             .bsdf
             .as_ref()
@@ -98,11 +94,6 @@ pub fn trace(
                     .abs())
                 / bsdf_sample.pdf),
         );
-
-        // if contribution.max() > 300.0 {
-        //     dbg!(bsdf_sample.f, bsdf_sample.pdf);
-        //     panic!();
-        // }
 
         specular_bounce = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 

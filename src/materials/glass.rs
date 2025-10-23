@@ -20,13 +20,13 @@ impl GlassMaterial {
 
 impl MaterialTrait for GlassMaterial {
     fn compute_scattering_functions(&self, si: &mut SurfaceInteraction) {
-        let mut bsdf = Bsdf::new(*si, None);
+        let mut bsdf = si.bsdf.unwrap_or(Bsdf::new(*si, None));
 
         bsdf.add(Bxdf::SpecularTransmission(SpecularTransmission::new(
             self.refraction_color,
             1.0,
             1.5,
-            TransportMode::Other,
+            TransportMode::Radiance,
         )));
 
         si.bsdf = Some(bsdf);
