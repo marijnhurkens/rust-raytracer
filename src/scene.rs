@@ -3,9 +3,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
-
-use bvh::bvh::BVH;
-use image::io::Reader;
+use bvh::bvh::Bvh;
+use image::ImageReader;
 use indicatif::ProgressBar;
 use nalgebra::{Matrix3, Matrix4, Point3, Rotation3, Translation3, Vector3};
 use tobj::{LoadOptions, Mesh};
@@ -33,7 +32,7 @@ pub struct Scene {
     pub bg_color: Vector3<f64>,
     pub objects: Vec<ArcObject>,
     pub lights: Vec<Arc<Light>>,
-    pub bvh: BVH,
+    pub bvh: Bvh<f32, 3>,
 }
 
 impl Scene {
@@ -42,7 +41,7 @@ impl Scene {
         lights: Vec<Arc<Light>>,
         objects: Vec<ArcObject>,
         meshes: Vec<Arc<Mesh>>,
-        bvh: BVH,
+        bvh: Bvh<f32, 3>,
     ) -> Scene {
         Scene {
             bg_color,
@@ -118,7 +117,7 @@ impl Scene {
         }
 
         if let Some(environment_map) = scene_yaml["environment_map"].as_str() {
-            let image_map = Reader::open(path.join(environment_map))
+            let image_map = ImageReader::open(path.join(environment_map))
                 .expect("Environment map not found.")
                 .decode()
                 .expect("Cannot decode environment map.");
@@ -142,23 +141,46 @@ impl Scene {
         //
         // objects.push(floor);
 
-        let sphere = ArcObject(Arc::new(Object::Sphere(Sphere::new(
-            Point3::new(0.0, 0.0, 1.0),
-            0.3,
-            vec![
-                //Material::Glass(GlassMaterial::new(Vector3::repeat(1.0))),
-                Material::Matte(MatteMaterial::new(
-                    Vector3::new(0.0, 0.0, 0.0),
-                    0.5,
-                ))
+        let mesh = Arc::new(Mesh{
+            positions: vec![
+                0.0,0.0,0.0,
+                1.0,0.0,1.0,
+                0.0,1.0,1.0,
             ],
+            vertex_color: vec![],
+            normals: vec![
+                0.0,0.0,1.0,
+                0.0,0.0,1.0,
+                0.0,0.0,1.0,
+            ],
+            texcoords: vec![],
+            indices: vec![],
+            face_arities: vec![],
+            texcoord_indices: vec![],
+            normal_indices: vec![],
+            material_id: None,
+        });
+
+        let triangle = ArcObject(Arc::new(Object::Triangle(Triangle::new(
+            mesh,
+            0,
+            1,
+            2,
+            vec![
+                Material::Glass(GlassMaterial::new(Vector3::repeat(0.5))),
+                // Material::Matte(MatteMaterial::new(
+                //     Vector3::new(0.5, 0.5, 0.5),
+                //     0.5,
+                // ))
+            ],
+            None,
         ))));
 
-        objects.push(sphere);
+        objects.push(triangle);
 
         // Build scene
         println!("Building BVH...");
-        let bvh = BVH::build(&mut objects);
+        let bvh = Bvh::build(&mut objects);
         println!("Done!");
 
         println!("Scene loaded.");
@@ -243,30 +265,18 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 mesh.indices[3 * v + 1] as usize,
                 mesh.indices[3 * v + 2] as usize,
                 vec![
-                    Material::Matte(MatteMaterial::new(
-                    //weight: 1.0,
-                    color,
-                    //specular,
-                    20.0, //(material.shininess / 1000.0) as f64,
-                         //ior: material.optical_density as f64,
-                         //refraction: 1.0 - material.dissolve as f64,
-                )),
-                // vec![Material::Glass(GlassMaterial::new(
-                //     Vector3::repeat(1.0),
-                //     // Vector3::repeat(1.0),
-                //      //0.03,
-                // ))],
 
-//                     Material::Glass(GlassMaterial::new(
-//                         Vector3::repeat(0.6),
-//                         // Vector3::repeat(1.0),
-//                         //0.03,
-//                     )),
-                    // Material::Plastic(PlasticMaterial::new(
-                    //     Vector3::new(0.2, 0.2, 0.7),
+
+                    // Material::Glass(GlassMaterial::new(
                     //     Vector3::repeat(1.0),
-                    //     0.1,
+                    //     // Vector3::repeat(1.0),
+                    //     //0.03,
                     // )),
+                    Material::Plastic(PlasticMaterial::new(
+                        Vector3::new(0.9, 0.9, 0.9),
+                        Vector3::repeat(0.0),
+                        0.0,
+                    )),
                 ],
                 None,
             );

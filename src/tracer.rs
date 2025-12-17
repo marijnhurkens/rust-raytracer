@@ -2,8 +2,8 @@ use std::borrow::BorrowMut;
 
 use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 use num_traits::identities::Zero;
-use rand::prelude::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::prelude::{IteratorRandom, SliceRandom};
+use rand::{rng, Rng};
 
 use crate::bsdf::{BsdfSampleResult, BXDFTYPES};
 use crate::helpers::power_heuristic;
@@ -28,7 +28,7 @@ pub fn trace(
     scene: &Scene,
     sampler: &mut SobolSampler,
 ) -> SampleResult {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let mut l = Vector3::new(0.0, 0.0, 0.0);
     let mut contribution = Vector3::new(1.0, 1.0, 1.0);
     let mut specular_bounce = false;
@@ -105,7 +105,7 @@ pub fn trace(
         // russian roulette termination
         if bounce > 3 {
             let q = (1.0 - contribution.max()).max(0.05);
-            if rng.gen::<f64>() < q {
+            if rng.random::<f64>() < q {
                 break;
             }
 
@@ -126,12 +126,12 @@ fn uniform_sample_light(
     surface_interaction: &SurfaceInteraction,
     sampler: &mut SobolSampler,
 ) -> Vector3<f64> {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let bsdf_flags = BXDFTYPES::ALL & !BXDFTYPES::SPECULAR;
 
     let mut direct_irradiance = Vector3::zeros();
 
-    let light = scene.lights.choose(&mut rng).unwrap();
+    let light = scene.lights.iter().choose(&mut rng).unwrap();
 
     // Sample a random point on the light and calculate the irradiance at our intersection point.
     let u_light = sampler.get_3d();

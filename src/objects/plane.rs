@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector2, Vector3};
 
@@ -107,8 +107,8 @@ impl ObjectTrait for Plane {
     }
 }
 
-impl Bounded for Plane {
-    fn aabb(&self) -> AABB {
+impl Bounded<f32, 3> for Plane {
+    fn aabb(&self) -> Aabb<f32, 3> {
         use std::f64;
 
         // The plane is infinite
@@ -118,14 +118,14 @@ impl Bounded for Plane {
         let min = self.position - half_size;
         let max = self.position + half_size;
 
-        AABB::with_bounds(
-            bvh::Point3::new(min.x as f32, min.y as f32, min.z as f32),
-            bvh::Point3::new(max.x as f32, max.y as f32, max.z as f32),
+        Aabb::with_bounds(
+            Point3::new(min.x as f32, min.y as f32, min.z as f32),
+            Point3::new(max.x as f32, max.y as f32, max.z as f32),
         )
     }
 }
 
-impl BHShape for Plane {
+impl BHShape<f32, 3> for Plane {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }

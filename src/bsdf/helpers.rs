@@ -4,7 +4,6 @@ pub mod microfacet_distribution;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
 use nalgebra::{Point2, Vector2, Vector3};
-use rand::thread_rng;
 use rand::Rng;
 
 pub fn cos_theta(a: Vector3<f64>) -> f64 {

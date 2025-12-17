@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point3, Vector3};
 
@@ -108,8 +108,8 @@ impl ObjectTrait for ArcObject {
 #[derive(Debug)]
 pub struct ArcObject(pub Arc<Object>);
 
-impl Bounded for ArcObject {
-    fn aabb(&self) -> AABB {
+impl Bounded<f32, 3> for ArcObject {
+    fn aabb(&self) -> Aabb<f32, 3> {
         match self.0.as_ref() {
             Object::Sphere(x) => x.aabb(),
             Object::Triangle(x) => x.aabb(),
@@ -120,7 +120,7 @@ impl Bounded for ArcObject {
     }
 }
 
-impl BHShape for ArcObject {
+impl BHShape<f32, 3> for ArcObject {
     fn set_bh_node_index(&mut self, index: usize) {
         match Arc::get_mut(&mut self.0).unwrap() {
             Object::Sphere(x) => x.set_bh_node_index(index),

@@ -214,8 +214,8 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
     let mut closest_distance = f64::MAX;
 
     let bvh_ray = bvh::ray::Ray::new(
-        bvh::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::Vector3::new(
+        Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
+        Vector3::new(
             ray.direction.x as f32,
             ray.direction.y as f32,
             ray.direction.z as f32,
@@ -249,8 +249,8 @@ pub fn check_intersect_scene(ray: Ray, scene: &Scene) -> Option<(SurfaceInteract
 
 pub fn check_intersect_scene_simple(ray: Ray, scene: &Scene, max_dist: f64) -> bool {
     let bvh_ray = bvh::ray::Ray::new(
-        bvh::Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
-        bvh::Vector3::new(
+        Point3::new(ray.point.x as f32, ray.point.y as f32, ray.point.z as f32),
+        Vector3::new(
             ray.direction.x as f32,
             ray.direction.y as f32,
             ray.direction.z as f32,

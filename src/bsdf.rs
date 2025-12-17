@@ -1,7 +1,7 @@
 use bitflags::bitflags;
 use nalgebra::{Point3, Vector3};
-use rand::prelude::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::prelude::{IteratorRandom, SliceRandom};
+use rand::{rng, Rng};
 
 use crate::bsdf::helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
 use crate::bsdf::lambertian::Lambertian;
@@ -64,7 +64,7 @@ impl Bsdf {
         wo_world: Vector3<f64>,
         bxdf_types_flags: BXDFTYPES,
     ) -> BsdfSampleResult {
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let bxdfs: Vec<&Bxdf> = self
             .bxdfs
@@ -91,8 +91,8 @@ impl Bsdf {
 
         let wo = self.world_to_local(wo_world);
 
-        let bxdf = bxdfs.choose(&mut rng).unwrap();
-        let (wi, pdf, f) = bxdf.sample_f(Point3::new(rng.gen(), rng.gen(), rng.gen()), wo);
+        let bxdf = bxdfs.iter().choose(&mut rng).unwrap();
+        let (wi, pdf, f) = bxdf.sample_f(Point3::new(rng.random(), rng.random(), rng.random()), wo);
 
         let wi_world = self.local_to_world(wi);
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Point2, Point3, Vector2, Vector3};
 use tobj::Mesh;
@@ -230,13 +230,15 @@ impl ObjectTrait for Triangle {
         let p_error: Vector3<f64> = gamma(7.0) * Vector3::new(x_abs_sum, y_abs_sum, z_abs_sum);
         let mut p_hit: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
 
-        // p_hit = compute_shading_position(
-        //     p_hit, p0, p1, p2, p0_normal, p1_normal, p2_normal, b0, b1, b2, normal,
-        // );
         let p1p0 = p1 - p0;
         let geometry_normal = (p2 - p0).cross(&p1p0).normalize();
 
-        p_hit += shading_normal * 1.0e-9;
+        p_hit = compute_shading_position(
+            p_hit, p0, p1, p2, p0_normal, p1_normal, p2_normal, b0, b1, b2, geometry_normal,
+        );
+
+
+        // p_hit += shading_normal * 1.0e-9;
 
         Some((
             t,
@@ -330,8 +332,8 @@ fn compute_shading_position(
     }
 }
 
-impl Bounded for Triangle {
-    fn aabb(&self) -> AABB {
+impl Bounded<f32, 3> for Triangle {
+    fn aabb(&self) -> Aabb<f32, 3> {
         let min_x = self.p0.x.min(self.p1.x.min(self.p2.x));
         let min_y = self.p0.y.min(self.p1.y.min(self.p2.y));
         let min_z = self.p0.z.min(self.p1.z.min(self.p2.z));
@@ -339,9 +341,9 @@ impl Bounded for Triangle {
         let max_y = self.p0.y.max(self.p1.y.max(self.p2.y));
         let max_z = self.p0.z.max(self.p1.z.max(self.p2.z));
 
-        AABB::with_bounds(
-            bvh::Point3::new(min_x as f32, min_y as f32, min_z as f32),
-            bvh::Point3::new(
+        Aabb::with_bounds(
+            Point3::new(min_x as f32, min_y as f32, min_z as f32),
+            Point3::new(
                 (max_x + 0.001) as f32,
                 (max_y + 0.001) as f32,
                 (max_z + 0.001) as f32,
@@ -350,7 +352,7 @@ impl Bounded for Triangle {
     }
 }
 
-impl BHShape for Triangle {
+impl BHShape<f32, 3> for Triangle {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bvh::aabb::{Bounded, AABB};
+use bvh::aabb::{Aabb, Bounded};
 use bvh::bounding_hierarchy::BHShape;
 use nalgebra::{Matrix3, Point3, SimdPartialOrd, Vector2, Vector3};
 
@@ -133,20 +133,20 @@ impl ObjectTrait for Rectangle {
     }
 }
 
-impl Bounded for Rectangle {
-    fn aabb(&self) -> AABB {
+impl Bounded<f32, 3> for Rectangle {
+    fn aabb(&self) -> Aabb<f32, 3> {
         let pos_opposite = self.position + self.side_a + self.side_b;
         let min = self.position.simd_min(pos_opposite);
         let max = self.position.simd_max(pos_opposite);
 
-        AABB::with_bounds(
-            bvh::Point3::new(min.x as f32, min.y as f32, min.z as f32),
-            bvh::Point3::new(max.x as f32, max.y as f32, max.z as f32),
+        Aabb::with_bounds(
+            Point3::new(min.x as f32, min.y as f32, min.z as f32),
+            Point3::new(max.x as f32, max.y as f32, max.z as f32),
         )
     }
 }
 
-impl BHShape for Rectangle {
+impl BHShape<f32, 3> for Rectangle {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }

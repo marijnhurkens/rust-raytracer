@@ -33,6 +33,6 @@ impl MaterialTrait for GlassMaterial {
     }
 
     fn get_albedo(&self) -> Vector3<f64> {
-        Vector3::zeros()
+        Vector3::repeat(0.0)
     }
 }

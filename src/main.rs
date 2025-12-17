@@ -11,7 +11,6 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use bvh::Vector3;
 use clap::Parser;
 use ggez::conf::{FullscreenType, NumSamples, WindowMode, WindowSetup};
 use ggez::event::run;
@@ -54,6 +53,8 @@ mod tracer;
 #[derive(Parser, Debug)]
 struct Args {
     scene_folder: Option<String>,
+    #[arg(short, long, default_value_t = false)]
+    skip_obj: bool,
 }
 
 struct MainState {
