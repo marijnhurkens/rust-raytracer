@@ -24,8 +24,17 @@ impl MipMap {
     }
 
     pub fn lookup(&self, point: Point2<f64>, width: f64) -> Rgb<f64> {
-        let x = (self.image.dimensions().0 as f64 * point.x * 0.99) as u32;
-        let y = (self.image.dimensions().1 as f64 * point.y * 0.99) as u32;
+        let (w, h) = self.image.dimensions();
+
+        // U: Repeat
+        let u = point.x - point.x.floor();
+
+        // V: Clamp
+        let v = point.y.clamp(0.0, 1.0);
+
+        let x = ((u * w as f64) as u32).min(w - 1);
+        let y = ((v * h as f64) as u32).min(h - 1);
+
         let channels: Vec<f64> = self
             .image
             .get_pixel(x, y)

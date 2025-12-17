@@ -10,7 +10,7 @@ film:
 #    start: [300,300]
 #    end: [400,400]
 camera:
-  position: [0.0,0.5,3.8]
+  position: [0.0,0.5,5.8]
   target: [0.0,0.0,0.0]
   fov: 38.0 # degrees
   aperture: 0.0

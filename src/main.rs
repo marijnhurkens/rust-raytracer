@@ -253,6 +253,7 @@ fn main() -> GameResult {
         thread_count: yaml_into_u32(&settings_yaml["renderer"]["threads"]),
         depth_limit: yaml_into_u32(&settings_yaml["renderer"]["depth_limit"]),
         max_samples: yaml_into_u32(&settings_yaml["sampler"]["max_samples"]),
+        clamp: settings_yaml["renderer"]["clamp"].as_f64().unwrap_or(0.0),
     };
 
     let image_width = settings_yaml["film"]["image_width"].as_i64().unwrap() as u32;

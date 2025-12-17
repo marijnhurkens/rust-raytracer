@@ -113,6 +113,12 @@ pub fn trace(
         }
     }
 
+    if settings.clamp > 0.0 {
+        l.x = l.x.min(settings.clamp);
+        l.y = l.y.min(settings.clamp);
+        l.z = l.z.min(settings.clamp);
+    }
+
     SampleResult {
         radiance: l,
         p_film: point_film,

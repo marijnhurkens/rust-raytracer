@@ -130,53 +130,54 @@ impl Scene {
             lights.push(Arc::new(infinite_light));
         }
 
-        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-        //     Point3::new(0.0, -0.1, 0.0),
-        //     Vector3::new(0.0, 1.0, 0.0),
-        //     vec![Material::Matte(MatteMaterial::new(
-        //         Vector3::repeat(0.9),
-        //         1.0,
-        //     ))],
-        // ))));
-        //
-        // objects.push(floor);
-
-        let mesh = Arc::new(Mesh{
-            positions: vec![
-                0.0,0.0,0.0,
-                1.0,0.0,1.0,
-                0.0,1.0,1.0,
-            ],
-            vertex_color: vec![],
-            normals: vec![
-                0.0,0.0,1.0,
-                0.0,0.0,1.0,
-                0.0,0.0,1.0,
-            ],
-            texcoords: vec![],
-            indices: vec![],
-            face_arities: vec![],
-            texcoord_indices: vec![],
-            normal_indices: vec![],
-            material_id: None,
-        });
-
-        let triangle = ArcObject(Arc::new(Object::Triangle(Triangle::new(
-            mesh,
-            0,
-            1,
-            2,
-            vec![
-                Material::Glass(GlassMaterial::new(Vector3::repeat(0.5))),
-                // Material::Matte(MatteMaterial::new(
-                //     Vector3::new(0.5, 0.5, 0.5),
-                //     0.5,
-                // ))
-            ],
-            None,
+        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+            Point3::new(0.0, -0.1, 0.0),
+            Vector3::new(0.0, 1.0, 0.0),
+            vec![Material::Plastic(PlasticMaterial::new(
+                Vector3::repeat(1.0),
+                Vector3::repeat(1.0),
+                0.0,
+            ))],
         ))));
 
-        objects.push(triangle);
+        objects.push(floor);
+
+        // let mesh = Arc::new(Mesh{
+        //     positions: vec![
+        //         0.0,0.0,0.0,
+        //         1.0,0.0,1.0,
+        //         0.0,1.0,1.0,
+        //     ],
+        //     vertex_color: vec![],
+        //     normals: vec![
+        //         0.0,0.0,1.0,
+        //         0.0,0.0,1.0,
+        //         0.0,0.0,1.0,
+        //     ],
+        //     texcoords: vec![],
+        //     indices: vec![],
+        //     face_arities: vec![],
+        //     texcoord_indices: vec![],
+        //     normal_indices: vec![],
+        //     material_id: None,
+        // });
+        //
+        // let triangle = ArcObject(Arc::new(Object::Triangle(Triangle::new(
+        //     mesh,
+        //     0,
+        //     1,
+        //     2,
+        //     vec![
+        //         Material::Glass(GlassMaterial::new(Vector3::repeat(1.0))),
+        //         // Material::Matte(MatteMaterial::new(
+        //         //     Vector3::new(0.5, 0.5, 0.5),
+        //         //     0.5,
+        //         // ))
+        //     ],
+        //     None,
+        // ))));
+
+        // objects.push(triangle);
 
         // Build scene
         println!("Building BVH...");
@@ -267,16 +268,16 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
                 vec![
 
 
-                    // Material::Glass(GlassMaterial::new(
-                    //     Vector3::repeat(1.0),
-                    //     // Vector3::repeat(1.0),
-                    //     //0.03,
-                    // )),
-                    Material::Plastic(PlasticMaterial::new(
-                        Vector3::new(0.9, 0.9, 0.9),
-                        Vector3::repeat(0.0),
-                        0.0,
+                    Material::Glass(GlassMaterial::new(
+                        Vector3::repeat(1.0),
+                        // Vector3::repeat(1.0),
+                        //0.03,
                     )),
+                    // Material::Plastic(PlasticMaterial::new(
+                    //     Vector3::new(0.9, 0.9, 0.9),
+                    //     Vector3::repeat(0.0),
+                    //     0.0,
+                    // )),
                 ],
                 None,
             );

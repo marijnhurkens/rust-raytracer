@@ -25,7 +25,7 @@ impl MaterialTrait for GlassMaterial {
         bsdf.add(Bxdf::SpecularTransmission(SpecularTransmission::new(
             self.refraction_color,
             1.0,
-            1.5,
+            1.4,
             TransportMode::Radiance,
         )));
 

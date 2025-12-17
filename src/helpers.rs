@@ -209,11 +209,11 @@ pub fn spherical_direction(sin_theta: f64, cos_theta: f64, phi: f64) -> Vector3<
 }
 
 pub fn spherical_theta(v: Vector3<f64>) -> f64 {
-    v.z.clamp(-1.0, 1.0).acos()
+    v.y.clamp(-1.0, 1.0).acos()
 }
 
 pub fn spherical_phi(v: Vector3<f64>) -> f64 {
-    let p = v.y.atan2(v.z);
+    let p = v.x.atan2(v.z);
 
     if p < 0.0 {
         p + 2.0 * PI
@@ -276,5 +276,32 @@ mod tests {
         let res = permute(input, 2, 1, 0);
 
         assert_eq!(Vector3::new(3, 2, 1), res);
+    }
+
+    #[test]
+    fn test_spherical_phi() {
+        let v1 = Vector3::new(0.0, 0.0, 1.0);
+        assert!((spherical_phi(v1) - 0.0).abs() < 1e-6);
+
+        let v2 = Vector3::new(1.0, 0.0, 0.0);
+        assert!((spherical_phi(v2) - std::f64::consts::FRAC_PI_2).abs() < 1e-6);
+
+        let v3 = Vector3::new(0.0, 0.0, -1.0);
+        assert!((spherical_phi(v3) - std::f64::consts::PI).abs() < 1e-6);
+
+        let v4 = Vector3::new(-1.0, 0.0, 0.0);
+        assert!((spherical_phi(v4) - 3.0 * std::f64::consts::FRAC_PI_2).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_spherical_theta() {
+        let v1 = Vector3::new(0.0, 1.0, 0.0); // Up (+Y) -> theta = 0
+        assert!((spherical_theta(v1) - 0.0).abs() < 1e-6);
+
+        let v2 = Vector3::new(1.0, 0.0, 0.0); // Horizon -> theta = PI/2
+        assert!((spherical_theta(v2) - std::f64::consts::FRAC_PI_2).abs() < 1e-6);
+
+        let v3 = Vector3::new(0.0, -1.0, 0.0); // Down (-Y) -> theta = PI
+        assert!((spherical_theta(v3) - std::f64::consts::PI).abs() < 1e-6);
     }
 }

@@ -26,6 +26,7 @@ pub struct Settings {
     pub thread_count: u32,
     pub depth_limit: u32,
     pub max_samples: u32,
+    pub clamp: f64,
 }
 
 pub struct DebugBuffer {

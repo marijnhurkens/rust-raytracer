@@ -43,9 +43,9 @@ impl LightTrait for InfiniteAreaLight {
         let sin_phi = phi.sin();
 
         let wi = self.light_to_world.transform_vector(&Vector3::new(
-            sin_theta * cos_phi,
             sin_theta * sin_phi,
             cos_theta,
+            sin_theta * cos_phi,
         ));
 
         let ray = Ray {
@@ -84,7 +84,7 @@ impl LightTrait for InfiniteAreaLight {
     fn environment_emitting(&self, ray: Ray) -> Vector3<f64> {
         let w = self.world_to_light.transform_vector(&ray.direction);
         let point = Point2::new(
-            spherical_phi(w) * 1.0 / (2.0 * PI),
+            1.0 - spherical_phi(w) * 1.0 / (2.0 * PI),
             spherical_theta(w) * FRAC_1_PI,
         );
 

@@ -7,21 +7,21 @@ lights:
       position: [-3.0,9.0,-2.0]
       side_a: [3.0,3.0,0.0]
       side_b: [0.0,-3.0,3.0]
-      intensity: [3.0,3.0,10.0]
+      intensity: [3.0,3.0,3.0]
   # right
     - type: area
       position: [ 3.0,4.0,0.0 ]
       side_a: [ -1.0,0.0,4.0 ]
       side_b: [ 0.0,3.0,0.0 ]
-      intensity: [ 10.0,4.0,0.0 ]
+      intensity: [ 4.0,4.0,4.0 ]
   #left
     - type: area
       position: [ -3.0,4.0,0.0 ]
       side_a: [ -1.0,0.0,-4.0 ]
       side_b: [ 0.0,3.0,0.0 ]
-      intensity: [ 7.0,6.0,6.0 ]
+      intensity: [ 6.0,6.0,6.0 ]
     - type: distant
       direction: [0.4,1.0,0.4]
-      intensity: [2.0,2.0,2.0]
+      intensity: [0.3,0.3,0.3]
 
 
