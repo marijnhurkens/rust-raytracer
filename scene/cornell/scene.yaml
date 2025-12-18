@@ -7,4 +7,4 @@ lights:
       position: [-0.5,0.99,-0.5]
       side_a: [ 1.0,0.0,0.0 ]
       side_b: [ 0.0,0.0,1.0 ]
-      intensity: [ 3.0,3.0,3.0 ]
+      intensity: [ 6.0,6.0,6.0 ]

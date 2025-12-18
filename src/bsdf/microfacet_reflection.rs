@@ -2,7 +2,7 @@ use nalgebra::{Point2, Point3, Vector3};
 use num_traits::Zero;
 
 use crate::bsdf::helpers::{get_cosine_weighted_in_hemisphere, same_hemisphere};
-use crate::helpers::vector_reflect;
+use crate::helpers::{face_forward, vector_reflect};
 use crate::renderer::{debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce};
 
 use super::helpers::abs_cos_theta;
@@ -52,7 +52,8 @@ impl BXDFtrait for MicrofacetReflection {
         }
 
         let wh = wh.normalize();
-        let f = self.fresnel.evaluate(wi.dot(&wh));
+
+        let f = self.fresnel.evaluate(wi.dot(&face_forward(wh, Vector3::new(0.0, 0.0, 1.0))));
         self.reflectance_color * self.distribution.d(wh) * self.distribution.g(wo, wi) * f
             / (4.0 * cos_theta_i * cos_theta_o)
     }
@@ -62,7 +63,7 @@ impl BXDFtrait for MicrofacetReflection {
             return 0.0;
         }
 
-        let wh = (wi + wo).normalize();
+        let wh = (wo + wi).normalize();
 
         self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh))
     }

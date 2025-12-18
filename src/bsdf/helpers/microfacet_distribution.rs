@@ -53,7 +53,7 @@ impl TrowbridgeReitzDistribution {
         }
     }
 
-    fn trowbridge_reinz_sample_11(cos_theta: f64, u1: f64, u2: f64) -> (f64, f64) {
+    fn trowbridge_reitz_sample_11(cos_theta: f64, u1: f64, u2: f64) -> (f64, f64) {
         if cos_theta > 0.9999 {
             let r = (u1 / (1.0 - u1)).sqrt();
             let phi = TAU * u2;
@@ -102,7 +102,7 @@ impl TrowbridgeReitzDistribution {
         (slope_x, slope_y)
     }
 
-    fn trowbridge_reinz_sample(
+    fn trowbridge_reitz_sample(
         wi: Vector3<f64>,
         alpha_x: f64,
         alpha_y: f64,
@@ -111,7 +111,7 @@ impl TrowbridgeReitzDistribution {
     ) -> Vector3<f64> {
         let wi_stretched = Vector3::new(alpha_x * wi.x, alpha_y * wi.y, wi.z).normalize();
         let (mut slope_x, mut slope_y) =
-            Self::trowbridge_reinz_sample_11(cos_theta(wi_stretched), u1, u2);
+            Self::trowbridge_reitz_sample_11(cos_theta(wi_stretched), u1, u2);
         let tmp = cos_phi(wi_stretched) * slope_x - sin_phi(wi_stretched) * slope_y;
         slope_y = sin_phi(wi_stretched) * slope_x + cos_phi(wi_stretched) * slope_y;
         slope_x = tmp;
@@ -125,13 +125,20 @@ impl TrowbridgeReitzDistribution {
 
 impl MicrofacetDistribution for TrowbridgeReitzDistribution {
     fn roughness_to_alpha(roughness: f64) -> f64 {
+        // let roughness = roughness.max(1.0e-3);
+        // let x = roughness.ln();
+        // 1.62142
+        //     + 0.819955 * x
+        //     + 0.1734 * x * x
+        //     + 0.0171201 * x * x * x
+        //     + 0.000640711 * x * x * x * x
+
+        // PBRT v3 uses a complex polynomial here, but standard industry practice
+        // (Disney, Unreal) is often simply roughness^2.
+        // This maps 0.16 roughness -> 0.0256 alpha (shiny), whereas the old code
+        // mapped 0.16 roughness -> ~0.6 alpha (matte).
         let roughness = roughness.max(1.0e-3);
-        let x = roughness.ln();
-        1.62142
-            + 0.819955 * x
-            + 0.1734 * x * x
-            + 0.0171201 * x * x * x
-            + 0.000640711 * x * x * x * x
+        roughness * roughness
     }
 
     fn d(&self, wh: Vector3<f64>) -> f64 {
@@ -197,7 +204,7 @@ impl MicrofacetDistribution for TrowbridgeReitzDistribution {
         //     return wh;
         if !self.sample_visible_area {
             let mut cos_theta = 0.0;
-            let mut phi = 2.0 * PI * sample_u.x;
+            let mut phi = 2.0 * PI * sample_u.y;
 
             if self.alpha_x == self.alpha_y {
                 let tan_theta_2 = self.alpha_x * self.alpha_x * sample_u.x / (1.0 - sample_u.x);
@@ -226,7 +233,7 @@ impl MicrofacetDistribution for TrowbridgeReitzDistribution {
             }
         } else {
             let flip = wo.z < 0.0;
-            let wh = TrowbridgeReitzDistribution::trowbridge_reinz_sample(
+            let wh = TrowbridgeReitzDistribution::trowbridge_reitz_sample(
                 if flip { -wo } else { wo },
                 self.alpha_x,
                 self.alpha_y,

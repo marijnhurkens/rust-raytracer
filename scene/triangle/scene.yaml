@@ -1,10 +1,10 @@
 world:
   file: triangle.obj
   up_axis: y
+environment_map: environment.jpg
 lights:
     - type: area
-      position: [0.0,0.5,0.0]
-      rotation: [0.0,0.0,0.0]
-      size: [0.7,0.7]
-      color: [1.0,1.0,1.0]
-      power: 15.0
+      position: [-0.5,0.99,-0.5]
+      side_a: [ 1.0,0.0,0.0 ]
+      side_b: [ 0.0,0.0,1.0 ]
+      intensity: [ 6.0,6.0,6.0 ]

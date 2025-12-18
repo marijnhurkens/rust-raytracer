@@ -1,7 +1,7 @@
 use nalgebra::Vector3;
 use num_traits::Zero;
 
-use crate::bsdf::helpers::fresnel::FresnelDielectric;
+use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric};
 use crate::bsdf::helpers::microfacet_distribution::{
     MicrofacetDistribution, TrowbridgeReitzDistribution,
 };
@@ -42,18 +42,27 @@ impl MaterialTrait for PlasticMaterial {
         // todo: bug in microfacets, creates spots
         if !self.specular.is_zero() {
             let fresnel = FresnelDielectric::new(1.0, self.ior);
-            let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
-            let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
-            //
-            // bsdf.add(BXDF::SpecularReflection(SpecularReflection::new(
-            //     self.specular,
-            //     fresnel,
-            // )));
-            bsdf.add(Bxdf::MicrofacetReflection(MicrofacetReflection::new(
-                self.specular,
-                distribution,
-                fresnel,
-            )));
+
+            if self.roughness < 1.0e-3 {
+                bsdf.add(Bxdf::SpecularReflection(SpecularReflection::new(
+                    self.specular,
+                    Fresnel::Dielectric(fresnel),
+                )));
+            } else {
+                let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
+                let roughness = 0.03;
+                let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
+                //
+                // bsdf.add(BXDF::SpecularReflection(SpecularReflection::new(
+                //     self.specular,
+                //     fresnel,
+                // )));
+                bsdf.add(Bxdf::MicrofacetReflection(MicrofacetReflection::new(
+                    self.specular,
+                    distribution,
+                    fresnel,
+                )));
+            }
         }
 
         si.bsdf = Some(bsdf);
