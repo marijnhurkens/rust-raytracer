@@ -18,7 +18,7 @@ pub struct Rectangle {
     pub position: Point3<f64>,
     pub side_a: Vector3<f64>,
     pub side_b: Vector3<f64>,
-    pub materials: Vec<Material>,
+    pub materials: Vec<Arc<Material>>,
     pub light: Option<Arc<Light>>,
     pub node_index: usize,
 }
@@ -28,7 +28,7 @@ impl Rectangle {
         position: Point3<f64>,
         side_a: Vector3<f64>,
         side_b: Vector3<f64>,
-        materials: Vec<Material>,
+        materials: Vec<Arc<Material>>,
         light: Option<Arc<Light>>,
     ) -> Self {
         Rectangle {
@@ -47,7 +47,7 @@ impl Rectangle {
 }
 
 impl ObjectTrait for Rectangle {
-    fn get_materials(&self) -> &Vec<Material> {
+    fn get_materials(&self) -> &Vec<Arc<Material>> {
         &self.materials
     }
 

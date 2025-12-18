@@ -15,12 +15,12 @@ use std::sync::Arc;
 pub struct Sphere {
     pub position: Point3<f64>,
     pub radius: f64,
-    pub materials: Vec<Material>,
+    pub materials: Vec<Arc<Material>>,
     pub node_index: usize,
 }
 
 impl Sphere {
-    pub fn new(position: Point3<f64>, radius: f64, materials: Vec<Material>) -> Self {
+    pub fn new(position: Point3<f64>, radius: f64, materials: Vec<Arc<Material>>) -> Self {
         Sphere {
             position,
             radius,
@@ -75,7 +75,7 @@ impl Sphere {
         let dn_dv =
             -f64::consts::PI * Vector3::new(cos_theta * cos_phi, cos_theta * sin_phi, -sin_theta);
 
-        let p_error = Vector3::zeros();//gamma(5.0) * Vector3::new(point.x, point.y, point.z).abs();
+        let p_error = Vector3::zeros(); //gamma(5.0) * Vector3::new(point.x, point.y, point.z).abs();
 
         let (ss, ts) = {
             let mut ss = dp_du.normalize();
@@ -89,7 +89,6 @@ impl Sphere {
                 (ss, ts)
             }
         };
-
 
         SurfaceInteraction::new(
             point + normal * 1e-9,
@@ -106,7 +105,7 @@ impl Sphere {
 }
 
 impl ObjectTrait for Sphere {
-    fn get_materials(&self) -> &Vec<Material> {
+    fn get_materials(&self) -> &Vec<Arc<Material>> {
         &self.materials
     }
 
@@ -159,8 +158,7 @@ impl ObjectTrait for Sphere {
     }
 
     fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {
-
-       1.0 / self.area()
+        1.0 / self.area()
     }
 
     fn area(&self) -> f64 {

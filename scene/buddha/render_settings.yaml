@@ -15,7 +15,7 @@ camera:
   fov: 60.0
   aperture: 0.1
 sampler:
-  max_samples: 120
+  max_samples: 40
   method: sobol
 renderer:
   depth_limit: 15

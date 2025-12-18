@@ -18,12 +18,12 @@ use crate::surface_interaction::{Interaction, SurfaceInteraction};
 pub struct Plane {
     pub position: Point3<f64>,
     pub normal: Vector3<f64>,
-    pub materials: Vec<Material>,
+    pub materials: Vec<Arc<Material>>,
     pub node_index: usize,
 }
 
 impl Plane {
-    pub fn new(position: Point3<f64>, normal: Vector3<f64>, materials: Vec<Material>) -> Self {
+    pub fn new(position: Point3<f64>, normal: Vector3<f64>, materials: Vec<Arc<Material>>) -> Self {
         Plane {
             position,
             normal,
@@ -34,7 +34,7 @@ impl Plane {
 }
 
 impl ObjectTrait for Plane {
-    fn get_materials(&self) -> &Vec<Material> {
+    fn get_materials(&self) -> &Vec<Arc<Material>> {
         &self.materials
     }
 

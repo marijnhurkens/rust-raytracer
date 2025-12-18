@@ -1,12 +1,12 @@
+use bvh::bvh::Bvh;
+use image::ImageReader;
+use indicatif::ProgressBar;
+use nalgebra::{Matrix3, Matrix4, Point3, Rotation3, Translation3, Vector3};
 use std::borrow::BorrowMut;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
-use bvh::bvh::Bvh;
-use image::ImageReader;
-use indicatif::ProgressBar;
-use nalgebra::{Matrix3, Matrix4, Point3, Rotation3, Translation3, Vector3};
 use tobj::{LoadOptions, Mesh};
 use yaml_rust::YamlLoader;
 
@@ -23,10 +23,10 @@ use crate::materials::plastic::PlasticMaterial;
 use crate::materials::Material;
 use crate::objects::plane::Plane;
 use crate::objects::rectangle::Rectangle;
+use crate::objects::sphere::Sphere;
 use crate::objects::triangle::Triangle;
 use crate::objects::ArcObject;
 use crate::{yaml_array_into_point3, Object};
-use crate::objects::sphere::Sphere;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -93,10 +93,10 @@ impl Scene {
                     l_pos,
                     l_side_a,
                     l_side_b,
-                    vec![Material::Matte(MatteMaterial::new(
+                    vec![Arc::new(Material::Matte(MatteMaterial::new(
                         Vector3::repeat(0.9),
                         20.0,
-                    ))],
+                    )))],
                     Some(light.clone()),
                 ))));
 
@@ -130,17 +130,25 @@ impl Scene {
             lights.push(Arc::new(infinite_light));
         }
 
-        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::new(0.0, -0.1, 0.0),
-            Vector3::new(0.0, 1.0, 0.0),
-            vec![Material::Plastic(PlasticMaterial::new(
-                Vector3::repeat(1.0),
-                Vector3::repeat(1.0),
-                0.0,
-            ))],
-        ))));
+        // let cube = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+        //     Point3::new(0.0, 0.0, 0.0),
+        //     0.5,
+        //     vec![Material::Glass(GlassMaterial::new(Vector3::repeat(1.0)))],
+        // ))));
 
-        objects.push(floor);
+        // objects.push(cube);
+
+        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+        //     Point3::new(0.0, -0.1, 0.0),
+        //     Vector3::new(0.0, 1.0, 0.0),
+        //     vec![Material::Plastic(PlasticMaterial::new(
+        //         Vector3::repeat(1.0),
+        //         Vector3::repeat(1.0),
+        //         0.0,
+        //     ))],
+        // ))));
+        //
+        // objects.push(floor);
 
         // let mesh = Arc::new(Mesh{
         //     positions: vec![
@@ -200,7 +208,6 @@ impl Scene {
 }
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
-    //dbg!(model_file);
     let (models, materials) = tobj::load_obj(
         model_file,
         &LoadOptions {
@@ -235,50 +242,77 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
 
         assert_eq!(mesh.indices.len() % 3, 0);
 
-        let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
-
         let material = mesh.material_id.map(|material_id| &materials[material_id]);
 
-        for v in 0..mesh.indices.len() / 3 {
-            let color = if let Some(material) = material {
-                Vector3::new(
-                    material.diffuse[0] as f64,
-                    material.diffuse[1] as f64,
-                    material.diffuse[2] as f64,
-                )
+        let color = if let Some(material) = material {
+            Vector3::new(
+                material.diffuse[0] as f64,
+                material.diffuse[1] as f64,
+                material.diffuse[2] as f64,
+            )
+        } else {
+            Vector3::repeat(0.8)
+        };
+
+        let ior: f64 = if let Some(material) = material {
+            material.optical_density.into()
+        } else {
+            1.5
+        };
+
+        let roughness = if let Some(material) = material {
+            material
+                .unknown_param
+                .get("Pr")
+                .and_then(|pr| pr.parse::<f64>().ok())
+                .unwrap_or(32.0)
+        } else {
+            0.5
+        };
+
+        let (is_translucent, translucence) = if let Some(material) = material {
+            let tf_param = material.unknown_param.get("Tf");
+            if let Some(tf) = tf_param {
+                // split string on space, parse as f64 and create vector3
+                let tf_values: Vec<f64> = tf
+                    .as_str()
+                    .split_whitespace()
+                    .map(|s| s.parse::<f64>().unwrap())
+                    .collect();
+                (true, Vector3::new(tf_values[0], tf_values[1], tf_values[2]))
             } else {
-                Vector3::repeat(0.8)
-            };
+                (false, Vector3::repeat(0.0))
+            }
+        } else {
+            (false, Vector3::repeat(0.0))
+        };
 
-            // let specular = Vector3::new(
-            //     material.specular[0] as f64,
-            //     material.specular[1] as f64,
-            //     material.specular[2] as f64,
-            // );
+        let specular = if let Some(material) = material {
+            Vector3::new(
+                material.specular[0] as f64,
+                material.specular[1] as f64,
+                material.specular[2] as f64,
+            )
+        } else {
+            Vector3::repeat(0.0)
+        };
 
-            //let specular = Vector3::new(1.0, 1.0, 1.0);
+        let internal_material = if is_translucent {
+            Arc::new(Material::Glass(GlassMaterial::new(ior, color, translucence)))
+        } else {
+            Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
+        };
 
-            // let _reflection = material.specular[0] as f64;
+        dbg!(&internal_material);
 
+        let bar = ProgressBar::new((mesh.indices.len() / 3) as u64);
+        for v in 0..mesh.indices.len() / 3 {
             let triangle = Triangle::new(
                 mesh.clone(),
                 mesh.indices[3 * v] as usize,
                 mesh.indices[3 * v + 1] as usize,
                 mesh.indices[3 * v + 2] as usize,
-                vec![
-
-
-                    Material::Glass(GlassMaterial::new(
-                        Vector3::repeat(1.0),
-                        // Vector3::repeat(1.0),
-                        //0.03,
-                    )),
-                    // Material::Plastic(PlasticMaterial::new(
-                    //     Vector3::new(0.9, 0.9, 0.9),
-                    //     Vector3::repeat(0.0),
-                    //     0.0,
-                    // )),
-                ],
+                vec![internal_material.clone()],
                 None,
             );
 
@@ -293,8 +327,6 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
 
         bar.finish();
     }
-
-
 
     (triangles, meshes)
 }

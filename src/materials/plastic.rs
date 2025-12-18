@@ -17,14 +17,16 @@ pub struct PlasticMaterial {
     diffuse: Vector3<f64>,
     specular: Vector3<f64>,
     roughness: f64,
+    ior: f64,
 }
 
 impl PlasticMaterial {
-    pub fn new(diffuse: Vector3<f64>, specular: Vector3<f64>, roughness: f64) -> Self {
+    pub fn new(diffuse: Vector3<f64>, specular: Vector3<f64>, roughness: f64, ior: f64) -> Self {
         PlasticMaterial {
             diffuse,
             specular,
             roughness,
+            ior
         }
     }
 }
@@ -39,7 +41,7 @@ impl MaterialTrait for PlasticMaterial {
 
         // todo: bug in microfacets, creates spots
         if !self.specular.is_zero() {
-            let fresnel = FresnelDielectric::new(1.0, 1.5);
+            let fresnel = FresnelDielectric::new(1.0, self.ior);
             let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
             let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
             //

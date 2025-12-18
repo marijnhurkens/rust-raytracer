@@ -1,6 +1,6 @@
-use nalgebra::Vector3;
+use nalgebra::{Reflection, Vector3};
 
-use crate::bsdf::helpers::fresnel::{Fresnel, FresnelNoop};
+use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric, FresnelNoop};
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::bsdf::specular_transmission::{SpecularTransmission, TransportMode};
 use crate::bsdf::{Bsdf, Bxdf};
@@ -9,12 +9,22 @@ use crate::surface_interaction::SurfaceInteraction;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GlassMaterial {
+    ior: f64,
+    reflection_color: Vector3<f64>,
     refraction_color: Vector3<f64>,
 }
 
 impl GlassMaterial {
-    pub fn new(refraction_color: Vector3<f64>) -> Self {
-        GlassMaterial { refraction_color }
+    pub fn new(
+        ior: f64,
+        reflection_color: Vector3<f64>,
+        refraction_color: Vector3<f64>,
+    ) -> Self {
+        GlassMaterial {
+            ior,
+            reflection_color,
+            refraction_color,
+        }
     }
 }
 
@@ -25,8 +35,13 @@ impl MaterialTrait for GlassMaterial {
         bsdf.add(Bxdf::SpecularTransmission(SpecularTransmission::new(
             self.refraction_color,
             1.0,
-            1.4,
+            self.ior,
             TransportMode::Radiance,
+        )));
+
+        bsdf.add(Bxdf::SpecularReflection(SpecularReflection::new(
+            self.reflection_color,
+            Fresnel::Dielectric(FresnelDielectric::new(1.0, self.ior)),
         )));
 
         si.bsdf = Some(bsdf);

@@ -25,7 +25,7 @@ pub struct Triangle {
     n0: Vector3<f64>,
     n1: Vector3<f64>,
     n2: Vector3<f64>,
-    pub materials: Vec<Material>,
+    pub materials: Vec<Arc<Material>>,
     pub light: Option<Arc<Light>>,
     pub node_index: usize,
 }
@@ -36,7 +36,7 @@ impl Triangle {
         v0_index: usize,
         v1_index: usize,
         v2_index: usize,
-        materials: Vec<Material>,
+        materials: Vec<Arc<Material>>,
         light: Option<Arc<Light>>,
     ) -> Triangle {
         let (p0, p1, p2) = Triangle::get_vertices(&mesh, v0_index, v1_index, v2_index);
@@ -108,7 +108,7 @@ impl Triangle {
 }
 
 impl ObjectTrait for Triangle {
-    fn get_materials(&self) -> &Vec<Material> {
+    fn get_materials(&self) -> &Vec<Arc<Material>> {
         &self.materials
     }
 
@@ -395,10 +395,10 @@ mod tests {
             0,
             1,
             2,
-            vec![Material::Matte(MatteMaterial::new(
+            vec![Arc::new(Material::Matte(MatteMaterial::new(
                 Vector3::new(1.0, 1.0, 1.0),
                 100.0,
-            ))],
+            )))],
             None,
         );
 

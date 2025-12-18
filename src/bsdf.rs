@@ -98,7 +98,7 @@ impl Bsdf {
 
         BsdfSampleResult {
             wi: wi_world,
-            pdf,
+            pdf: pdf / bxdfs.len() as f64,
             f,
             sampled_flags: bxdf.get_type_flags(),
         }

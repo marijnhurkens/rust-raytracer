@@ -35,7 +35,7 @@ pub enum Object {
 }
 
 pub trait ObjectTrait {
-    fn get_materials(&self) -> &Vec<Material>;
+    fn get_materials(&self) -> &Vec<Arc<Material>>;
     fn get_light(&self) -> Option<&Arc<Light>>;
     fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)>;
     fn sample_point(&self, sample: Vec<f64>) -> Interaction;
@@ -44,7 +44,7 @@ pub trait ObjectTrait {
 }
 
 impl ObjectTrait for ArcObject {
-    fn get_materials(&self) -> &Vec<Material> {
+    fn get_materials(&self) -> &Vec<Arc<Material>> {
         match self.0.as_ref() {
             Object::Sphere(x) => x.get_materials(),
             Object::Triangle(x) => x.get_materials(),
