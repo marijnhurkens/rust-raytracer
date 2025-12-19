@@ -175,33 +175,6 @@ impl MicrofacetDistribution for TrowbridgeReitzDistribution {
     }
 
     fn sample_wh(&self, wo: Vector3<f64>, sample_u: Point2<f64>) -> Vector3<f64> {
-        ///Vector3f wh;
-        //     if (!sampleVisibleArea) {
-        //         Float cosTheta = 0, phi = (2 * Pi) * u[1];
-        //         if (alphax == alphay) {
-        //             Float tanTheta2 = alphax * alphax * u[0] / (1.0f - u[0]);
-        //             cosTheta = 1 / std::sqrt(1 + tanTheta2);
-        //         } else {
-        //             phi =
-        //                 std::atan(alphay / alphax * std::tan(2 * Pi * u[1] + .5f * Pi));
-        //             if (u[1] > .5f) phi += Pi;
-        //             Float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
-        //             const Float alphax2 = alphax * alphax, alphay2 = alphay * alphay;
-        //             const Float alpha2 =
-        //                 1 / (cosPhi * cosPhi / alphax2 + sinPhi * sinPhi / alphay2);
-        //             Float tanTheta2 = alpha2 * u[0] / (1 - u[0]);
-        //             cosTheta = 1 / std::sqrt(1 + tanTheta2);
-        //         }
-        //         Float sinTheta =
-        //             std::sqrt(std::max((Float)0., (Float)1. - cosTheta * cosTheta));
-        //         wh = SphericalDirection(sinTheta, cosTheta, phi);
-        //         if (!SameHemisphere(wo, wh)) wh = -wh;
-        //     } else {
-        //         bool flip = wo.z < 0;
-        //         wh = TrowbridgeReitzSample(flip ? -wo : wo, alphax, alphay, u[0], u[1]);
-        //         if (flip) wh = -wh;
-        //     }
-        //     return wh;
         if !self.sample_visible_area {
             let mut cos_theta = 0.0;
             let mut phi = 2.0 * PI * sample_u.y;
@@ -246,5 +219,108 @@ impl MicrofacetDistribution for TrowbridgeReitzDistribution {
                 wh
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nalgebra::{Point2, Vector3};
+
+    #[test]
+    fn test_trowbridge_reitz_sample_11() {
+        // Case 1: cos_theta > 0.9999
+        let cos_theta = 1.0;
+        let u1 = 0.5;
+        let u2 = 0.5;
+        let (slope_x, slope_y) =
+            TrowbridgeReitzDistribution::trowbridge_reitz_sample_11(cos_theta, u1, u2);
+        assert!(!slope_x.is_nan());
+        assert!(!slope_y.is_nan());
+        assert!(!slope_x.is_infinite());
+        assert!(!slope_y.is_infinite());
+
+        // Case 2: General case
+        let cos_theta = 0.5;
+        let u1 = 0.3;
+        let u2 = 0.7;
+        let (slope_x, slope_y) =
+            TrowbridgeReitzDistribution::trowbridge_reitz_sample_11(cos_theta, u1, u2);
+        assert!(!slope_x.is_nan());
+        assert!(!slope_y.is_nan());
+        assert!(!slope_x.is_infinite());
+        assert!(!slope_y.is_infinite());
+    }
+
+    #[test]
+    fn test_trowbridge_reitz_sample() {
+        let wi = Vector3::new(0.0, 0.0, 1.0);
+        let alpha_x = 0.1;
+        let alpha_y = 0.1;
+        let u1 = 0.5;
+        let u2 = 0.5;
+
+        let wh =
+            TrowbridgeReitzDistribution::trowbridge_reitz_sample(wi, alpha_x, alpha_y, u1, u2);
+
+        assert!((wh.norm() - 1.0).abs() < 1e-6);
+        assert!(wh.z > 0.0); // Should be in upper hemisphere relative to surface normal (0,0,1) implied by construction
+
+        // Test with different alpha and wi
+        let wi = Vector3::new(1.0, 1.0, 1.0).normalize();
+        let alpha_x = 0.5;
+        let alpha_y = 0.2;
+        let wh =
+            TrowbridgeReitzDistribution::trowbridge_reitz_sample(wi, alpha_x, alpha_y, 0.2, 0.8);
+
+        assert!((wh.norm() - 1.0).abs() < 1e-6);
+        assert!(!wh.x.is_nan());
+        assert!(!wh.y.is_nan());
+        assert!(!wh.z.is_nan());
+    }
+
+    #[test]
+    fn test_sample_wh() {
+        let wo = Vector3::new(0.0, 0.0, 1.0);
+        let sample_u = Point2::new(0.9, 0.9);
+
+        // Case 1: sample_visible_area = false
+        let dist = TrowbridgeReitzDistribution::new(0.1, 0.1, false);
+        let wh = dist.sample_wh(wo, sample_u);
+        assert!((wh.norm() - 1.0).abs() < 1e-6);
+        assert!(!wh.x.is_nan());
+        assert!(!wh.y.is_nan());
+        assert!(!wh.z.is_nan());
+
+        // Case 2: sample_visible_area = true
+        let dist = TrowbridgeReitzDistribution::new(0.1, 0.1, true);
+        let wh = dist.sample_wh(wo, sample_u);
+        assert!((wh.norm() - 1.0).abs() < 1e-6);
+        assert!(!wh.x.is_nan());
+        assert!(!wh.y.is_nan());
+        assert!(!wh.z.is_nan());
+
+        // Case 3: anisotropic
+        let dist = TrowbridgeReitzDistribution::new(0.5, 0.1, false);
+        let wh = dist.sample_wh(wo, sample_u);
+        assert!((wh.norm() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_pdf() {
+        let wo = Vector3::new(0.0, 0.0, 1.0);
+        let wh = Vector3::new(0.0, 0.0, 1.0);
+
+        // Case 1: sample_visible_area = false
+        let dist = TrowbridgeReitzDistribution::new(0.1, 0.1, false);
+        let pdf = dist.pdf(wo, wh);
+        assert!(pdf > 0.0);
+        assert!(!pdf.is_nan());
+
+        // Case 2: sample_visible_area = true
+        let dist = TrowbridgeReitzDistribution::new(0.1, 0.1, true);
+        let pdf = dist.pdf(wo, wh);
+        assert!(pdf > 0.0);
+        assert!(!pdf.is_nan());
     }
 }

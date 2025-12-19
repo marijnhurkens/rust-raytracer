@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
 use lazy_static::lazy_static;
-use nalgebra::Point2;
+use nalgebra::{Point2, Point3};
 use rand::*;
 use sobol::params::JoeKuoD6;
 use sobol::Sobol;
@@ -75,6 +75,14 @@ impl SobolSampler {
 
     pub fn get_3d(&mut self) -> Vec<f64> {
         self.sobol_3d.next().unwrap()
+    }
+    
+    pub fn get_2d_point(&mut self) -> Point2<f64> {
+        Point2::from_slice(&self.sobol_2d.next().unwrap())
+    }
+    
+    pub fn get_3d_point(&mut self) -> Point3<f64> {
+        Point3::from_slice(&self.sobol_3d.next().unwrap())
     }
 
     pub fn get_camera_sample(&mut self, pixel_pos: Point2<f64>) -> CameraSample {

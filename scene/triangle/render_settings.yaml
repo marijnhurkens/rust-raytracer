@@ -10,13 +10,13 @@ film:
 #    start: [300,300]
 #    end: [400,400]
 camera:
-  position: [ 3.0,0.0,-3.8 ]
+  position: [ 3.0,0.0,3.8 ]
   target: [ 0.0,0.0,0.0 ]
   fov: 79.0
   aperture: 0.0
   focal_distance: 0.0 # camera target is used if you do not provide this field
 sampler:
-  max_samples: 120
+  max_samples: 100
   method: sobol
 renderer:
   depth_limit: 8

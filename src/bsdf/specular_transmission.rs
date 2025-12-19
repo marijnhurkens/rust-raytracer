@@ -1,4 +1,4 @@
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point2, Point3, Vector3};
 
 use crate::bsdf::helpers::fresnel::{Fresnel, FresnelDielectric, FresnelTrait};
 use crate::bsdf::helpers::{abs_cos_theta, cos_theta};
@@ -50,7 +50,7 @@ impl BXDFtrait for SpecularTransmission {
         1.0
     }
 
-    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+    fn sample_f(&self, _point: Point2<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
         let (eta_i, eta_t) = if cos_theta(wo) > 0.0 {
             (self.eta_a, self.eta_b)
         } else {

@@ -130,13 +130,15 @@ impl Scene {
             lights.push(Arc::new(infinite_light));
         }
 
-        // let cube = ArcObject(Arc::new(Object::Sphere(Sphere::new(
-        //     Point3::new(0.0, 0.0, 0.0),
-        //     0.5,
-        //     vec![Material::Glass(GlassMaterial::new(Vector3::repeat(1.0)))],
-        // ))));
+        let cube = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+            Point3::new(0.0, 0.0, 0.0),
+            2.0,
+            vec![Arc::new(
+                Material::Plastic(PlasticMaterial::new(Vector3::repeat(0.0), Vector3::repeat(0.9), 0.01, 1.5))
+            )],
+        ))));
 
-        // objects.push(cube);
+     //   objects.push(cube);
 
         // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
         //     Point3::new(0.0, -0.1, 0.0),

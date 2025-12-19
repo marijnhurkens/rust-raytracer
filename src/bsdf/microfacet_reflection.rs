@@ -70,26 +70,16 @@ impl BXDFtrait for MicrofacetReflection {
 
     fn sample_f(
         &self,
-        sample_2: Point3<f64>,
+        sample_2: Point2<f64>,
         wo: Vector3<f64>,
     ) -> (Vector3<f64>, f64, Vector3<f64>) {
-        ///   // Sample microfacet orientation $\wh$ and reflected direction $\wi$
-        //     if (wo.z == 0) return 0.;
-        //     Vector3f wh = distribution->Sample_wh(wo, u);
-        //     if (Dot(wo, wh) < 0) return 0.;   // Should be rare
-        //     *wi = Reflect(wo, wh);
-        //     if (!SameHemisphere(wo, *wi)) return Spectrum(0.f);
-        //
-        //     // Compute PDF of _wi_ for microfacet reflection
-        //     *pdf = distribution->Pdf(wo, wh) / (4 * Dot(wo, wh));
-        //     return f(wo, *wi);
         if wo.z == 0.0 {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         }
 
         let wh = self
             .distribution
-            .sample_wh(wo, Point2::new(sample_2.x, sample_2.y));
+            .sample_wh(wo, sample_2);
 
         if wo.dot(&wh) < 0.0 {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
@@ -105,5 +95,40 @@ impl BXDFtrait for MicrofacetReflection {
         let f = self.f(wo, wi);
 
         (wi, pdf, f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nalgebra::Vector3;
+
+    #[test]
+    fn test_microfacet_reflection_f() {
+        let reflectance = Vector3::new(0.9, 0.9, 0.9);
+        let distribution = TrowbridgeReitzDistribution::new(0.5, 0.5, true);
+        let fresnel = FresnelDielectric::new(1.0, 1.5);
+        let bsdf = MicrofacetReflection::new(reflectance, distribution, fresnel);
+
+        // Test normal incidence
+        let wo = Vector3::new(0.0, 0.0, 1.0);
+        let wi = Vector3::new(0.0, 0.0, 1.0);
+
+        let f = bsdf.f(wo, wi);
+
+        assert!(f.x >= 0.0);
+        assert!(f.y >= 0.0);
+        assert!(f.z >= 0.0);
+        assert!(!f.x.is_nan());
+        assert!(!f.y.is_nan());
+        assert!(!f.z.is_nan());
+
+        // Test with some angle (reflection configuration)
+        let wo = Vector3::new(0.6, 0.0, 0.8).normalize();
+        let wi = Vector3::new(-0.6, 0.0, 0.8).normalize();
+        let f = bsdf.f(wo, wi);
+
+        assert!(f.x >= 0.0);
+        assert!(!f.x.is_nan());
     }
 }

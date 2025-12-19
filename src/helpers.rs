@@ -25,7 +25,7 @@ impl<T: Copy + Scalar + ClosedSub + Mul<Output = T>> Bounds<T> {
 }
 
 pub fn vector_reflect(vec: Vector3<f64>, normal: Vector3<f64>) -> Vector3<f64> {
-    vec - 2.0 * vec.dot(&normal) * normal
+    -vec + 2.0 * vec.dot(&normal) * normal
 }
 
 pub fn get_random_in_unit_sphere() -> Vector3<f64> {
@@ -205,7 +205,7 @@ pub fn concentric_sample_disk() -> Point2<f64> {
 }
 
 pub fn spherical_direction(sin_theta: f64, cos_theta: f64, phi: f64) -> Vector3<f64> {
-    Vector3::new(sin_theta * phi.cos(), sin_theta * phi.cos(), cos_theta)
+    Vector3::new(sin_theta * phi.cos(), sin_theta * phi.sin(), cos_theta)
 }
 
 pub fn spherical_theta(v: Vector3<f64>) -> f64 {

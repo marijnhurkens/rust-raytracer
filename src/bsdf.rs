@@ -1,5 +1,6 @@
 use bitflags::bitflags;
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point2, Point3, Vector3};
+use num_traits::Float;
 use rand::prelude::{IteratorRandom, SliceRandom};
 use rand::{rng, Rng};
 
@@ -63,6 +64,7 @@ impl Bsdf {
         &self,
         wo_world: Vector3<f64>,
         bxdf_types_flags: BXDFTYPES,
+        sample_u: Point2<f64>,
     ) -> BsdfSampleResult {
         let mut rng = rng();
 
@@ -79,6 +81,7 @@ impl Bsdf {
                 None
             })
             .collect();
+        let matching_bxdf_count = bxdfs.len();
 
         if bxdfs.is_empty() {
             return BsdfSampleResult {
@@ -90,11 +93,60 @@ impl Bsdf {
         }
 
         let wo = self.world_to_local(wo_world);
+        if wo.z == 0.0 {
+            return BsdfSampleResult {
+                wi: Vector3::zeros(),
+                pdf: 0.0,
+                f: Vector3::zeros(),
+                sampled_flags: BXDFTYPES::NONE,
+            };
+        }
+
+        let sample_2_remapped = Point2::new(
+            sample_u.x.min(1.0 - f64::epsilon()).max(f64::epsilon()),
+            sample_u.y.min(1.0 - f64::epsilon()).max(f64::epsilon()),
+        );
 
         let bxdf = bxdfs.iter().choose(&mut rng).unwrap();
-        let (wi, pdf, f) = bxdf.sample_f(Point3::new(rng.random(), rng.random(), rng.random()), wo);
+        let (wi, mut pdf, mut f) = bxdf.sample_f(sample_2_remapped, wo);
+        if pdf == 0.0 {
+            return BsdfSampleResult {
+                wi: Vector3::zeros(),
+                pdf: 0.0,
+                f: Vector3::zeros(),
+                sampled_flags: bxdf.get_type_flags(),
+            };
+        }
 
         let wi_world = self.local_to_world(wi);
+
+        if !bxdf.get_type_flags().contains(BXDFTYPES::SPECULAR) || matching_bxdf_count > 1 {
+            for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
+                if bxdf.get_type_flags().intersects(bxdf_types_flags) {
+                    pdf += bxdf.pdf(wo, wi);
+                }
+            }
+        }
+
+        if matching_bxdf_count > 1 {
+            pdf /= matching_bxdf_count as f64;
+        }
+
+        if !bxdf.get_type_flags().contains(BXDFTYPES::SPECULAR) {
+            let reflect =
+                wi_world.dot(&self.geometry_normal) * wo_world.dot(&self.geometry_normal) > 0.0;
+
+            f = Vector3::zeros();
+            for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
+                if bxdf.get_type_flags().intersects(bxdf_types_flags)
+                    && ((reflect && bxdf.get_type_flags().contains(BXDFTYPES::REFLECTION))
+                        || (!reflect && bxdf.get_type_flags().contains(BXDFTYPES::TRANSMISSION)))
+                {
+                    // dbg!(bxdf, wo, wi);
+                    f += bxdf.f(wo, wi);
+                }
+            }
+        }
 
         BsdfSampleResult {
             wi: wi_world,
@@ -237,7 +289,7 @@ pub trait BXDFtrait {
             0.0
         }
     }
-    fn sample_f(&self, _point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+    fn sample_f(&self, _point: Point2<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
         let mut wi = get_cosine_weighted_in_hemisphere();
         if wo.z < 0.0 {
             wi.z = -wi.z;
@@ -278,7 +330,7 @@ impl BXDFtrait for Bxdf {
         }
     }
 
-    fn sample_f(&self, point: Point3<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
+    fn sample_f(&self, point: Point2<f64>, wo: Vector3<f64>) -> (Vector3<f64>, f64, Vector3<f64>) {
         match self {
             Bxdf::Lambertian(x) => x.sample_f(point, wo),
             Bxdf::SpecularReflection(x) => x.sample_f(point, wo),

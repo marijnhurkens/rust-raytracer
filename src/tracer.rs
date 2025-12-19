@@ -80,7 +80,7 @@ pub fn trace(
             .bsdf
             .as_ref()
             .unwrap()
-            .sample_f(wo, BXDFTYPES::ALL);
+            .sample_f(wo, BXDFTYPES::ALL, sampler.get_2d_point());
 
         if bsdf_sample.pdf == 0.0 || bsdf_sample.f.is_zero() {
             break;
@@ -184,7 +184,7 @@ fn uniform_sample_light(
 
     if !light.is_delta() {
         let bsdf_sample = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
-            bsdf.sample_f(surface_interaction.wo, bsdf_flags)
+            bsdf.sample_f(surface_interaction.wo, bsdf_flags, sampler.get_2d_point())
         } else {
             BsdfSampleResult {
                 wi: Vector3::zeros(),

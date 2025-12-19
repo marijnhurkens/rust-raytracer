@@ -26,7 +26,7 @@ impl PlasticMaterial {
             diffuse,
             specular,
             roughness,
-            ior
+            ior,
         }
     }
 }
@@ -50,7 +50,6 @@ impl MaterialTrait for PlasticMaterial {
                 )));
             } else {
                 let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
-                let roughness = 0.03;
                 let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
                 //
                 // bsdf.add(BXDF::SpecularReflection(SpecularReflection::new(
