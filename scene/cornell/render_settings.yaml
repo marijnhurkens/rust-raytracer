@@ -1,6 +1,6 @@
 film:
-  image_width: 1500
-  image_height: 1500
+  image_width: 1000
+  image_height: 1000
   bucket_width: 128
   bucket_height: 128
   filter_radius: 1.8
@@ -16,11 +16,11 @@ camera:
   aperture: 0.0
   focal_distance: 0.0 # camera target is used if you do not provide this field
 sampler:
-  max_samples: 120
+  max_samples: 20
   method: sobol
 renderer:
-  depth_limit: 8
+  depth_limit: 1
   threads: 11 # do not use more threads than cores available, it won't improve performance
-  clamp: 15.0
+  clamp: 10.0
 scene:
   background_color: [0.9,0.9,0.9]

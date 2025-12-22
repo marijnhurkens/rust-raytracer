@@ -34,13 +34,27 @@ pub fn get_random_in_unit_sphere() -> Vector3<f64> {
     let mut vec: Vector3<f64>;
 
     while {
-        vec = 2.0 * Vector3::new(rng.random::<f64>(), rng.random::<f64>(), rng.random::<f64>())
-            - Vector3::new(1.0, 1.0, 1.0);
+        vec =
+            2.0 * Vector3::new(
+                rng.random::<f64>(),
+                rng.random::<f64>(),
+                rng.random::<f64>(),
+            ) - Vector3::new(1.0, 1.0, 1.0);
 
         vec.dot(&vec) >= 1.0
     } {}
 
     vec
+}
+
+pub fn offset_ray_origin(p: Point3<f64>, normal: Vector3<f64>, w: Vector3<f64>) -> Point3<f64> {
+    let mut origin_offset = (normal.abs().dot(&Vector3::repeat(1e-4))) * normal;
+
+    if w.dot(&normal) < 0.0 {
+        origin_offset = -origin_offset
+    }
+
+    p + origin_offset
 }
 
 pub fn uniform_sample_triangle(sample: Vec<f64>) -> Point2<f64> {
@@ -186,7 +200,8 @@ pub fn permute<T: Copy>(v: Vector3<T>, x: usize, y: usize, z: usize) -> Vector3<
 pub fn concentric_sample_disk() -> Point2<f64> {
     let mut rng = rng();
 
-    let u_offset = Point2::new(rng.random::<f64>(), rng.random::<f64>()) * 2.0 - Vector2::new(1.0, 1.0);
+    let u_offset =
+        Point2::new(rng.random::<f64>(), rng.random::<f64>()) * 2.0 - Vector2::new(1.0, 1.0);
 
     if u_offset.x == 0.0 && u_offset.y == 0.0 {
         return Point2::new(0.0, 0.0);

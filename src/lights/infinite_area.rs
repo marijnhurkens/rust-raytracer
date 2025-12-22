@@ -1,4 +1,4 @@
-use std::f64::consts::{FRAC_1_PI, PI};
+use std::f64::consts::{FRAC_1_PI, FRAC_2_PI, PI};
 use std::path::PathBuf;
 
 use ggez::graphics::Image;
@@ -26,8 +26,18 @@ impl LightTrait for InfiniteAreaLight {
         false
     }
 
-    fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64> {
-        todo!()
+    fn emitting(&self, interaction: &SurfaceInteraction, wi: Vector3<f64>) -> Vector3<f64> {
+        // let w_light = self.world_to_light.transform_vector(&w).normalize();
+        //
+        // let p = Point2::new(spherical_phi(w_light) * FRAC_2_PI,  spherical_theta(w_light) * FRAC_1_PI);
+
+        let ray = Ray {
+            point: interaction.point,
+            direction: wi.normalize(),
+        };
+
+        self.environment_emitting(ray)
+
     }
 
     fn sample_irradiance(

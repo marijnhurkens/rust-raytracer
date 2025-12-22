@@ -16,7 +16,7 @@ camera:
   aperture: 0.0
   focal_distance: 0.0 # camera target is used if you do not provide this field
 sampler:
-  max_samples: 100
+  max_samples: 1
   method: sobol
 renderer:
   depth_limit: 8

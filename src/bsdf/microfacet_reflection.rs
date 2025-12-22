@@ -53,7 +53,8 @@ impl BXDFtrait for MicrofacetReflection {
 
         let wh = wh.normalize();
 
-        let f = self.fresnel.evaluate(wi.dot(&face_forward(wh, Vector3::new(0.0, 0.0, 1.0))));
+        let f = self.fresnel.evaluate(wi.dot(&face_forward(wh, Vector3::new(0.0, 0.0, 1.0))).abs());
+
         self.reflectance_color * self.distribution.d(wh) * self.distribution.g(wo, wi) * f
             / (4.0 * cos_theta_i * cos_theta_o)
     }

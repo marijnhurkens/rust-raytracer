@@ -1,12 +1,12 @@
 use std::borrow::BorrowMut;
-
+use std::sync::Arc;
 use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
 use num_traits::identities::Zero;
 use rand::prelude::{IteratorRandom, SliceRandom};
 use rand::{rng, Rng};
 
 use crate::bsdf::{BsdfSampleResult, BXDFTYPES};
-use crate::helpers::power_heuristic;
+use crate::helpers::{offset_ray_origin, power_heuristic};
 use crate::lights::area::AreaLight;
 use crate::lights::{Light, LightTrait};
 use crate::materials::MaterialTrait;
@@ -74,17 +74,16 @@ pub fn trace(
 
         l += contribution.component_mul(&light_irradiance);
 
-        let wo = -ray.direction;
-
         let bsdf_sample = surface_interaction
             .bsdf
             .as_ref()
             .unwrap()
-            .sample_f(wo, BXDFTYPES::ALL, sampler.get_2d_point());
+            .sample_f(surface_interaction.wo, BXDFTYPES::ALL, sampler.get_2d_point());
 
         if bsdf_sample.pdf == 0.0 || bsdf_sample.f.is_zero() {
             break;
         }
+
 
         contribution = contribution.component_mul(
             &((bsdf_sample.f
@@ -98,7 +97,7 @@ pub fn trace(
         specular_bounce = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 
         ray = Ray {
-            point: surface_interaction.point,
+            point: offset_ray_origin(surface_interaction.point, surface_interaction.geometry_normal, bsdf_sample.wi),
             direction: bsdf_sample.wi,
         };
 
@@ -133,11 +132,25 @@ fn uniform_sample_light(
     sampler: &mut SobolSampler,
 ) -> Vector3<f64> {
     let mut rng = rng();
+
+    let light_count = scene.lights.len();
+    let light_num = (sampler.get_1d()*light_count as f64).min(light_count as f64-1.0);
+    let light = &scene.lights[light_num as usize];
+
+    let light_pdf = 1.0 / light_count as f64;
+
+    estimate_direct(scene, surface_interaction, sampler, light) / light_pdf
+}
+
+
+fn estimate_direct(
+    scene: &Scene,
+    surface_interaction: &SurfaceInteraction,
+    sampler: &mut SobolSampler,
+    light: &Arc<Light>,
+) -> Vector3<f64> {
     let bsdf_flags = BXDFTYPES::ALL & !BXDFTYPES::SPECULAR;
-
     let mut direct_irradiance = Vector3::zeros();
-
-    let light = scene.lights.iter().choose(&mut rng).unwrap();
 
     // Sample a random point on the light and calculate the irradiance at our intersection point.
     let u_light = sampler.get_3d();
@@ -196,9 +209,9 @@ fn uniform_sample_light(
 
         let f = bsdf_sample.f
             * bsdf_sample
-                .wi
-                .dot(&surface_interaction.shading_normal)
-                .abs();
+            .wi
+            .dot(&surface_interaction.shading_normal)
+            .abs();
 
         if !f.is_zero() && bsdf_sample.pdf > 0.0 {
             let interaction = Interaction {
@@ -206,14 +219,14 @@ fn uniform_sample_light(
                 normal: surface_interaction.shading_normal,
             };
             let light_pdf = light.pdf_incidence(&interaction, bsdf_sample.wi);
-            if light_pdf == 0.0 {
-                return direct_irradiance;
-            }
+            // if light_pdf == 0.0 {
+            //     return direct_irradiance;
+            // }
 
             let weight = power_heuristic(1, bsdf_sample.pdf, 1, light_pdf);
 
             let ray = Ray {
-                point: surface_interaction.point + (bsdf_sample.wi * 1.0e-9),
+                point: offset_ray_origin(surface_interaction.point, surface_interaction.geometry_normal, bsdf_sample.wi),
                 direction: bsdf_sample.wi,
             };
 
@@ -234,12 +247,12 @@ fn uniform_sample_light(
                     }
                 }
             } else {
-                // no hit, add emitting light if infinite area light
+                // // no hit, add emitting light if infinite area light
                 // let interaction = Interaction {
                 //     point: surface_interaction.point,
                 //     normal: surface_interaction.shading_normal,
                 // };
-                // light_irradiance = light.emitting(&interaction, -wi)
+                // light_irradiance = light.emitting(&surface_interaction, surface_interaction.wo)
             }
 
             direct_irradiance += f.component_mul(&(light_irradiance * weight)) / bsdf_sample.pdf;

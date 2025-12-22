@@ -68,22 +68,23 @@ impl Bsdf {
     ) -> BsdfSampleResult {
         let mut rng = rng();
 
-        let bxdfs: Vec<&Bxdf> = self
+        let bxdfs_matching: Vec<usize> = self
             .bxdfs
             .iter()
-            .filter_map(|bxdf| {
+            .enumerate()
+            .filter_map(|(i, bxdf)| {
                 if let Some(bxdf) = bxdf {
                     if bxdf.get_type_flags().intersects(bxdf_types_flags) {
-                        return Some(bxdf);
+                        return Some(i);
                     }
                 }
 
                 None
             })
             .collect();
-        let matching_bxdf_count = bxdfs.len();
+        let matching_bxdf_count = bxdfs_matching.len();
 
-        if bxdfs.is_empty() {
+        if bxdfs_matching.is_empty() {
             return BsdfSampleResult {
                 wi: Vector3::zeros(),
                 pdf: 0.0,
@@ -107,7 +108,8 @@ impl Bsdf {
             sample_u.y.min(1.0 - f64::epsilon()).max(f64::epsilon()),
         );
 
-        let bxdf = bxdfs.iter().choose(&mut rng).unwrap();
+        let chosen_index = bxdfs_matching.into_iter().choose(&mut rng).unwrap();
+        let bxdf = self.bxdfs[chosen_index].as_ref().unwrap();
         let (wi, mut pdf, mut f) = bxdf.sample_f(sample_2_remapped, wo);
         if pdf == 0.0 {
             return BsdfSampleResult {
@@ -121,15 +123,18 @@ impl Bsdf {
         let wi_world = self.local_to_world(wi);
 
         if !bxdf.get_type_flags().contains(BXDFTYPES::SPECULAR) || matching_bxdf_count > 1 {
-            for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
-                if bxdf.get_type_flags().intersects(bxdf_types_flags) {
-                    pdf += bxdf.pdf(wo, wi);
+            for (i, bxdf_loop) in self.bxdfs.iter().enumerate() {
+                if let Some(bxdf_loop) = bxdf_loop {
+                    if i != chosen_index && bxdf_loop.get_type_flags().intersects(bxdf_types_flags)
+                    {
+                        pdf += bxdf.pdf(wo, wi);
+                    }
                 }
             }
         }
 
         if matching_bxdf_count > 1 {
-            pdf /= matching_bxdf_count as f64;
+            pdf /= (matching_bxdf_count as f64);
         }
 
         if !bxdf.get_type_flags().contains(BXDFTYPES::SPECULAR) {
@@ -142,7 +147,6 @@ impl Bsdf {
                     && ((reflect && bxdf.get_type_flags().contains(BXDFTYPES::REFLECTION))
                         || (!reflect && bxdf.get_type_flags().contains(BXDFTYPES::TRANSMISSION)))
                 {
-                    // dbg!(bxdf, wo, wi);
                     f += bxdf.f(wo, wi);
                 }
             }
@@ -150,7 +154,7 @@ impl Bsdf {
 
         BsdfSampleResult {
             wi: wi_world,
-            pdf: pdf / bxdfs.len() as f64,
+            pdf: pdf / matching_bxdf_count as f64,
             f,
             sampled_flags: bxdf.get_type_flags(),
         }
