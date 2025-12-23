@@ -11,15 +11,15 @@ film:
 #    end: [300,200]
 camera:
   position: [3.0,2.0,-8.0]
-  target: [0.0,3.5,-0.5]
+  target: [0.0,3.2,-0.5]
   fov: 60.0
   aperture: 0.1
 sampler:
-  max_samples: 40
+  max_samples: 100
   method: sobol
 renderer:
-  depth_limit: 15
-  threads: 10
+  depth_limit: 12
+  threads: 11
   clamp: 10.0
 scene:
 

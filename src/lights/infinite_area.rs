@@ -11,6 +11,8 @@ use crate::lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample
 use crate::renderer::Ray;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
 use crate::textures::mip_map::MipMap;
+use crate::film::srgb_to_xyz;
+
 
 #[derive(Debug)]
 pub struct InfiniteAreaLight {
@@ -113,10 +115,13 @@ impl InfiniteAreaLight {
     pub fn new(intensity: &Vector3<f64>, image: RgbImage, light_to_world: Matrix4<f64>) -> Self {
         let mut buffer = ImageBuffer::new(image.width(), image.height());
         for (x, y, pixel) in image.enumerate_pixels() {
+            let pixel_xyz = srgb_to_xyz(
+                Vector3::new(pixel[0] as f64 / 255.0, pixel[1] as f64/ 255.0, pixel[2] as f64/ 255.0)
+            );
             let adjusted_pixel = Rgb([
-                (pixel[0] as f64 * intensity.x) as u8,
-                (pixel[1] as f64 * intensity.y) as u8,
-                (pixel[2] as f64 * intensity.z) as u8,
+                ((pixel_xyz.x * intensity.x) * 255.0).min(255.0) as u8,
+                ((pixel_xyz.y * intensity.y) * 255.0).min(255.0) as u8,
+                ((pixel_xyz.z * intensity.z) * 255.0).min(255.0) as u8,
             ]);
 
             buffer.put_pixel(x, y, adjusted_pixel)

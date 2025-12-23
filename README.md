@@ -72,7 +72,7 @@ shows area lights and DoF.
 
 
 ![Buddha](examples/buddha.png)
-Happy Buddha model with a specular reflection material, scene lit using one distant light.
+Happy Buddha model with a glass material, scene lit using one distant light and some area lights.
 
 Old whitted raytracer:
 

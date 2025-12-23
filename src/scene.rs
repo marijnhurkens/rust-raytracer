@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
+use image::codecs::avif::ColorSpace;
 use tobj::{LoadOptions, Mesh};
 use yaml_rust::YamlLoader;
 
@@ -130,27 +131,28 @@ impl Scene {
             lights.push(Arc::new(infinite_light));
         }
 
-        let cube = ArcObject(Arc::new(Object::Sphere(Sphere::new(
-            Point3::new(0.0, 0.0, 0.0),
-            2.0,
-            vec![Arc::new(
-                Material::Plastic(PlasticMaterial::new(Vector3::repeat(0.0), Vector3::repeat(0.9), 0.01, 1.5))
-            )],
-        ))));
-
-     //   objects.push(cube);
-
-        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-        //     Point3::new(0.0, -0.1, 0.0),
-        //     Vector3::new(0.0, 1.0, 0.0),
-        //     vec![Material::Plastic(PlasticMaterial::new(
-        //         Vector3::repeat(1.0),
-        //         Vector3::repeat(1.0),
-        //         0.0,
-        //     ))],
+        // let cube = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+        //     Point3::new(0.3, 0.0, 0.0),
+        //     0.5,
+        //     vec![Arc::new(
+        //         Material::Plastic(PlasticMaterial::new(Vector3::repeat(0.2), Vector3::repeat(1.0), 0.1, 1.8))
+        //     )],
         // ))));
         //
-        // objects.push(floor);
+        // objects.push(cube);
+
+        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+            Point3::new(0.0, 0.0, 0.0),
+            Vector3::new(0.0, 1.0, 0.0),
+            vec![Arc::new(Material::Plastic(PlasticMaterial::new(
+                Vector3::repeat(0.9),
+                Vector3::repeat(1.0),
+                0.0,
+                1.5,
+            )))],
+        ))));
+
+        objects.push(floor);
 
         // let mesh = Arc::new(Mesh{
         //     positions: vec![
@@ -302,7 +304,9 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         let internal_material = if is_translucent {
             Arc::new(Material::Glass(GlassMaterial::new(ior, color, translucence)))
         } else {
-            Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
+            //Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
+            //Arc::new(Material::Matte(MatteMaterial::new(color, roughness)))
+            Arc::new(Material::Glass(GlassMaterial::new(ior, color, color)))
         };
 
         dbg!(&internal_material);

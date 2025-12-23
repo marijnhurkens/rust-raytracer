@@ -60,6 +60,17 @@ impl Bsdf {
         self
     }
 
+    pub fn has_bxdfs_with_flags(&self, bxdf_types_flags: BXDFTYPES) -> bool {
+        self
+            .bxdfs
+            .iter()
+            .any(|x| {
+                x.unwrap()
+                    .get_type_flags()
+                    .intersects(bxdf_types_flags)
+            })
+    }
+
     pub fn sample_f(
         &self,
         wo_world: Vector3<f64>,
@@ -104,9 +115,20 @@ impl Bsdf {
         }
 
         let sample_2_remapped = Point2::new(
-            sample_u.x.min(1.0 - f64::epsilon()).max(f64::epsilon()),
-            sample_u.y.min(1.0 - f64::epsilon()).max(f64::epsilon()),
+            rng.random::<f64>()
+                .min(1.0 - f64::epsilon())
+                .max(f64::epsilon()),
+            rng.random::<f64>()
+                .min(1.0 - f64::epsilon())
+                .max(f64::epsilon()),
         );
+
+        // let sample_2_remapped = Point2::new(
+        //     sample_u.x.min(1.0 - f64::epsilon()).max(f64::epsilon()),
+        //     sample_u.y.min(1.0 - f64::epsilon()).max(f64::epsilon()),
+        // );
+
+      //  dbg!(sample_2_remapped);
 
         let chosen_index = bxdfs_matching.into_iter().choose(&mut rng).unwrap();
         let bxdf = self.bxdfs[chosen_index].as_ref().unwrap();
@@ -151,10 +173,12 @@ impl Bsdf {
                 }
             }
         }
+        
+
 
         BsdfSampleResult {
             wi: wi_world,
-            pdf: pdf / matching_bxdf_count as f64,
+            pdf: pdf,
             f,
             sampled_flags: bxdf.get_type_flags(),
         }
@@ -198,23 +222,24 @@ impl Bsdf {
     ) -> f64 {
         let wi = self.world_to_local(wi_world);
         let wo = self.world_to_local(wo_world);
-        let reflect =
-            wi_world.dot(&self.geometry_normal) * wo_world.dot(&self.geometry_normal) > 0.0;
-        let must_match_type = match reflect {
-            true => BXDFTYPES::REFLECTION,
-            false => BXDFTYPES::TRANSMISSION,
-        };
+        if wo.z == 0.0 {
+            return 0.0;
+        }
 
         let mut pdf = 0.0;
+        let mut matching_bxdf_count = 0;
         for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
             if bxdf.get_type_flags().intersects(bxdf_types_flags)
-                && bxdf.get_type_flags().contains(must_match_type)
             {
+                matching_bxdf_count += 1;
                 pdf += bxdf.pdf(wo, wi);
             }
         }
 
-        pdf
+        if matching_bxdf_count > 0 {
+            return pdf / matching_bxdf_count as f64;
+        }
+        0.0
     }
 
     fn world_to_local(&self, v: Vector3<f64>) -> Vector3<f64> {

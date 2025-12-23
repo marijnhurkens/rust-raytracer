@@ -369,6 +369,18 @@ fn xyz_to_srgb(xyz: Vector3<f64>) -> Vector3<f64> {
     Vector3::new(r, g, b)
 }
 
+pub fn srgb_to_xyz(srgb: Vector3<f64>) -> Vector3<f64> {
+    let r = inverse_gamma_correct_srgb(srgb.x);
+    let g = inverse_gamma_correct_srgb(srgb.y);
+    let b = inverse_gamma_correct_srgb(srgb.z);
+
+    let x = 0.412453 * r + 0.357580 * g + 0.180423 * b;
+    let y = 0.212671 * r + 0.715160 * g + 0.072169 * b;
+    let z = 0.019334 * r + 0.119193 * g + 0.950227 * b;
+
+    Vector3::new(x, y, z)
+}
+
 fn gamma_correct_srgb(val: f64) -> f64 {
     if val <= 0.0 {
         0.0
@@ -376,6 +388,18 @@ fn gamma_correct_srgb(val: f64) -> f64 {
         val * 12.92
     } else if val < 1.0 {
         val.powf(1.0 / 2.4) * 1.055 - 0.055
+    } else {
+        1.0
+    }
+}
+
+fn inverse_gamma_correct_srgb(val: f64) -> f64 {
+    if val <= 0.0 {
+        0.0
+    } else if val < 0.04045 {
+        val / 12.92
+    } else if val < 1.0 {
+        ((val + 0.055) / 1.055).powf(2.4)
     } else {
         1.0
     }

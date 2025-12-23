@@ -1,10 +1,10 @@
 world:
   file: cornell.obj
   up_axis: y
-environment_map: environment.jpg
+#environment_map: environment.jpg
 lights:
     - type: area
       position: [-0.5,0.99,-0.5]
       side_a: [ 1.0,0.0,0.0 ]
       side_b: [ 0.0,0.0,1.0 ]
-      intensity: [ 2.0,2.0,2.0 ]
+      intensity: [ 0.8,0.8,0.8 ]

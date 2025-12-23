@@ -66,7 +66,8 @@ impl BXDFtrait for MicrofacetReflection {
 
         let wh = (wo + wi).normalize();
 
-        self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh))
+        debug_write_pixel_f64_on_bounce(self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh).abs()), 0);
+        self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh).abs())
     }
 
     fn sample_f(
@@ -91,7 +92,12 @@ impl BXDFtrait for MicrofacetReflection {
             return (wi, 0.0, Vector3::zeros());
         }
 
-        let pdf = self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh));
+        let wo_dot_wh = wo.dot(&wh).abs();
+        if wo_dot_wh < 1e-6 {
+            return (wi, 0.0, Vector3::zeros());
+        }
+
+        let pdf = self.distribution.pdf(wo, wh) / (4.0 * wo_dot_wh);
 
         let f = self.f(wo, wi);
 
