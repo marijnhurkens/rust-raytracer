@@ -10,17 +10,17 @@ film:
 #    start: [300,300]
 #    end: [400,400]
 camera:
-  position: [ 3.0,0.0,3.8 ]
+  position: [ 3.9,0.0,0.0 ]
   target: [ 0.0,0.0,0.0 ]
   fov: 39.0
   aperture: 0.0
   focal_distance: 0.0 # camera target is used if you do not provide this field
 sampler:
-  max_samples: 40
+  max_samples: 12
   method: sobol
 renderer:
-  depth_limit: 3
+  depth_limit: 1
   threads: 1
   clamp: 15.0
 scene:
-  background_color: [ 0.7,0.7,0.7 ]
+  background_color: [ 0.0,0.0,0.0 ]

@@ -174,8 +174,6 @@ impl Bsdf {
             }
         }
         
-
-
         BsdfSampleResult {
             wi: wi_world,
             pdf: pdf,

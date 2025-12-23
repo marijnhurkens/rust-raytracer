@@ -21,11 +21,7 @@ impl LightTrait for AreaLight {
     }
 
     fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64> {
-        if interaction.shading_normal.dot(&w) > 0.0 {
-            self.intensity
-        } else {
-            Vector3::zeros()
-        }
+        Vector3::zeros()
     }
 
     /// Sample_Li()

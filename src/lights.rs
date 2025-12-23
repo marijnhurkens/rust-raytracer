@@ -49,6 +49,7 @@ pub trait LightTrait {
     fn power(&self) -> Vector3<f64>;
 }
 
+#[derive(Debug)]
 pub struct LightIrradianceSample {
     pub irradiance: Vector3<f64>,
     pub point: Point3<f64>,
@@ -66,6 +67,17 @@ pub struct LightEmittingSample {
 pub struct LightEmittingPdf {
     pub pdf_position: f64,
     pub pdf_direction: f64,
+}
+
+impl Light {
+    pub fn to_string(&self) -> String {
+        match self {
+            Light::Point(x) => "point".to_string(),
+            Light::Area(x) => "area".to_string(),
+            Light::Distant(x) => "distant".to_string(),
+            Light::InfiniteArea(x) => "infinite_area".to_string(),
+        }
+    }
 }
 
 impl LightTrait for Light {

@@ -152,7 +152,7 @@ impl Scene {
             )))],
         ))));
 
-        objects.push(floor);
+      //  objects.push(floor);
 
         // let mesh = Arc::new(Mesh{
         //     positions: vec![
@@ -304,9 +304,9 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         let internal_material = if is_translucent {
             Arc::new(Material::Glass(GlassMaterial::new(ior, color, translucence)))
         } else {
-            //Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
+            Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
             //Arc::new(Material::Matte(MatteMaterial::new(color, roughness)))
-            Arc::new(Material::Glass(GlassMaterial::new(ior, color, color)))
+            //Arc::new(Material::Glass(GlassMaterial::new(ior, color, color)))
         };
 
         dbg!(&internal_material);

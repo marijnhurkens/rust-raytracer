@@ -165,8 +165,6 @@ fn estimate_direct(
 
     // Sample light source with multiple importance sampling
     let u_light = sampler.get_3d();
-    // todo: fix, black spots when pulling samples here
-    //let u_light = vec!(1.0,1.0);
     let mut irradiance_sample = light.sample_irradiance(surface_interaction, u_light);
     let light_pdf = irradiance_sample.pdf;
     let mut scattering_pdf = 0.0;

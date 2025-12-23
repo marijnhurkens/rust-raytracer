@@ -41,18 +41,6 @@ pub struct SobolSampler {
 
 impl SobolSampler {
     pub fn new() -> Self {
-        // let aspect_ratio = image_width as f64 / image_height as f64;
-        //
-        // // fov = horizontal
-        // let fov_radians = PI * (camera.fov / 180.0); // for 60 degs: 60deg / 180deg = 0.33 * PI = 1.036 radians
-        // let half_width_radians = (fov_radians / 2.0).tan();
-        // let half_height_radians = half_width_radians * (1.0 / aspect_ratio);
-        //
-        // let plane_width = half_width_radians * 2.0;
-        // let plane_height = half_height_radians * 2.0;
-        //
-        // let pixel_width_radians = plane_width / (image_width - 1) as f64;
-        // let pixel_height_radians = plane_height / (image_height - 1) as f64;
         let sobol_params = JoeKuoD6::standard();
         let sobol_1d = Sobol::<f64>::new(1, &sobol_params);
         let sobol_2d = Sobol::<f64>::new(2, &sobol_params);

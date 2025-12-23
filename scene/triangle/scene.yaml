@@ -1,7 +1,7 @@
 world:
   file: triangle.obj
   up_axis: y
-environment_map: environment.jpg
+#environment_map: environment.jpg
 lights:
     - type: area
       position: [-1.5,1.99,-1.5]
