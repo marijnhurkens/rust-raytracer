@@ -123,13 +123,6 @@ impl Bsdf {
                 .max(f64::epsilon()),
         );
 
-        // let sample_2_remapped = Point2::new(
-        //     sample_u.x.min(1.0 - f64::epsilon()).max(f64::epsilon()),
-        //     sample_u.y.min(1.0 - f64::epsilon()).max(f64::epsilon()),
-        // );
-
-      //  dbg!(sample_2_remapped);
-
         let chosen_index = bxdfs_matching.into_iter().choose(&mut rng).unwrap();
         let bxdf = self.bxdfs[chosen_index].as_ref().unwrap();
         let (wi, mut pdf, mut f) = bxdf.sample_f(sample_2_remapped, wo);

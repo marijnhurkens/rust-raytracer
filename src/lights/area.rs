@@ -21,7 +21,14 @@ impl LightTrait for AreaLight {
     }
 
     fn emitting(&self, interaction: &SurfaceInteraction, w: Vector3<f64>) -> Vector3<f64> {
-        Vector3::zeros()
+      //  if interaction.shading_normal.dot(&w) > 0.0 {
+       //     self.intensity
+        // } else {
+        //     Vector3::zeros()
+        // }
+
+             Vector3::zeros()
+
     }
 
     /// Sample_Li()
@@ -34,6 +41,15 @@ impl LightTrait for AreaLight {
         let wi = (light_interaction.point - surface_interaction.point).normalize();
 
         let pdf = self.object.pdf(&surface_interaction.into(), wi);
+        if pdf == 0.0 {
+            return LightIrradianceSample {
+                point: light_interaction.point,
+                wi,
+                pdf,
+                irradiance: Vector3::zeros(),
+            };
+        }
+
         let irradiance = self.irradiance_at_point(&light_interaction, -wi);
 
         LightIrradianceSample {

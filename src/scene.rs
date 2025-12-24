@@ -26,7 +26,7 @@ use crate::objects::plane::Plane;
 use crate::objects::rectangle::Rectangle;
 use crate::objects::sphere::Sphere;
 use crate::objects::triangle::Triangle;
-use crate::objects::ArcObject;
+use crate::objects::{ArcObject, ObjectTrait};
 use crate::{yaml_array_into_point3, Object};
 
 pub struct Scene {
@@ -64,7 +64,8 @@ impl Scene {
         let (mut objects, meshes) = if let Some(filename) = scene_yaml["world"]["file"].as_str() {
             let world_model_file = path.join(Path::new(filename));
             let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
-            load_model(world_model_file.as_path(), up_axis)
+            //load_model(world_model_file.as_path(), up_axis)
+                (Vec::new(), Vec::<Arc<Mesh>>::new())
         } else {
             (vec![], vec![])
         };
@@ -142,17 +143,17 @@ impl Scene {
         // objects.push(cube);
 
         let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::new(0.0, 0.0, 0.0),
+            Point3::new(0.0, -0.5, 0.0),
             Vector3::new(0.0, 1.0, 0.0),
             vec![Arc::new(Material::Plastic(PlasticMaterial::new(
                 Vector3::repeat(0.9),
                 Vector3::repeat(1.0),
-                0.0,
+                0.9,
                 1.5,
             )))],
         ))));
 
-      //  objects.push(floor);
+        objects.push(floor);
 
         // let mesh = Arc::new(Mesh{
         //     positions: vec![

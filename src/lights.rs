@@ -114,6 +114,7 @@ impl LightTrait for Light {
     }
 
     /// Sample_le()
+    /// not used in path tracer
     fn sample_emitting(&self) -> LightEmittingSample {
         match self {
             Light::Point(x) => x.sample_emitting(),

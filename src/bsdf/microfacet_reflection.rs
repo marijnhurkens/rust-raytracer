@@ -51,6 +51,10 @@ impl BXDFtrait for MicrofacetReflection {
             return Vector3::zeros();
         }
 
+        if wo.dot(&wh) <= 0.0 || wi.dot(&wh) <= 0.0 {
+            return Vector3::zeros();
+        }
+
         let wh = wh.normalize();
 
         let f = self.fresnel.evaluate(wi.dot(&face_forward(wh, Vector3::new(0.0, 0.0, 1.0))).abs());
@@ -66,8 +70,12 @@ impl BXDFtrait for MicrofacetReflection {
 
         let wh = (wo + wi).normalize();
 
-        debug_write_pixel_f64_on_bounce(self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh).abs()), 0);
-        self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh).abs())
+        let dot = wo.dot(&wh).abs();
+        if dot < 1e-7 {
+            return 0.0;
+        }
+        self.distribution.pdf(wo, wh) / (4.0 * dot)
+        //self.distribution.pdf(wo, wh) / (4.0 * wo.dot(&wh).abs())
     }
 
     fn sample_f(

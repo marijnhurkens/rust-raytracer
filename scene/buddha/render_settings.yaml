@@ -1,6 +1,6 @@
 film:
-  image_width: 2000
-  image_height: 2000
+  image_width: 200
+  image_height: 200
   bucket_width: 128
   bucket_height: 128
   filter_radius: 1.8
@@ -15,7 +15,7 @@ camera:
   fov: 60.0
   aperture: 0.1
 sampler:
-  max_samples: 100
+  max_samples: 16
   method: sobol
 renderer:
   depth_limit: 12

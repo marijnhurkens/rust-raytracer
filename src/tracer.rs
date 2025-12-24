@@ -120,8 +120,8 @@ pub fn trace(
         }
 
         // russian roulette termination
-        if bounce > 3 {
-            let q = (1.0 - contribution.max()).max(0.05);
+        if contribution.max() < 1.0 && bounce > 1 {
+            let q = (1.0 - contribution.max()).max(0.0);
             if rng.random::<f64>() < q {
                 break;
             }
@@ -146,6 +146,10 @@ fn uniform_sample_light(
     let mut rng = rng();
 
     let light_count = scene.lights.len();
+    if light_count == 0 {
+        return Vector3::zeros();
+    }
+
     let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
     let light = &scene.lights[light_num as usize];
 
@@ -181,7 +185,11 @@ fn estimate_direct(
             .wi
             .dot(&surface_interaction.shading_normal)
             .abs();
-        scattering_pdf = surface_interaction.bsdf.unwrap().pdf(surface_interaction.wo, irradiance_sample.wi, bsdf_flags);
+        scattering_pdf = surface_interaction.bsdf.unwrap().pdf(
+            surface_interaction.wo,
+            irradiance_sample.wi,
+            bsdf_flags,
+        );
 
         if !f.is_zero() {
             if !check_light_visible(surface_interaction, scene, &irradiance_sample) {
@@ -189,8 +197,7 @@ fn estimate_direct(
             }
 
             if light.is_delta() {
-                direct_irradiance +=
-                    f.component_mul(&irradiance_sample.irradiance) / light_pdf;
+                direct_irradiance += f.component_mul(&irradiance_sample.irradiance) / light_pdf;
             } else {
                 let weight = power_heuristic(1, light_pdf, 1, scattering_pdf);
 
@@ -249,7 +256,9 @@ fn estimate_direct(
 
             let mut light_irradiance = Vector3::zeros();
 
+                   // dbg!(ray);
             if let Some((object_interaction, object)) = check_intersect_scene(ray, scene) {
+                panic!("hit something");
                 if let Some(found_light_arc) = object.get_light() {
                     if std::ptr::eq(light.as_ref(), found_light_arc.as_ref()) {
                         if let Light::Area(light) = light.as_ref() {
@@ -258,8 +267,7 @@ fn estimate_direct(
                             //     point: object_interaction.point,
                             //     normal: object_interaction.shading_normal,
                             // };
-                            light_irradiance =
-                                light.emitting(&object_interaction, -bsdf_sample.wi);
+                            light_irradiance = light.emitting(&object_interaction, -bsdf_sample.wi);
                         }
                     }
                 }
@@ -270,11 +278,12 @@ fn estimate_direct(
                 //     normal: surface_interaction.shading_normal,
                 // };
 
-                light_irradiance = light.emitting(&surface_interaction, ray.direction)
+                light_irradiance = light.environment_emitting(ray);
             }
 
             if !light_irradiance.is_zero() {
-                direct_irradiance += f.component_mul(&(light_irradiance * weight)) / bsdf_sample.pdf;
+                direct_irradiance +=
+                    f.component_mul(&(light_irradiance * weight)) / bsdf_sample.pdf;
             }
         }
     }
