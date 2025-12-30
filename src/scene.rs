@@ -64,8 +64,8 @@ impl Scene {
         let (mut objects, meshes) = if let Some(filename) = scene_yaml["world"]["file"].as_str() {
             let world_model_file = path.join(Path::new(filename));
             let up_axis = scene_yaml["world"]["up_axis"].as_str().unwrap();
-            //load_model(world_model_file.as_path(), up_axis)
-                (Vec::new(), Vec::<Arc<Mesh>>::new())
+            load_model(world_model_file.as_path(), up_axis)
+               // (Vec::new(), Vec::<Arc<Mesh>>::new())
         } else {
             (vec![], vec![])
         };

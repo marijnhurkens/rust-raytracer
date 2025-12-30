@@ -129,19 +129,33 @@ impl ObjectTrait for Rectangle {
     }
 
     fn area(&self) -> f64 {
-        self.side_b.magnitude() * self.side_b.magnitude()
+        self.side_a.cross(&self.side_b).magnitude()
     }
 }
 
 impl Bounded<f32, 3> for Rectangle {
     fn aabb(&self) -> Aabb<f32, 3> {
-        let pos_opposite = self.position + self.side_a + self.side_b;
-        let min = self.position.simd_min(pos_opposite);
-        let max = self.position.simd_max(pos_opposite);
+        let p0 = self.position;
+        let p1 = self.position + self.side_a;
+        let p2 = self.position + self.side_b;
+        let p3 = self.position + self.side_a + self.side_b;
+
+        let min = p0.simd_min(p1).simd_min(p2).simd_min(p3);
+        let max = p0.simd_max(p1).simd_max(p2).simd_max(p3);
+
+        let epsilon = 0.0001;
 
         Aabb::with_bounds(
-            Point3::new(min.x as f32, min.y as f32, min.z as f32),
-            Point3::new(max.x as f32, max.y as f32, max.z as f32),
+            Point3::new(
+                (min.x - epsilon) as f32,
+                (min.y - epsilon) as f32,
+                (min.z - epsilon) as f32,
+            ),
+            Point3::new(
+                (max.x + epsilon) as f32,
+                (max.y + epsilon) as f32,
+                (max.z + epsilon) as f32,
+            ),
         )
     }
 }

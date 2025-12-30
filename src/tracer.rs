@@ -113,11 +113,6 @@ pub fn trace(
             direction: bsdf_sample.wi,
         };
 
-        if settings.clamp > 0.0 {
-            l.x = l.x.min(settings.clamp);
-            l.y = l.y.min(settings.clamp);
-            l.z = l.z.min(settings.clamp);
-        }
 
         // russian roulette termination
         if contribution.max() < 1.0 && bounce > 1 {
@@ -128,6 +123,12 @@ pub fn trace(
 
             contribution /= 1.0 - q;
         }
+    }
+
+    if settings.clamp > 0.0 {
+        l.x = l.x.min(settings.clamp);
+        l.y = l.y.min(settings.clamp);
+        l.z = l.z.min(settings.clamp);
     }
 
     SampleResult {
@@ -256,28 +257,15 @@ fn estimate_direct(
 
             let mut light_irradiance = Vector3::zeros();
 
-                   // dbg!(ray);
             if let Some((object_interaction, object)) = check_intersect_scene(ray, scene) {
-                panic!("hit something");
                 if let Some(found_light_arc) = object.get_light() {
                     if std::ptr::eq(light.as_ref(), found_light_arc.as_ref()) {
                         if let Light::Area(light) = light.as_ref() {
-                            // // we've hit OUR area light
-                            // let interaction = Interaction {
-                            //     point: object_interaction.point,
-                            //     normal: object_interaction.shading_normal,
-                            // };
-                            light_irradiance = light.emitting(&object_interaction, -bsdf_sample.wi);
+                            light_irradiance = light.irradiance_at_point(&object_interaction.into(), -bsdf_sample.wi);
                         }
                     }
                 }
             } else {
-                // // no hit, add emitting light if infinite area light
-                // let interaction = Interaction {
-                //     point: surface_interaction.point,
-                //     normal: surface_interaction.shading_normal,
-                // };
-
                 light_irradiance = light.environment_emitting(ray);
             }
 
