@@ -34,7 +34,7 @@ bvh = {git = "https://github.com/dbenson24/bvh", branch = "master" }
 #opt-level = 2
 #lto = "thin"
 #rustflags = ["-C target-cpu=native"]
-#debug = true
+debug = true
 
 #[env]
 #OIDN_DIR="~/Downloads/oidn/"

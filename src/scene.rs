@@ -106,6 +106,34 @@ impl Scene {
                 objects.push(light_rectangle);
             }
 
+            if l_type == "sphere" {
+                let l_pos = yaml_array_into_point3(&light_config["position"]);
+                let l_radius = light_config["radius"].as_f64().unwrap();
+                let l_intensity = yaml_array_into_vector3(&light_config["intensity"]);
+
+                let light_sphere = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+                    l_pos,
+                    l_radius,
+                    vec![],
+                    None,
+                ))));
+
+                let light = Arc::new(Light::Area(AreaLight::new(light_sphere, l_intensity)));
+
+                let light_sphere = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+                    l_pos,
+                    l_radius-0.001,
+                    vec![Arc::new(Material::Matte(MatteMaterial::new(
+                        Vector3::repeat(0.9),
+                        20.0,
+                    )))],
+                    Some(light.clone()),
+                ))));
+
+                lights.push(light);
+                objects.push(light_sphere);
+            }
+
             if l_type == "distant" {
                 let light = Arc::new(Light::Distant(DistantLight::new(
                     Point3::origin(),
@@ -142,55 +170,19 @@ impl Scene {
         //
         // objects.push(cube);
 
-        let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
-            Point3::new(0.0, -0.5, 0.0),
-            Vector3::new(0.0, 1.0, 0.0),
-            vec![Arc::new(Material::Plastic(PlasticMaterial::new(
-                Vector3::repeat(0.9),
-                Vector3::repeat(1.0),
-                0.9,
-                1.5,
-            )))],
-        ))));
-
-        objects.push(floor);
-
-        // let mesh = Arc::new(Mesh{
-        //     positions: vec![
-        //         0.0,0.0,0.0,
-        //         1.0,0.0,1.0,
-        //         0.0,1.0,1.0,
-        //     ],
-        //     vertex_color: vec![],
-        //     normals: vec![
-        //         0.0,0.0,1.0,
-        //         0.0,0.0,1.0,
-        //         0.0,0.0,1.0,
-        //     ],
-        //     texcoords: vec![],
-        //     indices: vec![],
-        //     face_arities: vec![],
-        //     texcoord_indices: vec![],
-        //     normal_indices: vec![],
-        //     material_id: None,
-        // });
-        //
-        // let triangle = ArcObject(Arc::new(Object::Triangle(Triangle::new(
-        //     mesh,
-        //     0,
-        //     1,
-        //     2,
-        //     vec![
-        //         Material::Glass(GlassMaterial::new(Vector3::repeat(1.0))),
-        //         // Material::Matte(MatteMaterial::new(
-        //         //     Vector3::new(0.5, 0.5, 0.5),
-        //         //     0.5,
-        //         // ))
-        //     ],
-        //     None,
+        // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
+        //     Point3::new(0.0, -0.5, 0.0),
+        //     Vector3::new(0.0, 1.0, 0.0),
+        //     vec![Arc::new(Material::Plastic(PlasticMaterial::new(
+        //         Vector3::repeat(0.9),
+        //         Vector3::repeat(1.0),
+        //         0.9,
+        //         1.5,
+        //     )))],
         // ))));
+        //
+        // objects.push(floor);
 
-        // objects.push(triangle);
 
         // Build scene
         println!("Building BVH...");
@@ -258,6 +250,23 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         } else {
             Vector3::repeat(0.8)
         };
+
+        // let (is_emissive, emission) = if let Some(material) = material {
+        //     let tf_param = material.unknown_param.get("Ke");
+        //     if let Some(tf) = tf_param {
+        //         // split string on space, parse as f64 and create vector3
+        //         let ke_values: Vec<f64> = tf
+        //             .as_str()
+        //             .split_whitespace()
+        //             .map(|s| s.parse::<f64>().unwrap())
+        //             .collect();
+        //         (true, Vector3::new(ke_values[0], ke_values[1], ke_values[2]))
+        //     } else {
+        //         (false, Vector3::repeat(0.0))
+        //     }
+        // } else {
+        //     (false, Vector3::repeat(0.0))
+        // };
 
         let ior: f64 = if let Some(material) = material {
             material.optical_density.into()

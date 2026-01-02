@@ -144,14 +144,14 @@ fn uniform_sample_light(
     surface_interaction: &SurfaceInteraction,
     sampler: &mut SobolSampler,
 ) -> Vector3<f64> {
-    let mut rng = rng();
-
     let light_count = scene.lights.len();
     if light_count == 0 {
         return Vector3::zeros();
     }
+    let mut rng = rng();
 
-    let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
+    //let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
+    let light_num = (rng.random::<f64>() * light_count as f64).min(light_count as f64 - 1.0);
     let light = &scene.lights[light_num as usize];
 
     let light_pdf = 1.0 / light_count as f64;
@@ -165,14 +165,22 @@ fn estimate_direct(
     sampler: &mut SobolSampler,
     light: &Arc<Light>,
 ) -> Vector3<f64> {
+    let mut rng = rng();
+
     let bsdf_flags = BXDFTYPES::ALL & !BXDFTYPES::SPECULAR;
     let mut direct_irradiance = Vector3::zeros();
 
+    let mut weight_light_sample = 0.0;
+    let mut weight_bsdf_sample = 0.0;
+
     // Sample light source with multiple importance sampling
-    let u_light = sampler.get_3d();
+    //let u_light = sampler.get_3d();
+    let u_light = vec!(rng.random(), rng.random(), rng.random());
     let mut irradiance_sample = light.sample_irradiance(surface_interaction, u_light);
     let light_pdf = irradiance_sample.pdf;
+
     let mut scattering_pdf = 0.0;
+
 
     if irradiance_sample.pdf > 1e-6 && !irradiance_sample.irradiance.is_zero() {
         // First we calculate the BSDF value for our light sample
@@ -192,18 +200,23 @@ fn estimate_direct(
             bsdf_flags,
         );
 
+
         if !f.is_zero() {
             if !check_light_visible(surface_interaction, scene, &irradiance_sample) {
                 irradiance_sample.irradiance = Vector3::zeros();
             }
 
-            if light.is_delta() {
-                direct_irradiance += f.component_mul(&irradiance_sample.irradiance) / light_pdf;
-            } else {
-                let weight = power_heuristic(1, light_pdf, 1, scattering_pdf);
+            if !irradiance_sample.irradiance.is_zero() {
+                if light.is_delta() {
+                    direct_irradiance += f.component_mul(&irradiance_sample.irradiance) / light_pdf;
+                } else {
 
-                direct_irradiance +=
-                    f.component_mul(&irradiance_sample.irradiance) * weight / light_pdf;
+                    let weight = power_heuristic(1, light_pdf, 1, scattering_pdf);
+                    debug_write_pixel_f64_on_bounce(weight, 0);
+                    weight_light_sample = weight;
+                    direct_irradiance +=
+                        f.component_mul(&irradiance_sample.irradiance) * weight / light_pdf;
+                }
             }
         }
     }
@@ -213,7 +226,9 @@ fn estimate_direct(
         let mut sampled_specular = false;
 
         let bsdf_sample = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
-            bsdf.sample_f(surface_interaction.wo, bsdf_flags, sampler.get_2d_point())
+            let sample = Point2::new(rng.random(), rng.random());
+            // let sample = sampler.get_2d_point();
+            bsdf.sample_f(surface_interaction.wo, bsdf_flags, sample)
         } else {
             BsdfSampleResult {
                 wi: Vector3::zeros(),
@@ -228,6 +243,7 @@ fn estimate_direct(
                 .wi
                 .dot(&surface_interaction.shading_normal)
                 .abs();
+
         scattering_pdf = bsdf_sample.pdf;
         sampled_specular = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 
@@ -270,8 +286,13 @@ fn estimate_direct(
             }
 
             if !light_irradiance.is_zero() {
+               // debug_write_pixel_on_bounce(f, 0);
+              // debug_write_pixel_f64_on_bounce(bsdf_sample.pdf, 0);
+               // dbg!(weight, scattering_pdf);
+                weight_bsdf_sample = weight;
+
                 direct_irradiance +=
-                    f.component_mul(&(light_irradiance * weight)) / bsdf_sample.pdf;
+                    f.component_mul(&(light_irradiance * weight)) / scattering_pdf;
             }
         }
     }

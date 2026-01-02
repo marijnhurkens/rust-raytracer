@@ -1,0 +1,21 @@
+world:
+  file: mis.obj
+  up_axis: y
+#environment_map: environment.jpg
+lights:
+    - type: sphere
+      position: [-3.3,7.4,-4.3]
+      radius: 1.0
+      intensity: [ 1.0,1.0,1.0 ]
+    - type: sphere
+      position: [ -0.9,7.4,-4.3 ]
+      radius: 0.6
+      intensity: [ 2.0,2.0,2.0 ]
+    - type: sphere
+      position: [ 1.4,7.4,-4.3 ]
+      radius: 0.2
+      intensity: [ 8.0,8.0,8.0 ]
+    - type: sphere
+      position: [ 3.4,7.4,-4.3 ]
+      radius: 0.05
+      intensity: [ 20.0,20.0,20.0 ]

@@ -63,7 +63,7 @@ impl TrowbridgeReitzDistribution {
             return (slope_x, slope_y);
         }
 
-        let sin_theta = (0.0f64).max(1.0 - cos_theta.powi(2)).sqrt();
+        let sin_theta = (0.0f64).max(1.0 - cos_theta * cos_theta).sqrt();
         let tan_theta = sin_theta / cos_theta;
         let a = 1.0 / tan_theta;
         let g1 = 2.0 / (1.0 + (1.0 + 1.0 / (a * a)).sqrt());

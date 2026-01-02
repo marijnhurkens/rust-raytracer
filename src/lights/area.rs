@@ -5,7 +5,7 @@ use nalgebra::Vector3;
 
 use crate::lights::{LightEmittingPdf, LightEmittingSample, LightIrradianceSample, LightTrait};
 use crate::objects::{ArcObject, ObjectTrait};
-use crate::renderer::{debug_write_pixel_f64, Ray};
+use crate::renderer::{debug_write_pixel_f64, debug_write_pixel_on_bounce, Ray};
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
 use crate::Object;
 
@@ -35,10 +35,11 @@ impl LightTrait for AreaLight {
         sample: Vec<f64>,
     ) -> LightIrradianceSample {
         let light_interaction = self.object.sample_point(sample);
+
         let wi = (light_interaction.point - surface_interaction.point).normalize();
 
         let pdf = self.object.pdf(&surface_interaction.into(), wi);
-        if pdf == 0.0 {
+        if pdf == 0.0 || (light_interaction.point - surface_interaction.point).magnitude_squared() == 0.0 {
             return LightIrradianceSample {
                 point: light_interaction.point,
                 wi,

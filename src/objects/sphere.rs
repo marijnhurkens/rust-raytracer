@@ -9,6 +9,7 @@ use bvh::bounding_hierarchy::BHShape;
 use core::f64;
 use nalgebra::{Matrix, Point3, Vector2, Vector3};
 use std::sync::Arc;
+use crate::renderer::debug_write_pixel_on_bounce;
 
 // SPHERE
 #[derive(Debug, Clone)]
@@ -17,15 +18,17 @@ pub struct Sphere {
     pub radius: f64,
     pub materials: Vec<Arc<Material>>,
     pub node_index: usize,
+    light: Option<Arc<Light>>,
 }
 
 impl Sphere {
-    pub fn new(position: Point3<f64>, radius: f64, materials: Vec<Arc<Material>>) -> Self {
+    pub fn new(position: Point3<f64>, radius: f64, materials: Vec<Arc<Material>>, light: Option<Arc<Light>>) -> Self {
         Sphere {
             position,
             radius,
             materials,
             node_index: 0,
+            light
         }
     }
 
@@ -110,7 +113,7 @@ impl ObjectTrait for Sphere {
     }
 
     fn get_light(&self) -> Option<&Arc<Light>> {
-        None
+        self.light.as_ref()
     }
 
     fn test_intersect(&self, ray: renderer::Ray) -> Option<(f64, SurfaceInteraction)> {
@@ -154,7 +157,20 @@ impl ObjectTrait for Sphere {
     }
 
     fn sample_point(&self, sample: Vec<f64>) -> Interaction {
-        unimplemented!()
+        // uniform sample on sphere
+        let z = 1.0 - 2.0 * sample[0];
+        let r = (1.0 - z * z).sqrt();
+        let phi = 2.0 * f64::consts::PI * sample[1];
+        let x = r * phi.cos();
+        let y = r * phi.sin();
+
+        let point_on_sphere =
+            self.position + Vector3::new(x * self.radius, y * self.radius, z * self.radius);
+
+        Interaction {
+            point: point_on_sphere,
+            normal: self.get_normal(point_on_sphere),
+        }
     }
 
     fn pdf(&self, interaction: &Interaction, wi: Vector3<f64>) -> f64 {

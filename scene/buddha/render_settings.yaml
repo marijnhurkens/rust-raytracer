@@ -15,10 +15,10 @@ camera:
   fov: 60.0
   aperture: 0.1
 sampler:
-  max_samples: 8
+  max_samples: 256
   method: sobol
 renderer:
-  depth_limit: 5
+  depth_limit: 12
   threads: 11
   clamp: 15.0
 scene:

@@ -10,7 +10,10 @@ use crate::bsdf::microfacet_reflection::MicrofacetReflection;
 use crate::bsdf::oren_nayar::OrenNayar;
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::bsdf::specular_transmission::SpecularTransmission;
-use crate::renderer::{debug_write_pixel, debug_write_pixel_f64};
+use crate::renderer::{
+    debug_write_pixel, debug_write_pixel_f64, debug_write_pixel_f64_on_bounce,
+    debug_write_pixel_on_bounce,
+};
 use crate::surface_interaction::SurfaceInteraction;
 
 pub mod helpers;
@@ -61,14 +64,9 @@ impl Bsdf {
     }
 
     pub fn has_bxdfs_with_flags(&self, bxdf_types_flags: BXDFTYPES) -> bool {
-        self
-            .bxdfs
+        self.bxdfs
             .iter()
-            .any(|x| {
-                x.unwrap()
-                    .get_type_flags()
-                    .intersects(bxdf_types_flags)
-            })
+            .any(|x| x.unwrap().get_type_flags().intersects(bxdf_types_flags))
     }
 
     pub fn sample_f(
@@ -166,10 +164,10 @@ impl Bsdf {
                 }
             }
         }
-        
+
         BsdfSampleResult {
             wi: wi_world,
-            pdf: pdf,
+            pdf,
             f,
             sampled_flags: bxdf.get_type_flags(),
         }
@@ -220,8 +218,7 @@ impl Bsdf {
         let mut pdf = 0.0;
         let mut matching_bxdf_count = 0;
         for bxdf in &self.bxdfs.iter().filter_map(|x| *x).collect::<Vec<_>>() {
-            if bxdf.get_type_flags().intersects(bxdf_types_flags)
-            {
+            if bxdf.get_type_flags().intersects(bxdf_types_flags) {
                 matching_bxdf_count += 1;
                 pdf += bxdf.pdf(wo, wi);
             }
@@ -230,6 +227,7 @@ impl Bsdf {
         if matching_bxdf_count > 0 {
             return pdf / matching_bxdf_count as f64;
         }
+
         0.0
     }
 

@@ -218,7 +218,7 @@ impl Film {
         bucket.samples = vec![];
     }
 
-    pub fn merge_bucket_pixels_to_image_buffer(&mut self, bucket: &Bucket) {
+    pub fn merge_bucket_pixels_to_image_buffer(&mut self, bucket: &mut Bucket) {
         for (index, pixel) in bucket.pixels.iter().enumerate() {
             let x = (index as u32 % bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.x;
             let y = (index as u32 / bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.y;
@@ -248,6 +248,8 @@ impl Film {
 
             self.image_buffer.put_pixel(x, y, pixel_color_rgb);
         }
+
+        bucket.pixels = vec![];
     }
 
     fn get_pixel_index(&self, x: u32, y: u32) -> usize {

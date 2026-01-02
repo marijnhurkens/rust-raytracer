@@ -69,6 +69,8 @@ struct MainState {
     debug_normals: bool,
     debug_albedo: bool,
     debug_buffer: bool,
+    output_buffer: Vec<u8>,
+    cached_image: Option<graphics::Image>,
 }
 
 impl MainState {
@@ -79,6 +81,10 @@ impl MainState {
         running_threads: usize,
         should_denoise: bool,
     ) -> GameResult<MainState> {
+        let (width, height) = {
+            let film = film.read().unwrap();
+            (film.image_size.x, film.image_size.y)
+        };
         Ok(MainState {
             redraw: true,
             film,
@@ -91,6 +97,8 @@ impl MainState {
             debug_normals: false,
             debug_buffer: false,
             debug_albedo: false,
+            output_buffer: vec![0u8; (width * height * 4) as usize],
+            cached_image: None,
         })
     }
 }
@@ -139,67 +147,87 @@ impl event::EventHandler for MainState {
         }
         self.redraw = false;
 
-        let film = self.film.read().unwrap();
-        let image_width = film.image_size.x;
-        let image_height = film.image_size.y;
-        let mut output = vec![0u8; image_width as usize * image_height as usize * 4];
+        let use_cache = self.finished
+            && (self.denoised || !self.should_denoise)
+            && !self.debug_normals
+            && !self.debug_albedo
+            && !self.debug_buffer;
 
-        if self.debug_normals {
-            let mut i = 0;
-            film.pixels.clone().iter().for_each(|pixel| {
-                let scaled_normal =
-                    (pixel.normal * 0.5 + nalgebra::Vector3::new(0.5, 0.5, 0.5)) * 255.0;
-                output[i] = scaled_normal.x as u8;
-                output[i + 1] = scaled_normal.y as u8;
-                output[i + 2] = scaled_normal.z as u8;
-                output[i + 3] = 255;
-                i += 4;
-            });
-        } else if self.debug_albedo {
-            let mut i = 0;
-            film.pixels.clone().iter().for_each(|pixel| {
-                output[i] = (pixel.albedo.x * 255.0) as u8;
-                output[i + 1] = (pixel.albedo.y * 255.0) as u8;
-                output[i + 2] = (pixel.albedo.z * 255.0) as u8;
-                output[i + 3] = 255;
-                i += 4;
-            });
-        } else if self.debug_buffer {
-            let mut i = 0;
-            DEBUG_BUFFER
-                .read()
-                .unwrap()
-                .buffer
-                .chunks(3)
-                .for_each(|chunk| {
-                    output[i] = (chunk[0] * 255.0) as u8;
-                    output[i + 1] = (chunk[1] * 255.0) as u8;
-                    output[i + 2] = (chunk[2] * 255.0) as u8;
+        let image = if use_cache && self.cached_image.is_some() {
+            self.cached_image.as_ref().unwrap().clone()
+        } else {
+            let film = self.film.read().unwrap();
+            let image_width = film.image_size.x;
+            let image_height = film.image_size.y;
+
+            if self.output_buffer.len() != (image_width * image_height * 4) as usize {
+                self.output_buffer
+                    .resize((image_width * image_height * 4) as usize, 0);
+            }
+            let output = &mut self.output_buffer;
+
+            if self.debug_normals {
+                let mut i = 0;
+                film.pixels.iter().for_each(|pixel| {
+                    let scaled_normal =
+                        (pixel.normal * 0.5 + nalgebra::Vector3::new(0.5, 0.5, 0.5)) * 255.0;
+                    output[i] = scaled_normal.x as u8;
+                    output[i + 1] = scaled_normal.y as u8;
+                    output[i + 2] = scaled_normal.z as u8;
                     output[i + 3] = 255;
                     i += 4;
                 });
-        } else {
-            let mut i = 0;
-            for chunk in film.image_buffer.clone().into_raw().chunks(3) {
-                output[i] = chunk[0];
-                output[i + 1] = chunk[1];
-                output[i + 2] = chunk[2];
-                output[i + 3] = 255;
-                i += 4;
+            } else if self.debug_albedo {
+                let mut i = 0;
+                film.pixels.iter().for_each(|pixel| {
+                    output[i] = (pixel.albedo.x * 255.0) as u8;
+                    output[i + 1] = (pixel.albedo.y * 255.0) as u8;
+                    output[i + 2] = (pixel.albedo.z * 255.0) as u8;
+                    output[i + 3] = 255;
+                    i += 4;
+                });
+            } else if self.debug_buffer {
+                let mut i = 0;
+                DEBUG_BUFFER
+                    .read()
+                    .unwrap()
+                    .buffer
+                    .chunks(3)
+                    .for_each(|chunk| {
+                        output[i] = (chunk[0] * 255.0) as u8;
+                        output[i + 1] = (chunk[1] * 255.0) as u8;
+                        output[i + 2] = (chunk[2] * 255.0) as u8;
+                        output[i + 3] = 255;
+                        i += 4;
+                    });
+            } else {
+                let mut i = 0;
+                for chunk in film.image_buffer.as_raw().chunks(3) {
+                    output[i] = chunk[0];
+                    output[i + 1] = chunk[1];
+                    output[i + 2] = chunk[2];
+                    output[i + 3] = 255;
+                    i += 4;
+                }
             }
-        }
 
-        let image = graphics::Image::from_pixels(
-            ctx,
-            &output,
-            ImageFormat::Rgba8UnormSrgb,
-            image_width,
-            image_height,
-        );
+            let image = graphics::Image::from_pixels(
+                ctx,
+                output,
+                ImageFormat::Rgba8UnormSrgb,
+                image_width,
+                image_height,
+            );
+
+            if use_cache {
+                self.cached_image = Some(image.clone());
+            }
+            image
+        };
 
         // now lets render our scene once in the top left and in the bottom right
         let window_size = ctx.gfx.window().inner_size();
-        let image_ratio = image_width as f32 / image_height as f32;
+        let image_ratio = image.width() as f32 / image.height() as f32;
         let window_ratio = window_size.width as f32 / window_size.height as f32;
 
         let scale = if window_ratio > image_ratio {
