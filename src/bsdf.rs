@@ -75,8 +75,6 @@ impl Bsdf {
         bxdf_types_flags: BXDFTYPES,
         sample_u: Point2<f64>,
     ) -> BsdfSampleResult {
-        let mut rng = rng();
-
         let bxdfs_matching: Vec<usize> = self
             .bxdfs
             .iter()
@@ -112,16 +110,15 @@ impl Bsdf {
             };
         }
 
+        let chosen_index = ((sample_u.x * matching_bxdf_count as f64).floor() as usize)
+            .min(matching_bxdf_count - 1);
+
         let sample_2_remapped = Point2::new(
-            rng.random::<f64>()
-                .min(1.0 - f64::epsilon())
-                .max(f64::epsilon()),
-            rng.random::<f64>()
-                .min(1.0 - f64::epsilon())
-                .max(f64::epsilon()),
+            ((sample_u.x * matching_bxdf_count as f64) - chosen_index as f64)
+                .min(1.0 - f64::epsilon()),
+            sample_u.y,
         );
 
-        let chosen_index = bxdfs_matching.into_iter().choose(&mut rng).unwrap();
         let bxdf = self.bxdfs[chosen_index].as_ref().unwrap();
         let (wi, mut pdf, mut f) = bxdf.sample_f(sample_2_remapped, wo);
         if pdf == 0.0 {

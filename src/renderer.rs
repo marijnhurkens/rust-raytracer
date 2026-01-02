@@ -92,7 +92,6 @@ pub struct SampleResult {
 pub fn render(
     scene: Scene,
     settings: Settings,
-    sampler: SobolSampler,
     camera: Arc<Camera>,
 ) -> (Vec<JoinHandle<()>>, Receiver<ThreadMessage>) {
     let scene = Arc::new(scene);
@@ -104,7 +103,6 @@ pub fn render(
     for thread_id in 0..settings.thread_count {
         let thread_scene = scene.clone();
         let thread_camera = camera.clone();
-        let mut thread_sampler = sampler.clone();
 
         let thread_sender = sender.clone();
 
@@ -117,6 +115,8 @@ pub fn render(
                     ns_per_ray: 0.0,
                 },
             );
+
+            let mut sampler = SobolSampler::new();
 
             let start_time = SystemTime::now();
             let mut samples_done = 0;
@@ -134,7 +134,7 @@ pub fn render(
                             &mut bucket_lock,
                             &thread_scene,
                             &settings,
-                            &mut thread_sampler,
+                            &mut sampler,
                             &thread_camera,
                         ) {
                             return;
@@ -192,11 +192,13 @@ fn render_work(
         for x in bucket.sample_bounds.p_min.x..bucket.sample_bounds.p_max.x {
             CURRENT_X.with(|current_x| *current_x.borrow_mut() = x);
             CURRENT_Y.with(|current_y| *current_y.borrow_mut() = y);
+            sampler.reset();
 
             let mut sample_results: Vec<SampleResult> =
                 Vec::with_capacity(settings.max_samples as usize);
 
             for _ in 0..settings.max_samples {
+                sampler.start_sample();
                 let camera_sample = sampler.get_camera_sample(Point2::new(x as f64, y as f64));
                 let ray = camera.generate_ray(camera_sample);
 

@@ -328,9 +328,7 @@ fn main() -> GameResult {
         },
         film.clone(),
     );
-
-    let sampler = SobolSampler::new();
-
+    
     {
         let mut debug_buffer = DEBUG_BUFFER.write().unwrap();
         debug_buffer.width = image_width;
@@ -340,7 +338,7 @@ fn main() -> GameResult {
 
     // Start the render threads
     println!("Start rendering...");
-    let (threads, receiver) = renderer::render(scene, settings, sampler, Arc::new(camera));
+    let (threads, receiver) = renderer::render(scene, settings, Arc::new(camera));
 
     let cb = ggez::ContextBuilder::new("render_to_image", "ggez")
         .window_setup(WindowSetup {

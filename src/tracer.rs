@@ -150,8 +150,8 @@ fn uniform_sample_light(
     }
     let mut rng = rng();
 
-    //let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
-    let light_num = (rng.random::<f64>() * light_count as f64).min(light_count as f64 - 1.0);
+    let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
+    //let light_num = (rng.random::<f64>() * light_count as f64).min(light_count as f64 - 1.0);
     let light = &scene.lights[light_num as usize];
 
     let light_pdf = 1.0 / light_count as f64;
@@ -165,7 +165,7 @@ fn estimate_direct(
     sampler: &mut SobolSampler,
     light: &Arc<Light>,
 ) -> Vector3<f64> {
-    let mut rng = rng();
+    //let mut rng = rng();
 
     let bsdf_flags = BXDFTYPES::ALL & !BXDFTYPES::SPECULAR;
     let mut direct_irradiance = Vector3::zeros();
@@ -174,13 +174,12 @@ fn estimate_direct(
     let mut weight_bsdf_sample = 0.0;
 
     // Sample light source with multiple importance sampling
-    //let u_light = sampler.get_3d();
-    let u_light = vec!(rng.random(), rng.random(), rng.random());
+    let u_light = sampler.get_3d();
+    //let u_light = vec!(rng.random(), rng.random(), rng.random());
     let mut irradiance_sample = light.sample_irradiance(surface_interaction, u_light);
     let light_pdf = irradiance_sample.pdf;
 
     let mut scattering_pdf = 0.0;
-
 
     if irradiance_sample.pdf > 1e-6 && !irradiance_sample.irradiance.is_zero() {
         // First we calculate the BSDF value for our light sample
@@ -226,8 +225,8 @@ fn estimate_direct(
         let mut sampled_specular = false;
 
         let bsdf_sample = if let Some(bsdf) = surface_interaction.bsdf.as_ref() {
-            let sample = Point2::new(rng.random(), rng.random());
-            // let sample = sampler.get_2d_point();
+            //let sample = Point2::new(rng.random(), rng.random());
+            let sample = sampler.get_2d_point();
             bsdf.sample_f(surface_interaction.wo, bsdf_flags, sample)
         } else {
             BsdfSampleResult {
