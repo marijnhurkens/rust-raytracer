@@ -18,7 +18,7 @@ sampler:
   max_samples: 256
   method: sobol
 renderer:
-  depth_limit: 12
+  depth_limit: 8
   threads: 11
   clamp: 15.0
 scene:

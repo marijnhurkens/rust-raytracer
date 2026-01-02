@@ -140,7 +140,7 @@ impl Bsdf {
                 if let Some(bxdf_loop) = bxdf_loop {
                     if i != chosen_index && bxdf_loop.get_type_flags().intersects(bxdf_types_flags)
                     {
-                        pdf += bxdf.pdf(wo, wi);
+                        pdf += bxdf_loop.pdf(wo, wi);
                     }
                 }
             }

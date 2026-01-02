@@ -28,6 +28,7 @@ use crate::objects::sphere::Sphere;
 use crate::objects::triangle::Triangle;
 use crate::objects::{ArcObject, ObjectTrait};
 use crate::{yaml_array_into_point3, Object};
+use crate::film::srgb_to_xyz;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -242,11 +243,11 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         let material = mesh.material_id.map(|material_id| &materials[material_id]);
 
         let color = if let Some(material) = material {
-            Vector3::new(
+            srgb_to_xyz(Vector3::new(
                 material.diffuse[0] as f64,
                 material.diffuse[1] as f64,
                 material.diffuse[2] as f64,
-            )
+            ))
         } else {
             Vector3::repeat(0.8)
         };
