@@ -7,6 +7,7 @@ use rand::{rng, Rng};
 use crate::bsdf::helpers::{abs_cos_theta, get_cosine_weighted_in_hemisphere, same_hemisphere};
 use crate::bsdf::lambertian::Lambertian;
 use crate::bsdf::microfacet_reflection::MicrofacetReflection;
+use crate::bsdf::microfacet_transmission::MicrofacetTransmission;
 use crate::bsdf::oren_nayar::OrenNayar;
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::bsdf::specular_transmission::SpecularTransmission;
@@ -19,6 +20,7 @@ use crate::surface_interaction::SurfaceInteraction;
 pub mod helpers;
 pub mod lambertian;
 pub mod microfacet_reflection;
+pub mod microfacet_transmission;
 pub mod oren_nayar;
 pub mod specular_reflection;
 pub mod specular_transmission;
@@ -292,6 +294,7 @@ pub enum Bxdf {
     SpecularTransmission(SpecularTransmission),
     OrenNayar(OrenNayar),
     MicrofacetReflection(MicrofacetReflection),
+    MicrofacetTransmission(MicrofacetTransmission),
 }
 
 pub trait BXDFtrait {
@@ -319,9 +322,10 @@ impl BXDFtrait for Bxdf {
         match self {
             Bxdf::Lambertian(x) => x.get_type_flags(),
             Bxdf::SpecularReflection(x) => x.get_type_flags(),
+            Bxdf::SpecularTransmission(x) => x.get_type_flags(),
             Bxdf::OrenNayar(x) => x.get_type_flags(),
             Bxdf::MicrofacetReflection(x) => x.get_type_flags(),
-            Bxdf::SpecularTransmission(x) => x.get_type_flags(),
+            Bxdf::MicrofacetTransmission(x) => x.get_type_flags(),
         }
     }
 
@@ -329,9 +333,10 @@ impl BXDFtrait for Bxdf {
         match self {
             Bxdf::Lambertian(x) => x.f(wo, wi),
             Bxdf::SpecularReflection(x) => x.f(wo, wi),
+            Bxdf::SpecularTransmission(x) => x.f(wo, wi),
             Bxdf::OrenNayar(x) => x.f(wo, wi),
             Bxdf::MicrofacetReflection(x) => x.f(wo, wi),
-            Bxdf::SpecularTransmission(x) => x.f(wo, wi),
+            Bxdf::MicrofacetTransmission(x) => x.f(wo, wi),
         }
     }
 
@@ -339,9 +344,10 @@ impl BXDFtrait for Bxdf {
         match self {
             Bxdf::Lambertian(x) => x.pdf(wo, wi),
             Bxdf::SpecularReflection(x) => x.pdf(wo, wi),
+            Bxdf::SpecularTransmission(x) => x.pdf(wo, wi),
             Bxdf::OrenNayar(x) => x.pdf(wo, wi),
             Bxdf::MicrofacetReflection(x) => x.pdf(wo, wi),
-            Bxdf::SpecularTransmission(x) => x.pdf(wo, wi),
+            Bxdf::MicrofacetTransmission(x) => x.pdf(wo, wi),
         }
     }
 
@@ -349,9 +355,10 @@ impl BXDFtrait for Bxdf {
         match self {
             Bxdf::Lambertian(x) => x.sample_f(point, wo),
             Bxdf::SpecularReflection(x) => x.sample_f(point, wo),
+            Bxdf::SpecularTransmission(x) => x.sample_f(point, wo),
             Bxdf::OrenNayar(x) => x.sample_f(point, wo),
             Bxdf::MicrofacetReflection(x) => x.sample_f(point, wo),
-            Bxdf::SpecularTransmission(x) => x.sample_f(point, wo),
+            Bxdf::MicrofacetTransmission(x) => x.sample_f(point, wo),
         }
     }
 }

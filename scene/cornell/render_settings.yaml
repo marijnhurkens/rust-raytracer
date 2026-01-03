@@ -3,7 +3,7 @@ film:
   image_height: 1000
   bucket_width: 128
   bucket_height: 128
-  filter_radius: 1.8
+  filter_radius: 1.5
   filter_method: none # leave to none when denoising
   denoise: false
 #  crop:
@@ -19,8 +19,8 @@ sampler:
   max_samples: 8
   method: sobol
 renderer:
-  depth_limit: 5
+  depth_limit: 4
   threads: 11 # do not use more threads than cores available, it won't improve performance
-  clamp: 15.0
+  clamp: 11.0
 scene:
   background_color: [0.0,0.0,0.0]

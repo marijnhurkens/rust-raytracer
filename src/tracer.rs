@@ -28,7 +28,6 @@ pub fn trace(
     scene: &Scene,
     sampler: &mut SobolSampler,
 ) -> SampleResult {
-    let mut rng = rng();
     let mut l = Vector3::new(0.0, 0.0, 0.0);
     let mut contribution = Vector3::new(1.0, 1.0, 1.0);
     let mut specular_bounce = false;
@@ -115,9 +114,9 @@ pub fn trace(
 
 
         // russian roulette termination
-        if contribution.max() < 1.0 && bounce > 1 {
+        if contribution.max() < 1.0 && bounce > 3 {
             let q = (1.0 - contribution.max()).max(0.0);
-            if rng.random::<f64>() < q {
+            if sampler.get_1d() < q {
                 break;
             }
 
@@ -148,7 +147,6 @@ fn uniform_sample_light(
     if light_count == 0 {
         return Vector3::zeros();
     }
-    let mut rng = rng();
 
     let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
     //let light_num = (rng.random::<f64>() * light_count as f64).min(light_count as f64 - 1.0);

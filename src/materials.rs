@@ -4,12 +4,14 @@ use nalgebra::Vector3;
 use crate::materials::matte::MatteMaterial;
 use crate::materials::mirror::MirrorMaterial;
 use crate::materials::plastic::PlasticMaterial;
+use crate::materials::uber::UberMaterial;
 use crate::surface_interaction::SurfaceInteraction;
 
 pub mod glass;
 pub mod matte;
 pub mod mirror;
 pub mod plastic;
+pub mod uber;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Material {
@@ -17,6 +19,7 @@ pub enum Material {
     Plastic(PlasticMaterial),
     Mirror(MirrorMaterial),
     Glass(GlassMaterial),
+    Uber(UberMaterial),
 }
 
 pub trait MaterialTrait {
@@ -31,6 +34,7 @@ impl MaterialTrait for Material {
             Material::Plastic(x) => x.compute_scattering_functions(si),
             Material::Mirror(x) => x.compute_scattering_functions(si),
             Material::Glass(x) => x.compute_scattering_functions(si),
+            Material::Uber(x) => x.compute_scattering_functions(si),
         }
     }
 
@@ -40,6 +44,7 @@ impl MaterialTrait for Material {
             Material::Plastic(x) => x.get_albedo(),
             Material::Mirror(x) => x.get_albedo(),
             Material::Glass(x) => x.get_albedo(),
+            Material::Uber(x) => x.get_albedo(),
         }
     }
 }

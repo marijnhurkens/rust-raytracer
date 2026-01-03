@@ -29,6 +29,7 @@ use crate::objects::triangle::Triangle;
 use crate::objects::{ArcObject, ObjectTrait};
 use crate::{yaml_array_into_point3, Object};
 use crate::film::srgb_to_xyz;
+use crate::materials::uber::UberMaterial;
 
 pub struct Scene {
     pub bg_color: Vector3<f64>,
@@ -206,7 +207,7 @@ impl Scene {
 }
 
 fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mesh>>) {
-    let (models, materials) = tobj::load_obj(
+    let (mut models, materials) = tobj::load_obj(
         model_file,
         &LoadOptions {
             single_index: true,
@@ -216,6 +217,15 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         },
     )
     .expect("Failed to load file");
+
+    for model in &mut models {
+        for i in 0..model.mesh.positions.len() / 3 {
+            model.mesh.positions[3 * i] *= -1.0;
+        }
+        for i in 0..model.mesh.normals.len() / 3 {
+            model.mesh.normals[3 * i] *= -1.0;
+        }
+    }
 
     let materials = materials.unwrap();
 
@@ -312,13 +322,21 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
             Vector3::repeat(0.0)
         };
 
-        let internal_material = if is_translucent {
-            Arc::new(Material::Glass(GlassMaterial::new(ior, color, translucence)))
-        } else {
-            Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
-            //Arc::new(Material::Matte(MatteMaterial::new(color, roughness)))
-            //Arc::new(Material::Glass(GlassMaterial::new(ior, color, color)))
-        };
+        // let internal_material = if is_translucent {
+        //     Arc::new(Material::Glass(GlassMaterial::new(ior, color, translucence)))
+        // } else {
+        //     Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
+        //     //Arc::new(Material::Matte(MatteMaterial::new(color, roughness)))
+        //     //Arc::new(Material::Glass(GlassMaterial::new(ior, color, color)))
+        // };
+        
+        let internal_material = Arc::new(Material::Uber(UberMaterial::new(
+            color,
+            specular,
+            if is_translucent { translucence } else { Vector3::repeat(0.0) },
+            roughness,
+            ior,
+        )));
 
         dbg!(&internal_material);
 
