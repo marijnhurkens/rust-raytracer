@@ -157,7 +157,7 @@ impl Film {
             if self.filter_method == FilterMethod::None {
                 let bucket_x = pixel_discrete.x as u32 - bucket.pixel_bounds.p_min.x;
                 let bucket_y = pixel_discrete.y as u32 - bucket.pixel_bounds.p_min.y;
-                let pixel_index = (bucket_x + bucket.pixel_bounds.vector().x * bucket_y) as usize;
+                let pixel_index = (bucket_x + bucket.pixel_bounds.width() * bucket_y) as usize;
                 bucket.pixels[pixel_index].sum_radiance += sample.radiance;
                 bucket.pixels[pixel_index].sum_weight += 1.0;
                 // todo: average or throw away?
@@ -204,7 +204,7 @@ impl Film {
                     let bucket_x = x as u32 - bucket.pixel_bounds.p_min.x;
                     let bucket_y = y as u32 - bucket.pixel_bounds.p_min.y;
                     let pixel_index =
-                        (bucket_x + bucket.pixel_bounds.vector().x * bucket_y) as usize;
+                        (bucket_x + bucket.pixel_bounds.width() * bucket_y) as usize;
 
                     bucket.pixels[pixel_index].sum_radiance += sample.radiance * filter_weight;
                     bucket.pixels[pixel_index].sum_weight += filter_weight;
@@ -220,8 +220,8 @@ impl Film {
 
     pub fn merge_bucket_pixels_to_image_buffer(&mut self, bucket: &mut Bucket) {
         for (index, pixel) in bucket.pixels.iter().enumerate() {
-            let x = (index as u32 % bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.x;
-            let y = (index as u32 / bucket.pixel_bounds.vector().x) + bucket.pixel_bounds.p_min.y;
+            let x = (index as u32 % bucket.pixel_bounds.width()) + bucket.pixel_bounds.p_min.x;
+            let y = (index as u32 / bucket.pixel_bounds.width()) + bucket.pixel_bounds.p_min.y;
 
             let film_pixel_index = self.get_pixel_index(x, y);
 

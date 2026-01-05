@@ -1,25 +1,19 @@
-use nalgebra::{Point2, Point3, SimdPartialOrd, Vector3};
+use nalgebra::{Point2, Vector3};
 use num_traits::identities::Zero;
-use rand::prelude::{IteratorRandom, SliceRandom};
-use rand::{rng, Rng};
 use std::borrow::BorrowMut;
 use std::sync::Arc;
 
 use crate::bsdf::{BsdfSampleResult, BXDFTYPES};
 use crate::helpers::{offset_ray_origin, power_heuristic};
-use crate::lights::area::AreaLight;
 use crate::lights::{Light, LightTrait};
 use crate::materials::MaterialTrait;
-use crate::objects::plane::Plane;
 use crate::objects::ObjectTrait;
 use crate::renderer::{
-    check_intersect_scene, check_intersect_scene_simple, check_light_visible, debug_write_pixel,
-    debug_write_pixel_f64, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray,
-    SampleResult, Settings, CURRENT_BOUNCE,
+    check_intersect_scene, check_light_visible, Ray, SampleResult, Settings, CURRENT_BOUNCE,
 };
 use crate::scene::Scene;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
-use crate::{Object, SobolSampler};
+use crate::SobolSampler;
 
 pub fn trace(
     starting_ray: Ray,
@@ -92,14 +86,6 @@ pub fn trace(
                     .abs())
                 / bsdf_sample.pdf),
         );
-        // if contribution.x > 100.0 || contribution.y > 100.0 || contribution.z > 100.0
-        // {
-        //     dbg!(contribution_before, contribution, bsdf_sample.f, bsdf_sample
-        //             .wi
-        //             .dot(&surface_interaction.shading_normal)
-        //             .abs(), bsdf_sample.pdf);
-        // debug_write_pixel(Vector3::new(1.0,0.0,0.0));
-        // }
 
         specular_bounce = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 
@@ -111,7 +97,6 @@ pub fn trace(
             ),
             direction: bsdf_sample.wi,
         };
-
 
         // russian roulette termination
         if contribution.max() < 1.0 && bounce > 3 {
@@ -149,7 +134,6 @@ fn uniform_sample_light(
     }
 
     let light_num = (sampler.get_1d() * light_count as f64).min(light_count as f64 - 1.0);
-    //let light_num = (rng.random::<f64>() * light_count as f64).min(light_count as f64 - 1.0);
     let light = &scene.lights[light_num as usize];
 
     let light_pdf = 1.0 / light_count as f64;
@@ -173,7 +157,6 @@ fn estimate_direct(
 
     // Sample light source with multiple importance sampling
     let u_light = sampler.get_3d();
-    //let u_light = vec!(rng.random(), rng.random(), rng.random());
     let mut irradiance_sample = light.sample_irradiance(surface_interaction, u_light);
     let light_pdf = irradiance_sample.pdf;
 
@@ -197,7 +180,6 @@ fn estimate_direct(
             bsdf_flags,
         );
 
-
         if !f.is_zero() {
             if !check_light_visible(surface_interaction, scene, &irradiance_sample) {
                 irradiance_sample.irradiance = Vector3::zeros();
@@ -207,9 +189,7 @@ fn estimate_direct(
                 if light.is_delta() {
                     direct_irradiance += f.component_mul(&irradiance_sample.irradiance) / light_pdf;
                 } else {
-
                     let weight = power_heuristic(1, light_pdf, 1, scattering_pdf);
-                    debug_write_pixel_f64_on_bounce(weight, 0);
                     weight_light_sample = weight;
                     direct_irradiance +=
                         f.component_mul(&irradiance_sample.irradiance) * weight / light_pdf;
@@ -274,7 +254,8 @@ fn estimate_direct(
                 if let Some(found_light_arc) = object.get_light() {
                     if std::ptr::eq(light.as_ref(), found_light_arc.as_ref()) {
                         if let Light::Area(light) = light.as_ref() {
-                            light_irradiance = light.irradiance_at_point(&object_interaction.into(), -bsdf_sample.wi);
+                            light_irradiance = light
+                                .irradiance_at_point(&object_interaction.into(), -bsdf_sample.wi);
                         }
                     }
                 }
@@ -283,13 +264,9 @@ fn estimate_direct(
             }
 
             if !light_irradiance.is_zero() {
-               // debug_write_pixel_on_bounce(f, 0);
-              // debug_write_pixel_f64_on_bounce(bsdf_sample.pdf, 0);
-               // dbg!(weight, scattering_pdf);
                 weight_bsdf_sample = weight;
 
-                direct_irradiance +=
-                    f.component_mul(&(light_irradiance * weight)) / scattering_pdf;
+                direct_irradiance += f.component_mul(&(light_irradiance * weight)) / scattering_pdf;
             }
         }
     }

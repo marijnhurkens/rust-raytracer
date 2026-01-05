@@ -20,6 +20,7 @@ use ggez::input::keyboard::KeyCode;
 use ggez::winit::dpi::LogicalSize;
 use ggez::{event, GameError};
 use ggez::{Context, GameResult};
+use ggez::winit::keyboard::Key;
 use nalgebra::{Point2, Vector2};
 use yaml_rust::YamlLoader;
 
@@ -114,9 +115,9 @@ impl event::EventHandler for MainState {
             self.redraw = true;
         }
 
-        self.debug_normals = ctx.keyboard.is_key_pressed(KeyCode::N);
-        self.debug_albedo = ctx.keyboard.is_key_pressed(KeyCode::A);
-        self.debug_buffer = ctx.keyboard.is_key_pressed(KeyCode::D);
+        self.debug_normals = ctx.keyboard.is_logical_key_pressed(&Key::Character("N".into()));
+        self.debug_albedo = ctx.keyboard.is_logical_key_pressed(&Key::Character("A".into()));
+        self.debug_buffer = ctx.keyboard.is_logical_key_pressed(&Key::Character("D".into()));
 
         let message = self.receiver.try_recv();
         if let Ok(message) = message {
@@ -328,7 +329,7 @@ fn main() -> GameResult {
         },
         film.clone(),
     );
-    
+
     {
         let mut debug_buffer = DEBUG_BUFFER.write().unwrap();
         debug_buffer.width = image_width;

@@ -106,7 +106,7 @@ impl BXDFtrait for MicrofacetTransmission {
         let sqrt_denom = wo.dot(&wh) + eta * wi.dot(&wh);
         let dwh_dwi = ((eta * eta * wi.dot(&wh)) / (sqrt_denom * sqrt_denom)).abs();
 
-        self.distribution.pdf(wo, wh) / dwh_dwi
+        self.distribution.pdf(wo, wh) * dwh_dwi
     }
 
     fn sample_f(
@@ -137,7 +137,7 @@ impl BXDFtrait for MicrofacetTransmission {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         };
 
-        let pdf = self.distribution.pdf(wo, wi);
+        let pdf = self.pdf(wo, wi);
 
         let f = self.f(wo, wi);
 

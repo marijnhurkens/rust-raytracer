@@ -44,7 +44,7 @@ pub struct SobolSampler {
 impl SobolSampler {
     pub fn new() -> Self {
         let sobol_params = JoeKuoD6::standard();
-        let generator = Sobol::<f64>::new_with_resolution(1000, &sobol_params, Some(8));
+        let generator = Sobol::<f64>::new_with_resolution(1000, &sobol_params, Some(10));
 
         let mut rng = rng();
         let scramble_vec: Vec<f64> = (0..1000).map(|_| rng.random()).collect();
@@ -60,7 +60,7 @@ impl SobolSampler {
 
     /// Resets the sampler sequence. Call this at the start of each pixel.
     pub fn reset(&mut self) {
-        self.generator = Sobol::<f64>::new_with_resolution(1000, &*self.params, Some(8));
+        self.generator = Sobol::<f64>::new_with_resolution(1000, &*self.params, Some(10));
         self.current_sample_vec.clear();
         self.current_dim = 0;
 

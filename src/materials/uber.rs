@@ -85,7 +85,7 @@ impl MaterialTrait for UberMaterial {
                 )));
             } else {
                 let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
-                let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
+                let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, false);
 
                 bsdf.add(Bxdf::MicrofacetTransmission(MicrofacetTransmission::new(
                     self.transmission,

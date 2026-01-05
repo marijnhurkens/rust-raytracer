@@ -229,38 +229,26 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
 
     let materials = materials.unwrap();
 
-    //dbg!(&materials);
     let mut triangles: Vec<ArcObject> = vec![];
     let mut meshes = vec![];
 
     for (i, m) in models.iter().enumerate() {
         let mesh = Arc::new(m.mesh.clone());
         println!("model[{}].name = \'{}\'", i, m.name);
-        //println!("model[{}].mesh.material_id = {:?}", i, mesh.material_id);
-
-        // Normals and texture coordinates are also loaded, but not printed in this example
-        // println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
-        // println!("model[{}].indices: {}", i, mesh.indices.len());
-        // println!(
-        //     "model[{}].expected_triangles: {}",
-        //     i,
-        //     mesh.indices.len() / 3
-        // );
-        // println!("model[{}].normals: {}", i, mesh.normals.len() / 3);
 
         assert_eq!(mesh.indices.len() % 3, 0);
 
         let material = mesh.material_id.map(|material_id| &materials[material_id]);
 
-        let color = if let Some(material) = material {
-            srgb_to_xyz(Vector3::new(
-                material.diffuse[0] as f64,
-                material.diffuse[1] as f64,
-                material.diffuse[2] as f64,
-            ))
-        } else {
-            Vector3::repeat(0.8)
-        };
+        let color = material.and_then(|m| m.diffuse.and_then(
+            |diffuse| {
+                Some(   srgb_to_xyz(Vector3::new(
+                    diffuse[0] as f64,
+                    diffuse[1] as f64,
+                    diffuse[2] as f64,
+                )))
+            }
+        )).unwrap_or(Vector3::repeat(0.8));
 
         // let (is_emissive, emission) = if let Some(material) = material {
         //     let tf_param = material.unknown_param.get("Ke");
@@ -279,11 +267,9 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
         //     (false, Vector3::repeat(0.0))
         // };
 
-        let ior: f64 = if let Some(material) = material {
-            material.optical_density.into()
-        } else {
-            1.5
-        };
+        let ior = material.and_then(|material| material.optical_density.and_then(
+            |ni| Some(ni as f64)
+        )).unwrap_or(1.5);
 
         let roughness = if let Some(material) = material {
             material
@@ -312,24 +298,16 @@ fn load_model(model_file: &Path, _up_axis: &str) -> (Vec<ArcObject>, Vec<Arc<Mes
             (false, Vector3::repeat(0.0))
         };
 
-        let specular = if let Some(material) = material {
-            Vector3::new(
-                material.specular[0] as f64,
-                material.specular[1] as f64,
-                material.specular[2] as f64,
-            )
-        } else {
-            Vector3::repeat(0.0)
-        };
+        let specular = material.and_then(|m| m.specular.and_then(
+            |specular| {
+                Some(Vector3::new(
+                    specular[0] as f64,
+                    specular[1] as f64,
+                    specular[2] as f64,
+                ))
+            }
+        )).unwrap_or(Vector3::repeat(0.0));
 
-        // let internal_material = if is_translucent {
-        //     Arc::new(Material::Glass(GlassMaterial::new(ior, color, translucence)))
-        // } else {
-        //     Arc::new(Material::Plastic(PlasticMaterial::new(color, specular, roughness, ior)))
-        //     //Arc::new(Material::Matte(MatteMaterial::new(color, roughness)))
-        //     //Arc::new(Material::Glass(GlassMaterial::new(ior, color, color)))
-        // };
-        
         let internal_material = Arc::new(Material::Uber(UberMaterial::new(
             color,
             specular,

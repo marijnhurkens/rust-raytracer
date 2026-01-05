@@ -1,26 +1,28 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
-use std::ops::Mul;
+use std::ops::{Mul, Sub, SubAssign};
 
 use nalgebra::indexing::MatrixIndex;
-use nalgebra::{ArrayStorage, ClosedSub, Point2, Point3, Scalar, Vector2, Vector3, U1, U3};
+use nalgebra::{ArrayStorage, ClosedSubAssign, Point2, Point3, RealField, Scalar, Vector2, Vector3, U1, U3};
 use rand::{rng, Rng};
 use yaml_rust::Yaml;
 
 #[derive(Debug)]
-pub struct Bounds<T: Copy + Scalar + ClosedSub + Mul> {
+pub struct Bounds<T: Copy + Scalar + Mul + Sub> {
     pub p_min: Point2<T>,
     pub p_max: Point2<T>,
 }
 
-impl<T: Copy + Scalar + ClosedSub + Mul<Output = T>> Bounds<T> {
-    pub fn area(&self) -> T {
-        let area_vector = &self.vector();
-
-        area_vector.x * area_vector.y
+impl<T: Copy + Scalar + Mul<Output = T> + Sub<Output = T>> Bounds<T> {
+    pub fn width(&self) -> T {
+        self.p_max.x - self.p_min.x
     }
-
-    pub fn vector(&self) -> Vector2<T> {
-        self.p_max - self.p_min
+    
+    pub fn height(&self) -> T {
+        self.p_max.y - self.p_min.y
+    }
+    
+    pub fn area(&self) -> T {
+        self.width() * self.height()
     }
 }
 
@@ -144,12 +146,7 @@ pub fn refract(
     let cos_theta_t = (1.0 - sin_2_theta_t).sqrt();
 
     Some(ior * -angle_of_incidence + (ior * cos_theta_i - cos_theta_t) * normal)
-    // Float sin2ThetaI = std::max(0.f, 1.f - cosThetaI * cosThetaI);
-    // Float sin2ThetaT = eta * eta * sin2ThetaI;
-    // <<Handle total internal reflection for transmission>>
-    // Float cosThetaT = std::sqrt(1 - sin2ThetaT);
-    //
-    // *wt = eta * -wi + (eta * cosThetaI - cosThetaT) * Vector3f(n);
+
 }
 
 pub fn yaml_array_into_point2(array: &Yaml) -> Point2<u32> {
