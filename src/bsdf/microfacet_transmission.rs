@@ -58,12 +58,15 @@ impl BXDFtrait for MicrofacetTransmission {
         } else {
             self.eta_a / self.eta_b
         };
+
+        // Compute wh from wo and wi for microfacet transmission.
+        // PBRT: wh = normalize(wo + wi * eta)
         let mut wh = (wo + wi * eta).normalize();
         if wh.z < 0.0 {
             wh = -wh;
         }
 
-        // same side?
+        // Make sure wo and wi are on different sides of the microfacet.
         if wo.dot(&wh) * wi.dot(&wh) > 0.0 {
             return Vector3::zeros();
         }
@@ -84,7 +87,7 @@ impl BXDFtrait for MicrofacetTransmission {
                 * factor
                 * factor
                 / (cos_theta_i * cos_theta_o * sqrt_denom * sqrt_denom))
-                .abs()
+            .abs()
     }
 
     fn pdf(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> f64 {
@@ -103,6 +106,7 @@ impl BXDFtrait for MicrofacetTransmission {
         if wo.dot(&wh) * wi.dot(&wh) > 0.0 {
             return 0.0;
         }
+
         let sqrt_denom = wo.dot(&wh) + eta * wi.dot(&wh);
         let dwh_dwi = ((eta * eta * wi.dot(&wh)) / (sqrt_denom * sqrt_denom)).abs();
 
@@ -119,7 +123,6 @@ impl BXDFtrait for MicrofacetTransmission {
         }
 
         let wh = self.distribution.sample_wh(wo, sample_2);
-
         if wo.dot(&wh) < 0.0 {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         }
@@ -130,15 +133,13 @@ impl BXDFtrait for MicrofacetTransmission {
             self.eta_b / self.eta_a
         };
 
-        let refract_result = refract(wo, wh, eta);
-        let wi = if let Some(wi) = refract_result {
+        let wi = if let Some(wi) = refract(wo, wh, eta) {
             wi
         } else {
             return (Vector3::zeros(), 0.0, Vector3::zeros());
         };
 
         let pdf = self.pdf(wo, wi);
-
         let f = self.f(wo, wi);
 
         (wi, pdf, f)

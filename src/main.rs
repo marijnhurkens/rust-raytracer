@@ -115,9 +115,9 @@ impl event::EventHandler for MainState {
             self.redraw = true;
         }
 
-        self.debug_normals = ctx.keyboard.is_logical_key_pressed(&Key::Character("N".into()));
-        self.debug_albedo = ctx.keyboard.is_logical_key_pressed(&Key::Character("A".into()));
-        self.debug_buffer = ctx.keyboard.is_logical_key_pressed(&Key::Character("D".into()));
+        self.debug_normals = ctx.keyboard.is_logical_key_pressed(&Key::Character("n".into()));
+        self.debug_albedo = ctx.keyboard.is_logical_key_pressed(&Key::Character("a".into()));
+        self.debug_buffer = ctx.keyboard.is_logical_key_pressed(&Key::Character("d".into()));
 
         let message = self.receiver.try_recv();
         if let Ok(message) = message {

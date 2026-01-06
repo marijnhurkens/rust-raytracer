@@ -8,9 +8,7 @@ use crate::helpers::{offset_ray_origin, power_heuristic};
 use crate::lights::{Light, LightTrait};
 use crate::materials::MaterialTrait;
 use crate::objects::ObjectTrait;
-use crate::renderer::{
-    check_intersect_scene, check_light_visible, Ray, SampleResult, Settings, CURRENT_BOUNCE,
-};
+use crate::renderer::{check_intersect_scene, check_light_visible, debug_write_pixel_f64_on_bounce, debug_write_pixel_on_bounce, Ray, SampleResult, Settings, CURRENT_BOUNCE};
 use crate::scene::Scene;
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
 use crate::SobolSampler;
@@ -23,6 +21,7 @@ pub fn trace(
     sampler: &mut SobolSampler,
 ) -> SampleResult {
     let mut l = Vector3::new(0.0, 0.0, 0.0);
+    let mut etaScale = 1.0;
     let mut contribution = Vector3::new(1.0, 1.0, 1.0);
     let mut specular_bounce = false;
     let mut ray = starting_ray;
@@ -77,6 +76,8 @@ pub fn trace(
             break;
         }
 
+      //  debug_write_pixel_on_bounce(light_irradiance, 2);
+
         let contribution_before = contribution.clone();
         contribution = contribution.component_mul(
             &((bsdf_sample.f
@@ -89,6 +90,22 @@ pub fn trace(
 
         specular_bounce = bsdf_sample.sampled_flags.contains(BXDFTYPES::SPECULAR);
 
+        if (specular_bounce && bsdf_sample.sampled_flags.contains(BXDFTYPES::TRANSMISSION)) {
+            let eta = surface_interaction.bsdf.unwrap().eta();
+            // Update the term that tracks radiance scaling for refraction
+            // depending on whether the ray is entering or leaving the
+            // medium.
+            etaScale *= if surface_interaction
+                .wo
+                .dot(&surface_interaction.shading_normal)
+                > 0.0
+            {
+                (eta * eta)
+            } else {
+                1.0 / (eta * eta)
+            };
+        }
+
         ray = Ray {
             point: offset_ray_origin(
                 surface_interaction.point,
@@ -99,7 +116,8 @@ pub fn trace(
         };
 
         // russian roulette termination
-        if contribution.max() < 1.0 && bounce > 3 {
+        let rr_contribution: Vector3<f64> = contribution.component_mul(&Vector3::new(etaScale, etaScale, etaScale));
+        if rr_contribution.max() < 1.0 && bounce > 3 {
             let q = (1.0 - contribution.max()).max(0.0);
             if sampler.get_1d() < q {
                 break;

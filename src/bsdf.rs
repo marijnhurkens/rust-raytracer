@@ -11,6 +11,7 @@ use crate::bsdf::microfacet_transmission::MicrofacetTransmission;
 use crate::bsdf::oren_nayar::OrenNayar;
 use crate::bsdf::specular_reflection::SpecularReflection;
 use crate::bsdf::specular_transmission::SpecularTransmission;
+use crate::bsdf::rough_dielectric::RoughDielectric;
 use crate::renderer::{
     debug_write_pixel, debug_write_pixel_f64, debug_write_pixel_f64_on_bounce,
     debug_write_pixel_on_bounce,
@@ -24,6 +25,7 @@ pub mod microfacet_transmission;
 pub mod oren_nayar;
 pub mod specular_reflection;
 pub mod specular_transmission;
+pub mod rough_dielectric;
 
 const MAX_BXDF_COUNT: usize = 5;
 
@@ -63,6 +65,10 @@ impl Bsdf {
         *slot = Some(bxdf);
 
         self
+    }
+
+    pub fn eta(&self) -> f64 {
+        self.ior
     }
 
     pub fn has_bxdfs_with_flags(&self, bxdf_types_flags: BXDFTYPES) -> bool {
@@ -131,6 +137,9 @@ impl Bsdf {
                 sampled_flags: bxdf.get_type_flags(),
             };
         }
+
+       // debug_write_pixel_on_bounce(wi, 0);
+        //debug_write_pixel_f64_on_bounce(pdf, 0);
 
         let wi_world = self.local_to_world(wi);
 
@@ -231,19 +240,61 @@ impl Bsdf {
     }
 
     fn world_to_local(&self, v: Vector3<f64>) -> Vector3<f64> {
-        Vector3::new(
-            v.dot(&self.ss),
-            v.dot(&self.ts),
-            v.dot(&self.shading_normal),
-        )
+        // Vector3::new(
+        //     v.dot(&self.ss),
+        //     v.dot(&self.ts),
+        //     v.dot(&self.shading_normal),
+        // )
+
+        // Rebuild an orthonormal basis from ss + shading_normal, without stored ts.
+        let n = self.shading_normal.normalize();
+
+        // Make ss orthogonal to n (Gram–Schmidt) and normalize.
+        let mut s = self.ss - n * self.ss.dot(&n);
+        if s.magnitude_squared() <= 1e-20 {
+            // Degenerate: pick any vector not parallel to n as a seed.
+            let seed = if n.x.abs() < 0.9 {
+                Vector3::new(1.0, 0.0, 0.0)
+            } else {
+                Vector3::new(0.0, 1.0, 0.0)
+            };
+            s = (seed - n * seed.dot(&n)).normalize();
+        } else {
+            s = s.normalize();
+        }
+
+        // Derive t to complete a right-handed frame.
+        let t = n.cross(&s);
+
+        Vector3::new(v.dot(&s), v.dot(&t), v.dot(&n))
     }
 
     fn local_to_world(&self, v: Vector3<f64>) -> Vector3<f64> {
-        Vector3::new(
-            self.ss.x * v.x + self.ts.x * v.y + self.shading_normal.x * v.z,
-            self.ss.y * v.x + self.ts.y * v.y + self.shading_normal.y * v.z,
-            self.ss.z * v.x + self.ts.z * v.y + self.shading_normal.z * v.z,
-        )
+        // Vector3::new(
+        //     self.ss.x * v.x + self.ts.x * v.y + self.shading_normal.x * v.z,
+        //     self.ss.y * v.x + self.ts.y * v.y + self.shading_normal.y * v.z,
+        //     self.ss.z * v.x + self.ts.z * v.y + self.shading_normal.z * v.z,
+        // )
+
+        // Rebuild the same orthonormal basis used by world_to_local().
+        let n = self.shading_normal.normalize();
+
+        let mut s = self.ss - n * self.ss.dot(&n);
+        if s.magnitude_squared() <= 1e-20 {
+            let seed = if n.x.abs() < 0.9 {
+                Vector3::new(1.0, 0.0, 0.0)
+            } else {
+                Vector3::new(0.0, 1.0, 0.0)
+            };
+            s = (seed - n * seed.dot(&n)).normalize();
+        } else {
+            s = s.normalize();
+        }
+
+        let t = n.cross(&s);
+
+        // World = s * x + t * y + n * z
+        s * v.x + t * v.y + n * v.z
     }
 }
 
@@ -295,6 +346,7 @@ pub enum Bxdf {
     OrenNayar(OrenNayar),
     MicrofacetReflection(MicrofacetReflection),
     MicrofacetTransmission(MicrofacetTransmission),
+    RoughDielectric(RoughDielectric),
 }
 
 pub trait BXDFtrait {
@@ -326,6 +378,7 @@ impl BXDFtrait for Bxdf {
             Bxdf::OrenNayar(x) => x.get_type_flags(),
             Bxdf::MicrofacetReflection(x) => x.get_type_flags(),
             Bxdf::MicrofacetTransmission(x) => x.get_type_flags(),
+            Bxdf::RoughDielectric(x) => x.get_type_flags(),
         }
     }
 
@@ -337,6 +390,7 @@ impl BXDFtrait for Bxdf {
             Bxdf::OrenNayar(x) => x.f(wo, wi),
             Bxdf::MicrofacetReflection(x) => x.f(wo, wi),
             Bxdf::MicrofacetTransmission(x) => x.f(wo, wi),
+            Bxdf::RoughDielectric(x) => x.f(wo, wi),
         }
     }
 
@@ -348,6 +402,7 @@ impl BXDFtrait for Bxdf {
             Bxdf::OrenNayar(x) => x.pdf(wo, wi),
             Bxdf::MicrofacetReflection(x) => x.pdf(wo, wi),
             Bxdf::MicrofacetTransmission(x) => x.pdf(wo, wi),
+            Bxdf::RoughDielectric(x) => x.pdf(wo, wi),
         }
     }
 
@@ -359,6 +414,7 @@ impl BXDFtrait for Bxdf {
             Bxdf::OrenNayar(x) => x.sample_f(point, wo),
             Bxdf::MicrofacetReflection(x) => x.sample_f(point, wo),
             Bxdf::MicrofacetTransmission(x) => x.sample_f(point, wo),
+            Bxdf::RoughDielectric(x) => x.sample_f(point, wo),
         }
     }
 }

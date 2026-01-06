@@ -8,23 +8,25 @@ use tobj::Mesh;
 use crate::helpers::{
     coordinate_system, gamma, max_dimension_vec_3, permute, uniform_sample_triangle,
 };
-use crate::lights::area::AreaLight;
 use crate::lights::Light;
 use crate::materials::Material;
 use crate::objects::ObjectTrait;
 use crate::renderer;
-use crate::renderer::{check_intersect_scene, debug_write_pixel, Ray};
+use crate::renderer::{debug_write_pixel_on_bounce, Ray};
 use crate::surface_interaction::{Interaction, SurfaceInteraction};
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
     pub mesh: Arc<Mesh>,
-    pub p0: Point3<f64>,
+    p0: Point3<f64>,
     p1: Point3<f64>,
     p2: Point3<f64>,
     n0: Vector3<f64>,
     n1: Vector3<f64>,
     n2: Vector3<f64>,
+    uv0: Point2<f64>,
+    uv1: Point2<f64>,
+    uv2: Point2<f64>,
     pub materials: Vec<Arc<Material>>,
     pub light: Option<Arc<Light>>,
     pub node_index: usize,
@@ -42,6 +44,17 @@ impl Triangle {
         let (p0, p1, p2) = Triangle::get_vertices(&mesh, v0_index, v1_index, v2_index);
         let (n0, n1, n2) = Triangle::get_normals(&mesh, v0_index, v1_index, v2_index);
 
+
+        let (uv0, uv1, uv2) = if !mesh.texcoords.is_empty() {
+            Triangle::get_uvs(&mesh, v0_index, v1_index, v2_index)
+        } else {
+            (
+                Point2::new(0.0, 0.0),
+                Point2::new(0.0, 0.0),
+                Point2::new(0.0, 0.0),
+            )
+        };
+
         Triangle {
             mesh,
             p0,
@@ -50,6 +63,9 @@ impl Triangle {
             n0,
             n1,
             n2,
+            uv0,
+            uv1,
+            uv2,
             materials,
             light,
             node_index: 0,
@@ -102,6 +118,28 @@ impl Triangle {
                 mesh.normals[3 * v2_index] as f64,
                 mesh.normals[3 * v2_index + 1] as f64,
                 mesh.normals[3 * v2_index + 2] as f64,
+            ),
+        )
+    }
+
+    fn get_uvs(
+        mesh: &Arc<Mesh>,
+        uv0_index: usize,
+        uv1_index: usize,
+        uv2_index: usize,
+    ) -> (Point2<f64>, Point2<f64>, Point2<f64>) {
+        (
+            Point2::new(
+                mesh.texcoords[2 * uv0_index] as f64,
+                mesh.texcoords[2 * uv0_index + 1] as f64,
+            ),
+            Point2::new(
+                mesh.texcoords[2 * uv1_index] as f64,
+                mesh.texcoords[2 * uv1_index + 1] as f64,
+            ),
+            Point2::new(
+                mesh.texcoords[2 * uv2_index] as f64,
+                mesh.texcoords[2 * uv2_index + 1] as f64,
             ),
         )
     }
@@ -180,37 +218,73 @@ impl ObjectTrait for Triangle {
             return None;
         }
 
-        let uv = vec![
-            Point2::new(0.0, 0.0),
-            Point2::new(1.0, 0.0),
-            Point2::new(1.0, 1.0),
-        ];
 
-        let duv02: Vector2<f64> = uv[0] - uv[2];
-        let duv12: Vector2<f64> = uv[1] - uv[2];
+        // // Compute triangle partial derivatives
+        //     Vector3f dpdu, dpdv;
+        //     Point2f uv[3];
+        //     GetUVs(uv);
+        //
+        //     // Compute deltas for triangle partial derivatives
+        //     Vector2f duv02 = uv[0] - uv[2], duv12 = uv[1] - uv[2];
+        //     Vector3f dp02 = p0 - p2, dp12 = p1 - p2;
+        //     Float determinant = duv02[0] * duv12[1] - duv02[1] * duv12[0];
+        //     bool degenerateUV = std::abs(determinant) < 1e-8;
+        //     if (!degenerateUV) {
+        //         Float invdet = 1 / determinant;
+        //         dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * invdet;
+        //         dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * invdet;
+        //     }
+        //     if (degenerateUV || Cross(dpdu, dpdv).LengthSquared() == 0) {
+        //         // Handle zero determinant for triangle partial derivative matrix
+        //         Vector3f ng = Cross(p2 - p0, p1 - p0);
+        //         if (ng.LengthSquared() == 0)
+        //             // The triangle is actually degenerate; the intersection is
+        //             // bogus.
+        //             return false;
+        //
+        //         CoordinateSystem(Normalize(ng), &dpdu, &dpdv);
+        //     }
+
+        let mut dpdu = Vector3::zeros();
+        let mut dpdv = Vector3::zeros();
+
+        let duv02: Vector2<f64> = self.uv0 - self.uv2;
+        let duv12: Vector2<f64> = self.uv1 - self.uv2;
         let dp02: Vector3<f64> = p0 - p2;
         let dp12: Vector3<f64> = p1 - p2;
 
         let determinant = duv02.x * duv12.y - duv02.y * duv12.x;
 
-        let (dpdu, dpdv) = if determinant == 0.0 {
-            let (_, u, v) = coordinate_system((p2 - p0).cross(&(p1 - p0)).normalize());
-            (u, v)
-        } else {
+        let degenerate_uv = determinant.abs() < 1e-8;
+        if !degenerate_uv {
             let inv_det = 1.0 / determinant;
-            let dpdu = (duv12[1] * dp02 - duv02[1] * dp12) * inv_det;
-            let dpdv = (-duv12[0] * dp02 + duv02[0] * dp12) * inv_det;
-            (dpdu, dpdv)
-        };
+            dpdu = (duv12.y * dp02 - duv02.y * dp12) * inv_det;
+            dpdv = (-duv12.x * dp02 + duv02.x * dp12) * inv_det;
+        }
+
+        if degenerate_uv || dpdu.cross(&dpdv).magnitude_squared() == 0.0 {
+            // Handle zero determinant for triangle partial derivative matrix
+            let ng = (p2 - p0).cross(&(p1 - p0));
+            if ng.magnitude_squared() == 0.0 {
+                return None;
+            }
+
+            let (_, u, v) = coordinate_system(ng.normalize());
+            dpdu = u;
+            dpdv = v;
+        }
 
         let p0_normal = self.n0;
         let p1_normal = self.n1;
         let p2_normal = self.n2;
         let shading_normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
 
+        let p1p0 = p1 - p0;
+        let geometry_normal = (p2 - p0).cross(&p1p0).normalize();
+
         let (ss, ts) = {
             let mut ss = dpdu.normalize();
-            let mut ts = shading_normal.cross(&ss);
+            let mut ts = ss.cross(&shading_normal);
             if ts.magnitude_squared() > 0.0 {
                 ts = ts.normalize();
                 ss = ts.cross(&shading_normal);
@@ -221,7 +295,7 @@ impl ObjectTrait for Triangle {
             }
         };
 
-        let uv_hit = b0 * uv[0].coords + b1 * uv[1].coords + b2 * uv[2].coords;
+        let uv_hit = b0 * self.uv0.coords + b1 * self.uv1.coords + b2 * self.uv2.coords;
 
         let x_abs_sum = (b0 * p0.x).abs() + (b1 * p1.x).abs() + (b2 * p2.x).abs();
         let y_abs_sum = (b0 * p0.y).abs() + (b1 * p1.y).abs() + (b2 * p2.y).abs();
@@ -230,13 +304,19 @@ impl ObjectTrait for Triangle {
         let p_error: Vector3<f64> = gamma(7.0) * Vector3::new(x_abs_sum, y_abs_sum, z_abs_sum);
         let mut p_hit: Point3<f64> = (b0 * p0.coords + b1 * p1.coords + b2 * p2.coords).into();
 
-        let p1p0 = p1 - p0;
-        let geometry_normal = (p2 - p0).cross(&p1p0).normalize();
-
         p_hit = compute_shading_position(
-            p_hit, p0, p1, p2, p0_normal, p1_normal, p2_normal, b0, b1, b2, geometry_normal,
+            p_hit,
+            p0,
+            p1,
+            p2,
+            p0_normal,
+            p1_normal,
+            p2_normal,
+            b0,
+            b1,
+            b2,
+            geometry_normal,
         );
-
 
         // p_hit += shading_normal * 1.0e-9;
 
@@ -369,7 +449,6 @@ mod tests {
     use nalgebra::{Point3, Vector3};
     use tobj::Mesh;
 
-    use crate::materials;
     use crate::materials::matte::MatteMaterial;
     use crate::materials::Material;
     use crate::objects::triangle::Triangle;
