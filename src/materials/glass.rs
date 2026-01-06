@@ -36,7 +36,7 @@ impl MaterialTrait for GlassMaterial {
             self.refraction_color,
             1.0,
             self.ior,
-            TransportMode::Radiance,
+            TransportMode::Importance,
         )));
 
         bsdf.add(Bxdf::SpecularReflection(SpecularReflection::new(

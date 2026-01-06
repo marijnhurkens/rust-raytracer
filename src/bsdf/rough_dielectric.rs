@@ -51,7 +51,7 @@ impl RoughDielectric {
 impl BXDFtrait for RoughDielectric {
     fn get_type_flags(&self) -> BXDFTYPES {
         // This bxdf can produce both reflection and transmission directions.
-        BXDFTYPES::GLOSSY | BXDFTYPES::REFLECTION | BXDFTYPES::TRANSMISSION
+        BXDFTYPES::GLOSSY | BXDFTYPES::REFLECTION | BXDFTYPES::REFRACTION
     }
 
     fn f(&self, wo: Vector3<f64>, wi: Vector3<f64>) -> Vector3<f64> {

@@ -8,6 +8,7 @@ use crate::bsdf::{BXDFtrait, BXDFTYPES};
 use crate::helpers::{face_forward, refract, vector_reflect};
 use nalgebra::{Point2, Vector3};
 use num_traits::Zero;
+use crate::renderer::debug_write_pixel_f64_on_bounce;
 
 #[derive(Debug, Copy, Clone)]
 pub struct MicrofacetTransmission {

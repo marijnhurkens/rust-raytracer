@@ -40,7 +40,7 @@ impl SpecularTransmission {
 
 impl BXDFtrait for SpecularTransmission {
     fn get_type_flags(&self) -> BXDFTYPES {
-        BXDFTYPES::REFRACTION | BXDFTYPES::SPECULAR
+        BXDFTYPES::TRANSMISSION | BXDFTYPES::SPECULAR
     }
 
     fn f(&self, _wo: Vector3<f64>, _wi: Vector3<f64>) -> Vector3<f64> {
@@ -57,10 +57,6 @@ impl BXDFtrait for SpecularTransmission {
         } else {
             (self.eta_b, self.eta_a)
         };
-
-        if cos_theta(wo) > 0.0 {
-            debug_write_pixel_f64_on_bounce(1.0, 1)
-        }
 
         let normal = face_forward(Vector3::new(0.0, 0.0, 1.0), wo);
         let wi = if let Some(wi) = refract(wo, normal, eta_i / eta_t) {

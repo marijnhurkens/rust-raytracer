@@ -72,19 +72,24 @@ impl MaterialTrait for UberMaterial {
                     self.transmission,
                     1.0,
                     self.ior,
-                    TransportMode::Radiance,
+                    TransportMode::Importance,
                 )));
             }
         } else if !self.specular.is_zero() || !self.transmission.is_zero() {
             let roughness = TrowbridgeReitzDistribution::roughness_to_alpha(self.roughness);
             let distribution = TrowbridgeReitzDistribution::new(roughness, roughness, true);
 
-            // NOTE: This assumes specular/transmission are artist colors for reflection and
-            // transmission *at normal incidence*. Fresnel will distribute energy at runtime.
-            bsdf.add(Bxdf::RoughDielectric(RoughDielectric::new(
-                self.specular,
+            let fresnel = FresnelDielectric::new(1.0, self.ior);
+            bsdf.add(Bxdf::MicrofacetReflection(MicrofacetReflection::new(
                 self.transmission,
                 distribution,
+                FresnelDielectric::new(1.0, self.ior),
+            )));
+
+            bsdf.add(Bxdf::MicrofacetTransmission(MicrofacetTransmission::new(
+                self.transmission,
+                distribution,
+                FresnelDielectric::new(1.0, self.ior),
                 1.0,
                 self.ior,
             )));

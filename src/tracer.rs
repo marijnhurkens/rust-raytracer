@@ -21,7 +21,7 @@ pub fn trace(
     sampler: &mut SobolSampler,
 ) -> SampleResult {
     let mut l = Vector3::new(0.0, 0.0, 0.0);
-    let mut etaScale = 1.0;
+    let mut eta_scale = 1.0;
     let mut contribution = Vector3::new(1.0, 1.0, 1.0);
     let mut specular_bounce = false;
     let mut ray = starting_ray;
@@ -54,10 +54,10 @@ pub fn trace(
             }
         };
 
-        // if bounce == 0 {
-        //     normal = surface_interaction.shading_normal;
-        //     albedo = object.get_materials()[0].get_albedo()
-        // }
+        if bounce == 0 {
+            normal = surface_interaction.shading_normal;
+            albedo = object.get_materials()[0].get_albedo()
+        }
 
         for material in object.get_materials() {
             material.compute_scattering_functions(&mut surface_interaction);
@@ -76,8 +76,6 @@ pub fn trace(
             break;
         }
 
-      //  debug_write_pixel_on_bounce(light_irradiance, 2);
-
         let contribution_before = contribution.clone();
         contribution = contribution.component_mul(
             &((bsdf_sample.f
@@ -95,7 +93,7 @@ pub fn trace(
             // Update the term that tracks radiance scaling for refraction
             // depending on whether the ray is entering or leaving the
             // medium.
-            etaScale *= if surface_interaction
+            eta_scale *= if surface_interaction
                 .wo
                 .dot(&surface_interaction.shading_normal)
                 > 0.0
@@ -116,7 +114,7 @@ pub fn trace(
         };
 
         // russian roulette termination
-        let rr_contribution: Vector3<f64> = contribution.component_mul(&Vector3::new(etaScale, etaScale, etaScale));
+        let rr_contribution: Vector3<f64> = contribution.component_mul(&Vector3::new(eta_scale, eta_scale, eta_scale));
         if rr_contribution.max() < 1.0 && bounce > 3 {
             let q = (1.0 - contribution.max()).max(0.0);
             if sampler.get_1d() < q {
