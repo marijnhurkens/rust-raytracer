@@ -162,22 +162,22 @@ impl Scene {
             lights.push(Arc::new(infinite_light));
         }
 
-        let sphere = ArcObject(Arc::new(Object::Sphere(Sphere::new(
-            Point3::new(0.62, -0.2, 1.2),
-            0.5,
-            vec![Arc::new(
-                Material::Uber(UberMaterial::new(
-                    Vector3::repeat(0.0),
-                    Vector3::repeat(0.0),
-                    Vector3::repeat(1.0),
-                    0.09,
-                    1.5
-                ))
-            )],
-            None,
-        ))));
-
-       objects.push(sphere);
+       //  let sphere = ArcObject(Arc::new(Object::Sphere(Sphere::new(
+       //      Point3::new(0.62, -0.2, 1.2),
+       //      0.5,
+       //      vec![Arc::new(
+       //          Material::Uber(UberMaterial::new(
+       //              Vector3::repeat(0.0),
+       //              Vector3::repeat(0.0),
+       //              Vector3::repeat(1.0),
+       //              0.09,
+       //              1.5
+       //          ))
+       //      )],
+       //      None,
+       //  ))));
+       //
+       // objects.push(sphere);
 
         // let floor = ArcObject(Arc::new(Object::Plane(Plane::new(
         //     Point3::new(0.0, -0.5, 0.0),

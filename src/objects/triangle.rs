@@ -279,8 +279,7 @@ impl ObjectTrait for Triangle {
         let p2_normal = self.n2;
         let shading_normal = (b0 * p0_normal + b1 * p1_normal + b2 * p2_normal).normalize();
 
-        let p1p0 = p1 - p0;
-        let geometry_normal = (p2 - p0).cross(&p1p0).normalize();
+        let geometry_normal = dp02.cross(&dp12).normalize();
 
         let (ss, ts) = {
             let mut ss = dpdu.normalize();
