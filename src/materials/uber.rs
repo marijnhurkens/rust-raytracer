@@ -81,7 +81,7 @@ impl MaterialTrait for UberMaterial {
 
             let fresnel = FresnelDielectric::new(1.0, self.ior);
             bsdf.add(Bxdf::MicrofacetReflection(MicrofacetReflection::new(
-                self.transmission,
+                self.specular,
                 distribution,
                 FresnelDielectric::new(1.0, self.ior),
             )));

@@ -1,8 +1,8 @@
 film:
   image_width: 1000
   image_height: 1000
-  bucket_width: 128
-  bucket_height: 128
+  bucket_width: 32
+  bucket_height: 32
   filter_radius: 1.5
   filter_method: none # leave to none when denoising
   denoise: false
@@ -16,10 +16,10 @@ camera:
   aperture: 0.0
   focal_distance: 0.0 # camera target is used if you do not provide this field
 sampler:
-  max_samples: 4
+  max_samples: 256
   method: sobol
 renderer:
-  depth_limit: 5
+  depth_limit: 7
   threads: 11 # do not use more threads than cores available, it won't improve performance
   clamp: 15.0
 scene:
